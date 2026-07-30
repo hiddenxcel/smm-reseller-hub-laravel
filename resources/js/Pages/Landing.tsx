@@ -1,3 +1,6 @@
+import ComparisonTable from '@/components/landing/ComparisonTable';
+import FeatureGrid from '@/components/landing/FeatureGrid';
+import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import LandingNav from '@/components/landing/LandingNav';
 import PhoneDemo from '@/components/landing/PhoneDemo';
 import { Section, SectionHeading } from '@/components/landing/Section';
@@ -235,8 +238,19 @@ export default function Landing({ plans }: Props) {
                     </div>
                 </Section>
 
+                {/* ---- interactive demo ---- */}
+                <Section id="demo">
+                    <SectionHeading
+                        eyebrow="Try it"
+                        title="Press a button. Watch it work."
+                        subtitle="This is the real flow your customers get — order, support, wallet. No video, no signup."
+                    />
+
+                    <InteractiveDemo />
+                </Section>
+
                 {/* ---- how it works ---- */}
-                <Section id="how">
+                <Section id="how" muted>
                     <SectionHeading
                         eyebrow="How it works"
                         title="Live in about five minutes"
@@ -261,8 +275,28 @@ export default function Landing({ plans }: Props) {
                     </ol>
                 </Section>
 
-                {/* ---- wallet explainer ---- */}
+                {/* ---- features ---- */}
+                <Section id="features">
+                    <SectionHeading
+                        eyebrow="Features"
+                        title="Everything the shop needs to run itself"
+                    />
+
+                    <FeatureGrid />
+                </Section>
+
+                {/* ---- comparison ---- */}
                 <Section muted>
+                    <SectionHeading
+                        eyebrow="Before and after"
+                        title="What changes on day one"
+                    />
+
+                    <ComparisonTable />
+                </Section>
+
+                {/* ---- wallet explainer ---- */}
+                <Section>
                     <div className="grid items-center gap-10 lg:grid-cols-2">
                         <div>
                             <SectionHeading title="Your customers pay you, not us" />
@@ -292,7 +326,7 @@ export default function Landing({ plans }: Props) {
                 </Section>
 
                 {/* ---- faq ---- */}
-                <Section id="faq">
+                <Section id="faq" muted>
                     <SectionHeading eyebrow="FAQ" title="Questions worth asking" />
 
                     <div className="mx-auto max-w-3xl space-y-4">
@@ -310,7 +344,7 @@ export default function Landing({ plans }: Props) {
                 </Section>
 
                 {/* ---- closing cta ---- */}
-                <Section muted className="text-center">
+                <Section className="text-center">
                     <h2 className="font-heading text-3xl font-extrabold text-balance sm:text-4xl">
                         Put your panel on WhatsApp today
                     </h2>

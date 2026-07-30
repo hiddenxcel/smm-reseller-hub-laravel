@@ -4,9 +4,9 @@ import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
 const LINKS = [
-    { href: '#services', label: 'Services' },
-    { href: '#how', label: 'How it works' },
-    { href: '#pricing', label: 'Pricing' },
+    { href: '#demo', label: 'Try it' },
+    { href: '#features', label: 'Features' },
+    { href: '#services', label: 'Pricing' },
     { href: '#faq', label: 'FAQ' },
 ];
 
