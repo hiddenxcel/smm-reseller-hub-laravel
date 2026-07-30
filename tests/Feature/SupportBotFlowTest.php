@@ -1,0 +1,352 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\BotConversation;
+use App\Models\BotOrder;
+use App\Models\GuaranteeRule;
+use App\Models\Tenant;
+use App\Models\TenantPanel;
+use App\Services\Bots\BotSettings;
+use App\Services\Bots\Support\SupportBotHandler;
+use App\Services\Bots\Support\SupportState;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Tests\Support\FakeBotMessenger;
+use Tests\TestCase;
+
+/**
+ * After-sales support: the Quick Menu, and the panel actions behind it.
+ */
+class SupportBotFlowTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private const CUSTOMER = '255700000001';
+
+    private const STAFF = '255700000099';
+
+    private Tenant $tenant;
+
+    private FakeBotMessenger $messenger;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Http::preventStrayRequests();
+
+        $this->tenant = Tenant::factory()->create(['business_name' => 'Kuza Panel']);
+        $this->messenger = new FakeBotMessenger;
+    }
+
+    private function send(string $text): void
+    {
+        (new SupportBotHandler($this->tenant, $this->messenger))->handle(self::CUSTOMER, $text);
+    }
+
+    private function state(): ?string
+    {
+        return BotConversation::withoutTenantScope()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('bot_type', 'support')
+            ->value('state');
+    }
+
+    /** Messages sent to the customer, ignoring staff notifications. */
+    private function toCustomer(): array
+    {
+        return array_values(array_filter(
+            $this->messenger->sent,
+            fn (array $message) => $message['to'] === self::CUSTOMER,
+        ));
+    }
+
+    private function lastToCustomer(): string
+    {
+        $messages = $this->toCustomer();
+
+        return $messages === [] ? '' : (string) end($messages)['body'];
+    }
+
+    private function withStaff(): void
+    {
+        BotSettings::save($this->tenant->id, 'support', [
+            'staff' => ['numbers' => [self::STAFF]],
+        ]);
+    }
+
+    private function withPanel(): TenantPanel
+    {
+        return TenantPanel::factory()->for($this->tenant)->create();
+    }
+
+    // ---- the menu ---------------------------------------------------------
+
+    public function test_any_message_opens_the_quick_menu(): void
+    {
+        $this->send('hey there');
+
+        $this->assertSame(SupportState::Menu->value, $this->state());
+        $this->assertStringContainsString('Quick Menu', $this->lastToCustomer());
+        $this->assertStringContainsString('Kuza Panel', $this->lastToCustomer());
+    }
+
+    public function test_cancel_closes_support(): void
+    {
+        $this->send('hi');
+        $this->send('cancel');
+
+        $this->assertNull($this->state());
+        $this->assertStringContainsString('Support closed', $this->lastToCustomer());
+    }
+
+    public function test_zero_returns_to_the_menu(): void
+    {
+        $this->send('hi');
+        $this->send('1');
+        $this->assertSame(SupportState::AwaitOrderId->value, $this->state());
+
+        $this->send('0');
+
+        $this->assertSame(SupportState::Menu->value, $this->state());
+    }
+
+    public function test_an_unrecognised_choice_is_rejected(): void
+    {
+        $this->send('hi');
+        $this->send('99');
+
+        $this->assertStringContainsString('number from *1* to *8*', $this->lastToCustomer());
+        $this->assertSame(SupportState::Menu->value, $this->state());
+    }
+
+    public function test_an_action_the_reseller_disabled_is_refused(): void
+    {
+        // speedup is off by default.
+        $this->send('hi');
+        $this->send('2');
+
+        $this->assertStringContainsString("isn't available", $this->lastToCustomer());
+        $this->assertSame(SupportState::Menu->value, $this->state());
+    }
+
+    // ---- order status -----------------------------------------------------
+
+    public function test_it_reports_a_status_from_the_panel(): void
+    {
+        $this->withPanel();
+        Http::fake(['*' => Http::response(['status' => 'In progress', 'remains' => 120])]);
+
+        $this->send('hi');
+        $this->send('6');
+        $this->send('48220');
+
+        $this->assertStringContainsString('In progress', json_encode($this->toCustomer()));
+        $this->assertStringContainsString('Remaining: 120', json_encode($this->toCustomer()));
+    }
+
+    public function test_an_unknown_order_is_reported_as_not_found(): void
+    {
+        $this->withPanel();
+        Http::fake(['*' => Http::response(['error' => 'Incorrect order ID'])]);
+
+        $this->send('hi');
+        $this->send('6');
+        $this->send('99999');
+
+        $this->assertStringContainsString('not found', json_encode($this->toCustomer()));
+    }
+
+    public function test_a_panel_action_without_a_connected_panel_bows_out(): void
+    {
+        // No panel connected at all.
+        $this->send('hi');
+        $this->send('6');
+        $this->send('48220');
+
+        $this->assertStringContainsString("isn't fully set up", $this->lastToCustomer());
+        $this->assertNull($this->state());
+    }
+
+    public function test_a_blank_order_id_is_rejected_without_calling_the_panel(): void
+    {
+        $this->withPanel();
+        Http::fake();
+
+        $this->send('hi');
+        $this->send('6');
+        $this->send('???');
+
+        $this->assertStringContainsString("doesn't look like an order ID", $this->lastToCustomer());
+        Http::assertNothingSent();
+    }
+
+    // ---- refill, and its guarantee gate -----------------------------------
+
+    public function test_a_refill_is_submitted_when_the_guarantee_allows_it(): void
+    {
+        $this->withPanel();
+        $this->withStaff();
+
+        BotOrder::factory()->for($this->tenant)->create([
+            'provider_order_id' => '48220',
+            'service_name' => 'IG Followers | 30 Days Refill',
+        ]);
+        GuaranteeRule::factory()->for($this->tenant)->create([
+            'keyword' => '30 days',
+            'refill_days' => 30,
+        ]);
+
+        Http::fake(['*' => Http::response(['refill' => '9001'])]);
+
+        $this->send('hi');
+        $this->send('1');
+        $this->send('48220');
+
+        $this->assertStringContainsString('Refill for *#48220* submitted', json_encode($this->toCustomer()));
+        $this->assertStringContainsString('30 days', json_encode($this->toCustomer()));
+    }
+
+    public function test_a_refill_is_refused_when_the_service_has_no_guarantee(): void
+    {
+        $this->withPanel();
+
+        BotOrder::factory()->for($this->tenant)->create([
+            'provider_order_id' => '48220',
+            'service_name' => 'IG Followers | No Refill',
+        ]);
+        GuaranteeRule::factory()->for($this->tenant)->noGuarantee()->create();
+
+        Http::fake();
+
+        $this->send('hi');
+        $this->send('1');
+        $this->send('48220');
+
+        $this->assertStringContainsString('no refill guarantee', json_encode($this->toCustomer()));
+        Http::assertNothingSent();
+    }
+
+    public function test_a_lifetime_guarantee_is_described_as_such(): void
+    {
+        $this->withPanel();
+
+        BotOrder::factory()->for($this->tenant)->create([
+            'provider_order_id' => '48220',
+            'service_name' => 'IG Likes | Lifetime Guarantee',
+        ]);
+        GuaranteeRule::factory()->for($this->tenant)->lifetime()->create();
+
+        Http::fake(['*' => Http::response(['refill' => '1'])]);
+
+        $this->send('hi');
+        $this->send('1');
+        $this->send('48220');
+
+        $this->assertStringContainsString('Lifetime', json_encode($this->toCustomer()));
+    }
+
+    public function test_an_unmatched_service_is_refused_a_refill(): void
+    {
+        // No rules configured at all: blocked is the safe default.
+        $this->withPanel();
+        BotOrder::factory()->for($this->tenant)->create([
+            'provider_order_id' => '48220',
+            'service_name' => 'Some Service',
+        ]);
+
+        Http::fake();
+
+        $this->send('hi');
+        $this->send('1');
+        $this->send('48220');
+
+        $this->assertStringContainsString('no refill guarantee', json_encode($this->toCustomer()));
+        Http::assertNothingSent();
+    }
+
+    // ---- actions that only notify staff -----------------------------------
+
+    public function test_a_partial_report_needs_no_panel(): void
+    {
+        $this->withStaff();
+        Http::fake();
+
+        $this->send('hi');
+        $this->send('4');
+        $this->send('48220');
+
+        // Checked against the raw bodies: json_encode escapes the slash.
+        $bodies = implode("\n", array_column($this->toCustomer(), 'body'));
+        $this->assertStringContainsString('partial / fake completion', $bodies);
+        Http::assertNothingSent();
+    }
+
+    public function test_it_notifies_staff_of_a_partial_report(): void
+    {
+        $this->withStaff();
+
+        $this->send('hi');
+        $this->send('4');
+        $this->send('48220');
+
+        $toStaff = array_filter($this->messenger->sent, fn ($m) => $m['to'] === self::STAFF);
+        $this->assertNotEmpty($toStaff);
+        $this->assertStringContainsString('48220', json_encode($toStaff));
+    }
+
+    public function test_talk_to_a_human_hands_over_the_staff_number(): void
+    {
+        $this->withStaff();
+
+        $this->send('hi');
+        $this->send('5');
+
+        $this->assertStringContainsString('wa.me/'.self::STAFF, $this->lastToCustomer());
+    }
+
+    public function test_talk_to_a_human_still_answers_with_no_staff_configured(): void
+    {
+        $this->send('hi');
+        $this->send('5');
+
+        $this->assertStringContainsString('get back to you', $this->lastToCustomer());
+    }
+
+    public function test_a_top_up_issue_explains_what_to_send(): void
+    {
+        $this->send('hi');
+        $this->send('7');
+
+        $this->assertStringContainsString('payment reference', $this->lastToCustomer());
+    }
+
+    // ---- isolation --------------------------------------------------------
+
+    public function test_it_does_not_read_another_tenants_order_for_the_guarantee_check(): void
+    {
+        $this->withPanel();
+
+        // The order — and so the service name the guarantee is judged on —
+        // belongs to someone else.
+        $other = Tenant::factory()->create();
+        BotOrder::factory()->for($other)->create([
+            'provider_order_id' => '48220',
+            'service_name' => 'IG Followers | 30 Days Refill',
+        ]);
+        GuaranteeRule::factory()->for($this->tenant)->create([
+            'keyword' => '30 days',
+            'refill_days' => 30,
+        ]);
+
+        Http::fake();
+
+        $this->send('hi');
+        $this->send('1');
+        $this->send('48220');
+
+        $this->assertStringContainsString('no refill guarantee', json_encode($this->toCustomer()));
+        Http::assertNothingSent();
+    }
+}
