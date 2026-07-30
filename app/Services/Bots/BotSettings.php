@@ -1,0 +1,134 @@
+<?php
+
+namespace App\Services\Bots;
+
+use App\Models\TenantBotSetting;
+use Illuminate\Support\Arr;
+
+/**
+ * Per (tenant, bot_type) settings, merged over defaults so a missing key
+ * always resolves — resellers only ever store the keys they changed.
+ */
+class BotSettings
+{
+    public const DEFAULTS = [
+        'commands' => [
+            'refill' => true,
+            'status' => true,
+            'cancel' => true,
+            'speedup' => false,
+        ],
+        'spam' => [
+            'enabled' => true,
+            'repeat_threshold' => 3,
+            'window_minutes' => 5,
+            'disable_minutes' => 60,
+        ],
+        'response' => [
+            'show_provider_name' => false,
+            'detailed_status' => true,
+        ],
+        'staff' => [
+            // Phone numbers that bypass anti-spam and receive notifications.
+            'numbers' => [],
+        ],
+        'shop' => [
+            'currency' => 'USD',
+            'lang' => 'en',
+            'min_topup' => 1,
+            'referral_percent' => 0,
+            'binance_pay_id' => '',
+            'support_mode' => 'admin',
+            'group_url' => '',
+            'website_url' => '',
+            // Phones allowed to exercise the bot while the service is in sandbox.
+            'test_numbers' => [],
+        ],
+    ];
+
+    public static function for(int $tenantId, string $botType): array
+    {
+        $stored = TenantBotSetting::withoutTenantScope()
+            ->where('tenant_id', $tenantId)
+            ->where('bot_type', $botType)
+            ->value('settings');
+
+        return self::mergeDefaults(self::DEFAULTS, is_array($stored) ? $stored : []);
+    }
+
+    public static function save(int $tenantId, string $botType, array $settings): void
+    {
+        TenantBotSetting::withoutTenantScope()->updateOrCreate(
+            ['tenant_id' => $tenantId, 'bot_type' => $botType],
+            ['settings' => $settings],
+        );
+    }
+
+    public static function isStaff(int $tenantId, string $botType, string $phone): bool
+    {
+        $numbers = array_map(
+            self::digitsOnly(...),
+            Arr::get(self::for($tenantId, $botType), 'staff.numbers', []),
+        );
+
+        return in_array(self::digitsOnly($phone), $numbers, true);
+    }
+
+    /**
+     * Is this sender one of the tenant's registered test numbers? Test numbers
+     * let a reseller try a sandbox service before paying, so this is what the
+     * sandbox gate exception keys on.
+     */
+    public static function isTestNumber(int $tenantId, string $phone): bool
+    {
+        $digits = self::digitsOnly($phone);
+
+        if ($digits === '') {
+            return false;
+        }
+
+        // Either bot's list counts — a reseller testing the order bot should
+        // not have to re-add the same number under support.
+        foreach (['order', 'support'] as $botType) {
+            $numbers = array_map(
+                self::digitsOnly(...),
+                Arr::get(self::for($tenantId, $botType), 'shop.test_numbers', []),
+            );
+
+            if (in_array($digits, $numbers, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function digitsOnly(mixed $phone): string
+    {
+        return preg_replace('/\D/', '', (string) $phone) ?? '';
+    }
+
+    /**
+     * Stored values override defaults; missing keys keep theirs. Associative
+     * sub-arrays merge recursively, but list arrays (staff numbers, test
+     * numbers) are replaced wholesale — merging those would resurrect entries
+     * the reseller deleted.
+     */
+    private static function mergeDefaults(array $defaults, array $stored): array
+    {
+        foreach ($defaults as $key => $default) {
+            if (is_array($default) && self::isAssoc($default) && is_array($stored[$key] ?? null)) {
+                $defaults[$key] = self::mergeDefaults($default, $stored[$key]);
+            } elseif (array_key_exists($key, $stored)) {
+                $defaults[$key] = $stored[$key];
+            }
+        }
+
+        return $defaults;
+    }
+
+    private static function isAssoc(array $array): bool
+    {
+        return $array !== [] && ! array_is_list($array);
+    }
+}
