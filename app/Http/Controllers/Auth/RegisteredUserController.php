@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\Tenant;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,27 +25,29 @@ class RegisteredUserController extends Controller
     }
 
     /**
-     * Handle an incoming registration request.
+     * Handle an incoming tenant (reseller) registration request.
      *
      * @throws ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'business_name' => 'required|string|max:150',
+            'email' => 'required|string|lowercase|email|max:190|unique:'.Tenant::class,
+            'phone' => 'nullable|string|max:30',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
+        $tenant = Tenant::create([
+            'business_name' => $request->business_name,
             'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'phone' => $request->phone,
+            'password_hash' => Hash::make($request->password),
         ]);
 
-        event(new Registered($user));
+        event(new Registered($tenant));
 
-        Auth::login($user);
+        Auth::guard('tenant')->login($tenant);
 
         return redirect(route('dashboard', absolute: false));
     }
