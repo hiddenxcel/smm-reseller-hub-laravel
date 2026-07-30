@@ -35,4 +35,21 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | WhatsApp Cloud API
+    |--------------------------------------------------------------------------
+    |
+    | Platform-level rather than per-reseller: Meta signs every webhook with
+    | the app secret regardless of whose number the message arrived on.
+    | Without it, inbound webhooks are rejected — anyone who found the URL
+    | could otherwise drive any reseller's bot.
+    |
+    */
+
+    'meta' => [
+        'app_secret' => env('META_APP_SECRET'),
+        'verify_token' => env('META_VERIFY_TOKEN'),
+    ],
+
 ];
