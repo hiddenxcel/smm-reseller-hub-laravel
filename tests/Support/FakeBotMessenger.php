@@ -34,6 +34,8 @@ class FakeBotMessenger implements BotMessenger
             'type' => 'list',
             'to' => $to,
             'body' => $bodyText,
+            'buttonText' => $buttonText,
+            'sectionTitle' => $sectionTitle,
             'templateKey' => $templateKey,
             'rows' => $rows,
         ];
