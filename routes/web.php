@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\Onboarding\ConnectPanelController;
+use App\Http\Controllers\Onboarding\ConnectWhatsAppController;
 use App\Http\Controllers\Onboarding\ImportServicesController;
 use App\Http\Controllers\Onboarding\OnboardingController;
 use App\Http\Controllers\ProfileController;
@@ -21,6 +22,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/onboarding/{step}', [OnboardingController::class, 'show'])->name('onboarding.step');
     Route::post('/onboarding/panel', [ConnectPanelController::class, 'store'])->name('onboarding.panel.store');
     Route::post('/onboarding/services', [ImportServicesController::class, 'store'])->name('onboarding.services.store');
+    Route::post('/onboarding/whatsapp', [ConnectWhatsAppController::class, 'store'])->name('onboarding.whatsapp.store');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

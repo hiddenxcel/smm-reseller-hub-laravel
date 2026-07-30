@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Onboarding;
 
 use App\Http\Controllers\Controller;
 use App\Models\TenantPanel;
+use App\Models\TenantWhatsApp;
 use App\Services\Onboarding\OnboardingProgress;
 use App\Services\Onboarding\OnboardingStep;
 use App\Services\Panel\ServiceCatalogue;
@@ -56,6 +57,22 @@ class OnboardingController extends Controller
             OnboardingStep::ConnectPanel => Inertia::render('Onboarding/ConnectPanel', $shared),
 
             OnboardingStep::ImportServices => $this->importServices($request, $shared),
+
+            OnboardingStep::ConnectWhatsApp => Inertia::render('Onboarding/ConnectWhatsApp', [
+                ...$shared,
+                // The reseller pastes these two into their Meta app so Meta
+                // knows where to deliver messages.
+                'webhookUrl' => route('webhooks.whatsapp'),
+                'verifyToken' => (string) config('services.meta.verify_token'),
+                'numbers' => TenantWhatsApp::where('tenant_id', $request->user()->id)
+                    ->get()
+                    ->map(fn (TenantWhatsApp $number) => [
+                        'id' => $number->id,
+                        'phone_number_id' => $number->phone_number_id,
+                        'display_number' => $number->display_number,
+                        'bot_type' => $number->bot_type,
+                    ]),
+            ]),
 
             // Steps without a screen yet say so plainly, rather than showing a
             // form that quietly does nothing.
