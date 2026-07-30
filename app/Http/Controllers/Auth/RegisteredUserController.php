@@ -49,6 +49,8 @@ class RegisteredUserController extends Controller
 
         Auth::guard('tenant')->login($tenant);
 
-        return redirect(route('dashboard', absolute: false));
+        // Into the setup wizard, not the dashboard: an empty dashboard is
+        // where new resellers give up.
+        return redirect(route('onboarding', absolute: false));
     }
 }

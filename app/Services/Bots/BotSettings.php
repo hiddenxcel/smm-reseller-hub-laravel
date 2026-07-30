@@ -113,18 +113,24 @@ class BotSettings
      * sub-arrays merge recursively, but list arrays (staff numbers, test
      * numbers) are replaced wholesale — merging those would resurrect entries
      * the reseller deleted.
+     *
+     * Stored keys with no default are kept as well. Walking only the defaults
+     * would silently discard anything newer than this list, which is a nasty
+     * way to lose a setting.
      */
     private static function mergeDefaults(array $defaults, array $stored): array
     {
-        foreach ($defaults as $key => $default) {
-            if (is_array($default) && self::isAssoc($default) && is_array($stored[$key] ?? null)) {
-                $defaults[$key] = self::mergeDefaults($default, $stored[$key]);
-            } elseif (array_key_exists($key, $stored)) {
-                $defaults[$key] = $stored[$key];
-            }
+        $merged = $defaults;
+
+        foreach ($stored as $key => $value) {
+            $default = $defaults[$key] ?? null;
+
+            $merged[$key] = is_array($default) && self::isAssoc($default) && is_array($value)
+                ? self::mergeDefaults($default, $value)
+                : $value;
         }
 
-        return $defaults;
+        return $merged;
     }
 
     private static function isAssoc(array $array): bool

@@ -1,0 +1,114 @@
+<?php
+
+namespace App\Services\Onboarding;
+
+use App\Models\BotService;
+use App\Models\Tenant;
+use App\Models\TenantPaymentGateway;
+use App\Models\TenantWhatsApp;
+use App\Services\Bots\BotSettings;
+use App\Services\Payments\Gateway;
+use Illuminate\Support\Arr;
+
+/**
+ * How far a reseller has got in setting up their shop.
+ *
+ * Completion is derived from the data itself rather than stored as flags:
+ * a step is done when the thing it produces exists. That way progress can
+ * never drift from reality — deleting your only panel puts you back on step
+ * one, which is correct.
+ */
+class OnboardingProgress
+{
+    public function __construct(private Tenant $tenant) {}
+
+    public static function for(Tenant $tenant): self
+    {
+        return new self($tenant);
+    }
+
+    public function isComplete(OnboardingStep $step): bool
+    {
+        return match ($step) {
+            OnboardingStep::ConnectPanel => $this->tenant->panels()
+                ->where('status', 'active')
+                ->exists(),
+
+            OnboardingStep::ImportServices => BotService::withoutTenantScope()
+                ->where('tenant_id', $this->tenant->id)
+                ->where('status', 'active')
+                ->exists(),
+
+            OnboardingStep::ConnectWhatsApp => TenantWhatsApp::withoutTenantScope()
+                ->where('tenant_id', $this->tenant->id)
+                ->exists(),
+
+            OnboardingStep::SetupPayments => $this->hasUsableGateway(),
+
+            // Nothing marks the test as done but the reseller saying so —
+            // we cannot tell a real conversation from a test one.
+            OnboardingStep::TestBot => (bool) Arr::get(
+                BotSettings::for($this->tenant->id, 'order'),
+                'shop.bot_tested',
+                false,
+            ),
+        };
+    }
+
+    /** The next thing to do, or null when everything required is done. */
+    public function currentStep(): ?OnboardingStep
+    {
+        foreach (OnboardingStep::ordered() as $step) {
+            if (! $this->isComplete($step)) {
+                return $step;
+            }
+        }
+
+        return null;
+    }
+
+    /** Whether the reseller can go live, ignoring optional steps. */
+    public function isReadyToGoLive(): bool
+    {
+        foreach (OnboardingStep::ordered() as $step) {
+            if ($step->isRequired() && ! $this->isComplete($step)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** @return array<int, array{key: string, title: string, description: string, complete: bool, required: bool}> */
+    public function toArray(): array
+    {
+        return array_map(fn (OnboardingStep $step) => [
+            'key' => $step->value,
+            'title' => $step->title(),
+            'description' => $step->description(),
+            'complete' => $this->isComplete($step),
+            'required' => $step->isRequired(),
+        ], OnboardingStep::ordered());
+    }
+
+    public function completedCount(): int
+    {
+        return count(array_filter(
+            OnboardingStep::ordered(),
+            fn (OnboardingStep $step) => $this->isComplete($step),
+        ));
+    }
+
+    /**
+     * A gateway only counts once it is one we can actually drive — storing
+     * keys for a "coming soon" gateway does not let anyone pay.
+     */
+    private function hasUsableGateway(): bool
+    {
+        return TenantPaymentGateway::withoutTenantScope()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('status', 'active')
+            ->pluck('gateway')
+            ->contains(fn (string $gateway) => Gateway::isReady($gateway));
+    }
+}
