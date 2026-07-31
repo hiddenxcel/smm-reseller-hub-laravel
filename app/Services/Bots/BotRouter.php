@@ -56,10 +56,15 @@ class BotRouter
             return BotRoute::TenantInactive;
         }
 
-        $this->logInbound($tenant->id, $message);
+        $chosen = $this->pickBot($whatsapp->bot_type, $message, $tenant->id);
 
-        $target = $this->pickBot($whatsapp->bot_type, $message, $tenant->id);
-        $target = $this->applyGate($tenant, $whatsapp->bot_type, $target, $message);
+        // Logged before the gate and the spam check, so a message that was
+        // refused is still on the record — a reseller asking "did they ever
+        // message me?" needs the ones we did not answer most of all. The bot
+        // recorded is the one it was addressed to, even if nothing ran.
+        $this->logInbound($tenant->id, $message, $chosen ?? $whatsapp->bot_type);
+
+        $target = $this->applyGate($tenant, $whatsapp->bot_type, $chosen, $message);
 
         if ($target === null) {
             $this->notifyPaused($tenant, $whatsapp, $message->from);
@@ -199,13 +204,18 @@ class BotRouter
         );
     }
 
-    private function logInbound(int $tenantId, InboundMessage $message): void
+    /**
+     * A number serving both bots stores 'both' when the message was ambiguous
+     * enough that no single bot claimed it, rather than guessing one.
+     */
+    private function logInbound(int $tenantId, InboundMessage $message, string $botType): void
     {
         BotMessage::withoutTenantScope()->create([
             'tenant_id' => $tenantId,
             'customer_phone' => $message->from,
             'direction' => 'in',
             'message' => $message->text,
+            'bot_type' => $botType,
         ]);
     }
 }

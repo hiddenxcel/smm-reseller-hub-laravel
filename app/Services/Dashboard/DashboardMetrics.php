@@ -7,6 +7,7 @@ use App\Models\BotOrder;
 use App\Models\BotPayment;
 use App\Models\Tenant;
 use App\Models\TenantPanel;
+use App\Models\TenantWhatsApp;
 use App\Models\Ticket;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -76,35 +77,66 @@ class DashboardMetrics
     }
 
     /**
-     * Whether the bot is actually working, as opposed to merely configured.
+     * Whether the bots are actually working, as opposed to merely configured.
      *
      * "Connected" is not the same as "answering" — a number can be attached
-     * with an expired token and look fine on a settings page, so this leans on
-     * whether it has replied recently.
+     * with an expired token and look perfectly healthy on a settings page, so
+     * this leans on whether it has replied recently.
+     *
+     * Reported per bot. The reseller sells the order bot and the support bot
+     * separately, on separate numbers and separate subscriptions, so a single
+     * "bot: online" would claim both were fine when only one was.
      */
     public function botStatus(): array
     {
         $numbers = $this->tenant->whatsAppNumbers()->get();
 
-        $lastOutbound = DB::table('bot_messages')
-            ->where('tenant_id', $this->tenant->id)
-            ->where('direction', 'out')
-            ->max('created_at');
-
-        $lastInbound = DB::table('bot_messages')
-            ->where('tenant_id', $this->tenant->id)
-            ->where('direction', 'in')
-            ->max('created_at');
-
-        $lastReplyAt = $lastOutbound ? Carbon::parse($lastOutbound) : null;
-
         return [
+            'order' => $this->statusForBot('order', $numbers),
+            'support' => $this->statusForBot('support', $numbers),
             'numbersConnected' => $numbers->count(),
-            'lastReplyAt' => $lastReplyAt?->toIso8601String(),
-            'lastInboundAt' => $lastInbound ? Carbon::parse($lastInbound)->toIso8601String() : null,
-            'state' => $this->botState($numbers->count(), $lastReplyAt),
             'messagesToday' => DB::table('bot_messages')
                 ->where('tenant_id', $this->tenant->id)
+                ->where('created_at', '>=', Carbon::today())
+                ->count(),
+        ];
+    }
+
+    /**
+     * @param  Collection<int, TenantWhatsApp>  $numbers
+     */
+    private function statusForBot(string $bot, Collection $numbers): array
+    {
+        // A 'both' number serves this bot as well as the other one.
+        $serving = $numbers->filter(
+            fn (TenantWhatsApp $number) => $number->bot_type === $bot || $number->bot_type === 'both',
+        );
+
+        $lastReply = DB::table('bot_messages')
+            ->where('tenant_id', $this->tenant->id)
+            ->where('direction', 'out')
+            ->where('bot_type', $bot)
+            ->max('created_at');
+
+        $lastReplyAt = $lastReply ? Carbon::parse($lastReply) : null;
+
+        return [
+            'numbers' => $serving
+                ->map(fn (TenantWhatsApp $number) => [
+                    'id' => $number->id,
+                    'display' => $number->display_number ?? $number->phone_number_id,
+                    // 'both' is worth showing: it explains why one number
+                    // appears under two bots.
+                    'shared' => $number->bot_type === 'both',
+                ])
+                ->values()
+                ->all(),
+            'numbersConnected' => $serving->count(),
+            'lastReplyAt' => $lastReplyAt?->toIso8601String(),
+            'state' => $this->botState($serving->count(), $lastReplyAt),
+            'messagesToday' => DB::table('bot_messages')
+                ->where('tenant_id', $this->tenant->id)
+                ->where('bot_type', $bot)
                 ->where('created_at', '>=', Carbon::today())
                 ->count(),
         ];

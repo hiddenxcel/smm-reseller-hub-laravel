@@ -279,7 +279,7 @@ class BotRouterTest extends TestCase
 
     // ---- side effects ----------------------------------------------------
 
-    public function test_it_logs_the_inbound_message(): void
+    public function test_it_logs_the_inbound_message_against_the_bot_that_took_it(): void
     {
         $tenant = Tenant::factory()->create();
         $number = TenantWhatsApp::factory()->for($tenant)->orderOnly()->create();
@@ -292,6 +292,47 @@ class BotRouterTest extends TestCase
             'customer_phone' => '255700000001',
             'direction' => 'in',
             'message' => 'hello there',
+            // Without this the log cannot say which bot a message belonged
+            // to, so nothing downstream can report the two separately.
+            'bot_type' => 'order',
+        ]);
+    }
+
+    public function test_a_shared_number_logs_the_bot_the_message_was_routed_to(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $number = TenantWhatsApp::factory()->for($tenant)->create(['bot_type' => 'both']);
+        $this->activate($tenant, ServiceKey::OrderBot);
+        $this->activate($tenant, ServiceKey::SupportBot);
+
+        $this->router()->route($this->message($number, 'refill please'));
+        $this->router()->route($this->message($number, 'I need 500 followers'));
+
+        $this->assertDatabaseHas('bot_messages', [
+            'message' => 'refill please',
+            'bot_type' => 'support',
+        ]);
+
+        $this->assertDatabaseHas('bot_messages', [
+            'message' => 'I need 500 followers',
+            'bot_type' => 'order',
+        ]);
+    }
+
+    public function test_a_message_refused_by_the_gate_is_still_logged(): void
+    {
+        // The ones that went unanswered are exactly the ones a reseller
+        // asking "did anyone message me?" needs to see.
+        $tenant = Tenant::factory()->create();
+        $number = TenantWhatsApp::factory()->for($tenant)->orderOnly()->create();
+
+        $this->router()->route($this->message($number, 'anyone there?'));
+
+        $this->assertDatabaseHas('bot_messages', [
+            'tenant_id' => $tenant->id,
+            'direction' => 'in',
+            'message' => 'anyone there?',
+            'bot_type' => 'order',
         ]);
     }
 

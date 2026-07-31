@@ -39,6 +39,14 @@ type Kpi = {
 
 type BotState = 'online' | 'idle' | 'never_replied' | 'not_connected';
 
+type BotHealth = {
+    numbers: Array<{ id: number; display: string; shared: boolean }>;
+    numbersConnected: number;
+    lastReplyAt: string | null;
+    state: BotState;
+    messagesToday: number;
+};
+
 type Props = {
     businessName: string;
     kpis: {
@@ -48,10 +56,9 @@ type Props = {
         walletsHeld: number;
     };
     botStatus: {
+        order: BotHealth;
+        support: BotHealth;
         numbersConnected: number;
-        lastReplyAt: string | null;
-        lastInboundAt: string | null;
-        state: BotState;
         messagesToday: number;
     };
     trend: Array<{ date: string; revenue: number; orders: number }>;
@@ -102,26 +109,26 @@ const BOT_STATE: Record<
     { label: string; hint: string; color: string; icon: LucideIcon }
 > = {
     online: {
-        label: 'Online',
+        label: 'online',
         hint: 'Answered within the last 24 hours',
         color: STATUS_COLORS.completed,
         icon: CheckCircle2,
     },
     idle: {
-        label: 'Quiet',
+        label: 'quiet',
         hint: 'Connected, but has not replied today',
         color: STATUS_COLORS.pending,
         icon: Clock,
     },
     never_replied: {
-        label: 'Never replied',
+        label: 'never replied',
         hint: 'Connected, but has not answered anyone yet',
         color: STATUS_COLORS.pending,
         icon: TriangleAlert,
     },
     not_connected: {
-        label: 'Not connected',
-        hint: 'No WhatsApp number attached',
+        label: 'no number',
+        hint: 'No number is running this bot',
         color: STATUS_COLORS.failed,
         icon: XCircle,
     },
@@ -140,9 +147,6 @@ export default function Dashboard({
     openTickets,
     setup,
 }: Props) {
-    const bot = BOT_STATE[botStatus.state];
-    const BotIcon = bot.icon;
-
     const revenuePoints = trend.map((day) => ({ date: day.date, value: day.revenue }));
     const orderPoints = trend.map((day) => ({ date: day.date, value: day.orders }));
 
@@ -163,12 +167,20 @@ export default function Dashboard({
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 py-2.5">
-                        <BotIcon className="size-4 shrink-0" style={{ color: bot.color }} />
-                        <div className="min-w-0">
-                            <p className="text-sm font-semibold">Bot {bot.label}</p>
-                            <p className="text-xs text-muted-foreground">{bot.hint}</p>
-                        </div>
+                    {/* Two bots, sold separately and often on separate
+                        numbers — one combined light would call both healthy
+                        when only one was. */}
+                    <div className="flex flex-wrap gap-2.5">
+                        <BotHealthPill
+                            name="Order bot"
+                            icon={ShoppingBag}
+                            health={botStatus.order}
+                        />
+                        <BotHealthPill
+                            name="Support bot"
+                            icon={LifeBuoy}
+                            health={botStatus.support}
+                        />
                     </div>
                 </header>
 
@@ -451,6 +463,43 @@ export default function Dashboard({
                 </section>
             </div>
         </AuthenticatedLayout>
+    );
+}
+
+/**
+ * One bot's health. The state colour is a status colour, so it is paired with
+ * an icon and the state written out — never carried by hue alone.
+ */
+function BotHealthPill({
+    name,
+    icon: Icon,
+    health,
+}: {
+    name: string;
+    icon: LucideIcon;
+    health: BotHealth;
+}) {
+    const state = BOT_STATE[health.state];
+    const StateIcon = state.icon;
+
+    const numbers = health.numbers.map((number) => number.display).join(', ');
+
+    return (
+        <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 py-2.5">
+            <Icon className="size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-sm font-semibold">
+                    {name}
+                    <StateIcon className="size-3.5 shrink-0" style={{ color: state.color }} />
+                    <span className="font-normal">{state.label}</span>
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                    {health.numbersConnected === 0
+                        ? state.hint
+                        : `${numbers}${health.numbers.some((n) => n.shared) ? ' (shared)' : ''} · ${health.messagesToday} today`}
+                </p>
+            </div>
+        </div>
     );
 }
 

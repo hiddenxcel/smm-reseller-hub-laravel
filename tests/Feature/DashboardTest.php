@@ -48,14 +48,17 @@ class DashboardTest extends TestCase
             ->create(['status' => 'success', ...$attributes]);
     }
 
-    private function logMessage(string $direction, ?Carbon $at = null): void
-    {
+    private function logMessage(
+        string $direction,
+        ?Carbon $at = null,
+        string $botType = 'order',
+    ): void {
         DB::table('bot_messages')->insert([
             'tenant_id' => $this->tenant->id,
             'customer_phone' => '255700000000',
             'direction' => $direction,
             'message' => 'hi',
-            'bot_type' => 'order',
+            'bot_type' => $botType,
             'created_at' => ($at ?? Carbon::now())->toDateTimeString(),
         ]);
     }
@@ -212,34 +215,90 @@ class DashboardTest extends TestCase
 
     // ---- bot status ------------------------------------------------------
 
-    public function test_the_bot_reads_as_not_connected_without_a_number(): void
+    public function test_a_bot_with_no_number_reads_as_not_connected(): void
     {
-        $this->assertSame('not_connected', $this->metrics()->botStatus()['state']);
+        $status = $this->metrics()->botStatus();
+
+        $this->assertSame('not_connected', $status['order']['state']);
+        $this->assertSame('not_connected', $status['support']['state']);
     }
 
     public function test_a_connected_number_that_never_replied_says_so(): void
     {
-        TenantWhatsApp::factory()->for($this->tenant)->create();
+        TenantWhatsApp::factory()->for($this->tenant)->create(['bot_type' => 'order']);
 
-        $this->assertSame('never_replied', $this->metrics()->botStatus()['state']);
+        $this->assertSame('never_replied', $this->metrics()->botStatus()['order']['state']);
     }
 
     public function test_a_recent_reply_reads_as_online(): void
     {
-        TenantWhatsApp::factory()->for($this->tenant)->create();
+        TenantWhatsApp::factory()->for($this->tenant)->create(['bot_type' => 'order']);
         $this->logMessage('out');
 
-        $this->assertSame('online', $this->metrics()->botStatus()['state']);
+        $this->assertSame('online', $this->metrics()->botStatus()['order']['state']);
     }
 
     public function test_a_bot_silent_for_a_day_reads_as_quiet(): void
     {
         // "Connected" is not the same as "working" — a stale token looks fine
         // on a settings page, so the dashboard leans on recent activity.
-        TenantWhatsApp::factory()->for($this->tenant)->create();
+        TenantWhatsApp::factory()->for($this->tenant)->create(['bot_type' => 'order']);
         $this->logMessage('out', Carbon::now()->subDays(3));
 
-        $this->assertSame('idle', $this->metrics()->botStatus()['state']);
+        $this->assertSame('idle', $this->metrics()->botStatus()['order']['state']);
+    }
+
+    // ---- the two bots are reported separately ----------------------------
+
+    public function test_a_healthy_order_bot_does_not_vouch_for_support(): void
+    {
+        // The reseller sells these separately, on separate numbers and
+        // separate subscriptions. One combined light would call the support
+        // bot healthy on the order bot's evidence.
+        TenantWhatsApp::factory()->for($this->tenant)->create([
+            'phone_number_id' => 'order-number',
+            'bot_type' => 'order',
+        ]);
+        TenantWhatsApp::factory()->for($this->tenant)->create([
+            'phone_number_id' => 'support-number',
+            'bot_type' => 'support',
+        ]);
+
+        $this->logMessage('out', botType: 'order');
+
+        $status = $this->metrics()->botStatus();
+
+        $this->assertSame('online', $status['order']['state']);
+        $this->assertSame('never_replied', $status['support']['state']);
+    }
+
+    public function test_a_shared_number_counts_for_both_bots(): void
+    {
+        TenantWhatsApp::factory()->for($this->tenant)->create(['bot_type' => 'both']);
+
+        $status = $this->metrics()->botStatus();
+
+        $this->assertSame(1, $status['order']['numbersConnected']);
+        $this->assertSame(1, $status['support']['numbersConnected']);
+
+        // Flagged as shared, which is what explains one number appearing
+        // under two bots.
+        $this->assertTrue($status['order']['numbers'][0]['shared']);
+    }
+
+    public function test_todays_message_count_is_per_bot(): void
+    {
+        TenantWhatsApp::factory()->for($this->tenant)->create(['bot_type' => 'both']);
+
+        $this->logMessage('in', botType: 'order');
+        $this->logMessage('out', botType: 'order');
+        $this->logMessage('in', botType: 'support');
+
+        $status = $this->metrics()->botStatus();
+
+        $this->assertSame(2, $status['order']['messagesToday']);
+        $this->assertSame(1, $status['support']['messagesToday']);
+        $this->assertSame(3, $status['messagesToday']);
     }
 
     // ---- wallets, services, tickets --------------------------------------
