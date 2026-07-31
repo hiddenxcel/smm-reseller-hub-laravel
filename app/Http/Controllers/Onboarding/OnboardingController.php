@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Onboarding;
 
 use App\Http\Controllers\Controller;
+use App\Models\NumberRental;
+use App\Models\PlatformNumber;
 use App\Models\TenantPanel;
 use App\Models\TenantPaymentGateway;
 use App\Models\TenantWhatsApp;
@@ -74,7 +76,12 @@ class OnboardingController extends Controller
                         'phone_number_id' => $number->phone_number_id,
                         'display_number' => $number->display_number,
                         'bot_type' => $number->bot_type,
+                        'source' => $number->source,
                     ]),
+                // Renting skips the whole Meta setup, which is where most
+                // resellers stall — so it is offered alongside, not buried.
+                'rentable' => $this->rentableNumbers(),
+                'rentals' => $this->activeRentals($request),
             ]),
 
             OnboardingStep::SetupPayments => Inertia::render('Onboarding/SetupPayments', [
@@ -95,6 +102,46 @@ class OnboardingController extends Controller
                     ]),
             ]),
         };
+    }
+
+    /**
+     * Numbers the platform has spare. The token is never included — the
+     * reseller drives a rented number without ever holding the credential
+     * that controls it.
+     *
+     * @return array<int, array>
+     */
+    private function rentableNumbers(): array
+    {
+        return PlatformNumber::where('status', 'available')
+            ->orderBy('country')
+            ->orderBy('display_number')
+            ->get()
+            ->map(fn (PlatformNumber $number) => [
+                'id' => $number->id,
+                'display_number' => $number->display_number,
+                'country' => $number->country,
+                'country_code' => $number->country_code,
+                'currency' => $number->currency,
+                'price' => (float) $number->monthly_cost,
+            ])
+            ->all();
+    }
+
+    /** @return array<int, array> */
+    private function activeRentals(Request $request): array
+    {
+        return NumberRental::where('tenant_id', $request->user()->id)
+            ->where('status', 'active')
+            ->with('platformNumber')
+            ->get()
+            ->map(fn (NumberRental $rental) => [
+                'id' => $rental->id,
+                'display_number' => $rental->platformNumber?->display_number,
+                'country' => $rental->platformNumber?->country,
+                'startedAt' => $rental->starts_at?->toIso8601String(),
+            ])
+            ->all();
     }
 
     /**

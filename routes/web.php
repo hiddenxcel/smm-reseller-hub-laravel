@@ -6,6 +6,7 @@ use App\Http\Controllers\Onboarding\ConnectPanelController;
 use App\Http\Controllers\Onboarding\ConnectWhatsAppController;
 use App\Http\Controllers\Onboarding\ImportServicesController;
 use App\Http\Controllers\Onboarding\OnboardingController;
+use App\Http\Controllers\Onboarding\RentNumberController;
 use App\Http\Controllers\Onboarding\SetupPaymentsController;
 use App\Http\Controllers\Onboarding\TestBotController;
 use App\Http\Controllers\ProfileController;
@@ -25,6 +26,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/onboarding/panel', [ConnectPanelController::class, 'store'])->name('onboarding.panel.store');
     Route::post('/onboarding/services', [ImportServicesController::class, 'store'])->name('onboarding.services.store');
     Route::post('/onboarding/whatsapp', [ConnectWhatsAppController::class, 'store'])->name('onboarding.whatsapp.store');
+    Route::post('/onboarding/whatsapp/rent', [RentNumberController::class, 'store'])->name('onboarding.whatsapp.rent');
+    Route::delete('/onboarding/whatsapp/rent/{rental}', [RentNumberController::class, 'destroy'])->name('onboarding.whatsapp.release');
     Route::post('/onboarding/payments', [SetupPaymentsController::class, 'store'])->name('onboarding.payments.store');
     Route::delete('/onboarding/payments/{gateway}', [SetupPaymentsController::class, 'destroy'])->name('onboarding.payments.destroy');
     Route::post('/onboarding/test/number', [TestBotController::class, 'storeNumber'])->name('onboarding.test.number.store');
