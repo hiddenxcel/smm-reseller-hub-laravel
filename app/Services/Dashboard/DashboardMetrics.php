@@ -107,9 +107,8 @@ class DashboardMetrics
      */
     private function statusForBot(string $bot, Collection $numbers): array
     {
-        // A 'both' number serves this bot as well as the other one.
         $serving = $numbers->filter(
-            fn (TenantWhatsApp $number) => $number->bot_type === $bot || $number->bot_type === 'both',
+            fn (TenantWhatsApp $number) => $number->bot_type === $bot,
         );
 
         $lastReply = DB::table('bot_messages')
@@ -125,9 +124,6 @@ class DashboardMetrics
                 ->map(fn (TenantWhatsApp $number) => [
                     'id' => $number->id,
                     'display' => $number->display_number ?? $number->phone_number_id,
-                    // 'both' is worth showing: it explains why one number
-                    // appears under two bots.
-                    'shared' => $number->bot_type === 'both',
                 ])
                 ->values()
                 ->all(),

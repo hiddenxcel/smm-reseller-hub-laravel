@@ -40,7 +40,7 @@ type Kpi = {
 type BotState = 'online' | 'idle' | 'never_replied' | 'not_connected';
 
 type BotHealth = {
-    numbers: Array<{ id: number; display: string; shared: boolean }>;
+    numbers: Array<{ id: number; display: string }>;
     numbersConnected: number;
     lastReplyAt: string | null;
     state: BotState;
@@ -496,7 +496,7 @@ function BotHealthPill({
                 <p className="truncate text-xs text-muted-foreground">
                     {health.numbersConnected === 0
                         ? state.hint
-                        : `${numbers}${health.numbers.some((n) => n.shared) ? ' (shared)' : ''} · ${health.messagesToday} today`}
+                        : `${numbers} · ${health.messagesToday} today`}
                 </p>
             </div>
         </div>

@@ -38,7 +38,7 @@ class ConnectWhatsAppTest extends TestCase
             'token' => 'EAAG-permanent-token',
             'waba_id' => '987654321',
             'display_number' => '255700000000',
-            'bot_type' => 'both',
+            'bot_type' => 'order',
             ...$overrides,
         ];
     }
@@ -93,7 +93,7 @@ class ConnectWhatsAppTest extends TestCase
             'tenant_id' => $this->tenant->id,
             'phone_number_id' => '123456789',
             'display_number' => '255700000000',
-            'bot_type' => 'both',
+            'bot_type' => 'order',
             'source' => 'own',
             'status' => 'active',
         ]);
@@ -190,20 +190,15 @@ class ConnectWhatsAppTest extends TestCase
         $this->assertDatabaseCount('tenant_whatsapp', 2);
     }
 
-    public function test_both_clashes_with_an_existing_single_role(): void
+    public function test_a_number_cannot_claim_both_bots(): void
     {
-        // "both" covers order and support, so it cannot sit alongside either.
-        TenantWhatsApp::factory()->for($this->tenant)->create([
-            'phone_number_id' => 'order-number',
-            'bot_type' => 'order',
-        ]);
-
+        // A number is how an inbound message finds its bot, so it cannot mean
+        // two things at once. Running both services takes two numbers.
         $this->actingAs($this->tenant, 'tenant')
-            ->post(route('onboarding.whatsapp.store'), $this->payload([
-                'phone_number_id' => 'new-number',
-                'bot_type' => 'both',
-            ]))
+            ->post(route('onboarding.whatsapp.store'), $this->payload(['bot_type' => 'both']))
             ->assertSessionHasErrors('bot_type');
+
+        $this->assertDatabaseCount('tenant_whatsapp', 0);
     }
 
     public function test_an_unknown_bot_type_is_refused(): void
@@ -219,7 +214,7 @@ class ConnectWhatsAppTest extends TestCase
             ->post(route('onboarding.whatsapp.store'), [
                 'phone_number_id' => '',
                 'token' => '',
-                'bot_type' => 'both',
+                'bot_type' => 'order',
             ])
             ->assertSessionHasErrors(['phone_number_id', 'token']);
     }

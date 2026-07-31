@@ -18,7 +18,7 @@ class ConnectWhatsAppController extends Controller
             'token' => ['required', 'string', 'max:500'],
             'waba_id' => ['nullable', 'string', 'max:50'],
             'display_number' => ['nullable', 'string', 'max:30'],
-            'bot_type' => ['required', Rule::in(['order', 'support', 'both'])],
+            'bot_type' => ['required', Rule::in(['order', 'support'])],
         ]);
 
         $tenant = $request->user();
@@ -65,32 +65,23 @@ class ConnectWhatsAppController extends Controller
     }
 
     /**
-     * One bot per number: if another of this reseller's numbers already runs
-     * the order bot, a second cannot also claim it — inbound messages would
-     * have no single answer to "whose bot is this?".
+     * One bot per number, and one number per bot: if another of this
+     * reseller's numbers already runs the order bot, a second cannot also
+     * claim it — an inbound message would have no single answer to "whose bot
+     * is this?".
      */
     private function assertBotIsUnclaimed(string $botType, string $phoneNumberId, int $tenantId): void
     {
         $conflicting = TenantWhatsApp::withoutTenantScope()
             ->where('tenant_id', $tenantId)
             ->where('phone_number_id', '!=', $phoneNumberId)
-            ->get()
-            ->contains(fn (TenantWhatsApp $number) => $this->rolesOverlap($number->bot_type, $botType));
+            ->where('bot_type', $botType)
+            ->exists();
 
         if ($conflicting) {
             throw ValidationException::withMessages([
                 'bot_type' => 'Another of your numbers already runs that bot.',
             ]);
         }
-    }
-
-    /** "both" covers order and support, so it clashes with either. */
-    private function rolesOverlap(string $existing, string $wanted): bool
-    {
-        if ($existing === 'both' || $wanted === 'both') {
-            return true;
-        }
-
-        return $existing === $wanted;
     }
 }

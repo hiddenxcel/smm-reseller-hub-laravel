@@ -52,7 +52,7 @@ class RentNumberTest extends TestCase
         $this->actingAs($this->tenant, 'tenant')
             ->post(route('onboarding.whatsapp.rent'), [
                 'platform_number_id' => $number->id,
-                'bot_type' => 'both',
+                'bot_type' => 'order',
             ])
             ->assertRedirect(route('onboarding'));
 
@@ -61,7 +61,7 @@ class RentNumberTest extends TestCase
             'phone_number_id' => 'platform-1',
             'display_number' => '255700000999',
             'source' => 'rented',
-            'bot_type' => 'both',
+            'bot_type' => 'order',
             'status' => 'active',
         ]);
 
@@ -95,7 +95,7 @@ class RentNumberTest extends TestCase
     {
         $number = PlatformNumber::factory()->create();
 
-        $this->rent()->claim($this->tenant, $number->id, 'both');
+        $this->rent()->claim($this->tenant, $number->id, 'order');
 
         $this->assertSame('rented', $number->fresh()->status);
     }
@@ -106,7 +106,7 @@ class RentNumberTest extends TestCase
         // a reseller off from their own customers.
         $number = PlatformNumber::factory()->create();
 
-        $rental = $this->rent()->claim($this->tenant, $number->id, 'both');
+        $rental = $this->rent()->claim($this->tenant, $number->id, 'order');
 
         $this->assertNull($rental->ends_at);
     }
@@ -115,7 +115,7 @@ class RentNumberTest extends TestCase
     {
         $number = PlatformNumber::factory()->create();
 
-        $this->rent()->claim($this->tenant, $number->id, 'both');
+        $this->rent()->claim($this->tenant, $number->id, 'order');
 
         $this->assertDatabaseHas('subscriptions', [
             'tenant_id' => $this->tenant->id,
@@ -132,7 +132,7 @@ class RentNumberTest extends TestCase
 
         $this->expectException(RuntimeException::class);
 
-        $this->rent()->claim($this->tenant, $number->id, 'both');
+        $this->rent()->claim($this->tenant, $number->id, 'order');
     }
 
     public function test_losing_the_race_leaves_nothing_behind(): void
@@ -142,10 +142,10 @@ class RentNumberTest extends TestCase
         $number = PlatformNumber::factory()->create();
         $other = Tenant::factory()->create();
 
-        $this->rent()->claim($other, $number->id, 'both');
+        $this->rent()->claim($other, $number->id, 'order');
 
         try {
-            $this->rent()->claim($this->tenant, $number->id, 'both');
+            $this->rent()->claim($this->tenant, $number->id, 'order');
             $this->fail('The second claim should have been refused.');
         } catch (RuntimeException) {
             // expected
@@ -169,7 +169,7 @@ class RentNumberTest extends TestCase
         $this->actingAs($this->tenant, 'tenant')
             ->post(route('onboarding.whatsapp.rent'), [
                 'platform_number_id' => $number->id,
-                'bot_type' => 'both',
+                'bot_type' => 'order',
             ])
             ->assertSessionHasErrors('platform_number_id');
     }
@@ -212,7 +212,7 @@ class RentNumberTest extends TestCase
     public function test_releasing_returns_the_number_to_the_pool(): void
     {
         $number = PlatformNumber::factory()->create();
-        $rental = $this->rent()->claim($this->tenant, $number->id, 'both');
+        $rental = $this->rent()->claim($this->tenant, $number->id, 'order');
 
         $this->actingAs($this->tenant, 'tenant')
             ->delete(route('onboarding.whatsapp.release', $rental->id))
@@ -227,7 +227,7 @@ class RentNumberTest extends TestCase
         // The orders and customers a number carried are the reseller's
         // business, not the number's — handing it back must not take them.
         $number = PlatformNumber::factory()->create();
-        $rental = $this->rent()->claim($this->tenant, $number->id, 'both');
+        $rental = $this->rent()->claim($this->tenant, $number->id, 'order');
 
         $this->rent()->release($this->tenant, $rental);
 
@@ -241,12 +241,12 @@ class RentNumberTest extends TestCase
     public function test_a_released_number_can_be_rented_by_someone_else(): void
     {
         $number = PlatformNumber::factory()->create();
-        $rental = $this->rent()->claim($this->tenant, $number->id, 'both');
+        $rental = $this->rent()->claim($this->tenant, $number->id, 'order');
 
         $this->rent()->release($this->tenant, $rental);
 
         $other = Tenant::factory()->create();
-        $this->rent()->claim($other, $number->id, 'both');
+        $this->rent()->claim($other, $number->id, 'order');
 
         $this->assertSame('rented', $number->fresh()->status);
         $this->assertDatabaseHas('tenant_whatsapp', [
@@ -259,7 +259,7 @@ class RentNumberTest extends TestCase
     {
         $other = Tenant::factory()->create();
         $number = PlatformNumber::factory()->create();
-        $rental = $this->rent()->claim($other, $number->id, 'both');
+        $rental = $this->rent()->claim($other, $number->id, 'order');
 
         $this->actingAs($this->tenant, 'tenant')
             ->delete(route('onboarding.whatsapp.release', $rental->id))

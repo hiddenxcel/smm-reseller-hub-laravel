@@ -122,22 +122,12 @@ class RentNumber
         $conflict = TenantWhatsApp::withoutTenantScope()
             ->where('tenant_id', $tenant->id)
             ->where('status', 'active')
-            ->get()
-            ->contains(fn (TenantWhatsApp $number) => $this->rolesOverlap($number->bot_type, $botType));
+            ->where('bot_type', $botType)
+            ->exists();
 
         if ($conflict) {
             throw new RuntimeException('Another of your numbers already runs that bot.');
         }
-    }
-
-    /** "both" covers order and support, so it clashes with either. */
-    private function rolesOverlap(string $existing, string $wanted): bool
-    {
-        if ($existing === 'both' || $wanted === 'both') {
-            return true;
-        }
-
-        return $existing === $wanted;
     }
 
     /**

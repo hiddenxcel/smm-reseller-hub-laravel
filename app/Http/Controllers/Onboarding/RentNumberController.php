@@ -19,7 +19,7 @@ class RentNumberController extends Controller
     {
         $validated = $request->validate([
             'platform_number_id' => ['required', 'integer'],
-            'bot_type' => ['required', Rule::in(['order', 'support', 'both'])],
+            'bot_type' => ['required', Rule::in(['order', 'support'])],
         ]);
 
         try {

@@ -31,6 +31,20 @@ class CheckConstraint
         DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$name} CHECK ({$column} IN ({$values}))");
     }
 
+    /**
+     * Drop a constraint by name. IF EXISTS so a migration that narrows an
+     * allowed set stays runnable against a database built before the
+     * constraint was named, and re-runnable after a rollback.
+     */
+    public static function drop(string $table, string $name): void
+    {
+        if (! static::supported()) {
+            return;
+        }
+
+        DB::statement("ALTER TABLE {$table} DROP CONSTRAINT IF EXISTS {$name}");
+    }
+
     private static function supported(): bool
     {
         return Schema::getConnection()->getDriverName() !== 'sqlite';

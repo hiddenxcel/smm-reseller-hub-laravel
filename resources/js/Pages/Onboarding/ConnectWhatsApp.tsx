@@ -41,10 +41,15 @@ type Props = {
     rentals: Rental[];
 };
 
+/**
+ * One number, one bot. A shared number meant the router had to guess which
+ * bot an ambiguous message was for — and guess wrong often enough to pull a
+ * customer out of a half-finished order. Running both services means two
+ * numbers, which is why renting a second one is a few clicks.
+ */
 const BOT_OPTIONS = [
-    { value: 'both', label: 'Take orders and handle support' },
-    { value: 'order', label: 'Take orders only' },
-    { value: 'support', label: 'Handle support only' },
+    { value: 'order', label: 'Take orders', hint: 'Sells your services and collects payment.' },
+    { value: 'support', label: 'Handle support', hint: 'Answers questions and raises tickets.' },
 ];
 
 export default function ConnectWhatsApp({
@@ -154,7 +159,7 @@ function ConnectedList({ numbers, rentals }: { numbers: ConnectedNumber[]; renta
 function RentPanel({ rentable }: { rentable: RentableNumber[] }) {
     const { data, setData, post, processing, errors } = useForm({
         platform_number_id: rentable[0]?.id ?? 0,
-        bot_type: 'both',
+        bot_type: 'order',
     });
 
     const submit: FormEventHandler = (event) => {
@@ -225,30 +230,12 @@ function RentPanel({ rentable }: { rentable: RentableNumber[] }) {
                 <FieldError message={errors.platform_number_id} />
             </div>
 
-            <fieldset>
-                <legend className="text-sm font-medium">What should this number do?</legend>
-
-                <div className="mt-2 space-y-2">
-                    {BOT_OPTIONS.map((option) => (
-                        <label
-                            key={option.value}
-                            className="flex cursor-pointer items-center gap-2.5 text-sm"
-                        >
-                            <input
-                                type="radio"
-                                name="rent_bot_type"
-                                value={option.value}
-                                checked={data.bot_type === option.value}
-                                onChange={(event) => setData('bot_type', event.target.value)}
-                                className="size-4 accent-primary"
-                            />
-                            {option.label}
-                        </label>
-                    ))}
-                </div>
-
-                <FieldError message={errors.bot_type} />
-            </fieldset>
+            <BotTypeChoice
+                name="rent_bot_type"
+                value={data.bot_type}
+                onChange={(value) => setData('bot_type', value)}
+                error={errors.bot_type}
+            />
 
             <Button type="submit" size="lg" disabled={processing} className="w-full">
                 {processing && <Loader2 className="size-4 animate-spin" />}
@@ -276,7 +263,7 @@ function OwnNumberPanel({
         token: '',
         waba_id: '',
         display_number: '',
-        bot_type: 'both',
+        bot_type: 'order',
     });
 
     const submit: FormEventHandler = (event) => {
@@ -368,30 +355,12 @@ function OwnNumberPanel({
                     </div>
                 </div>
 
-                <fieldset>
-                    <legend className="text-sm font-medium">What should this number do?</legend>
-
-                    <div className="mt-2 space-y-2">
-                        {BOT_OPTIONS.map((option) => (
-                            <label
-                                key={option.value}
-                                className="flex cursor-pointer items-center gap-2.5 text-sm"
-                            >
-                                <input
-                                    type="radio"
-                                    name="bot_type"
-                                    value={option.value}
-                                    checked={data.bot_type === option.value}
-                                    onChange={(event) => setData('bot_type', event.target.value)}
-                                    className="size-4 accent-primary"
-                                />
-                                {option.label}
-                            </label>
-                        ))}
-                    </div>
-
-                    <FieldError message={errors.bot_type} />
-                </fieldset>
+                <BotTypeChoice
+                    name="bot_type"
+                    value={data.bot_type}
+                    onChange={(value) => setData('bot_type', value)}
+                    error={errors.bot_type}
+                />
 
                 <Button type="submit" size="lg" disabled={processing} className="w-full">
                     {processing && <Loader2 className="size-4 animate-spin" />}
@@ -399,6 +368,62 @@ function OwnNumberPanel({
                 </Button>
             </form>
         </div>
+    );
+}
+
+/**
+ * Which bot this number answers as. Exactly one — the number is how an
+ * inbound message finds its bot, so it cannot mean two things at once.
+ */
+function BotTypeChoice({
+    name,
+    value,
+    onChange,
+    error,
+}: {
+    name: string;
+    value: string;
+    onChange: (value: string) => void;
+    error?: string;
+}) {
+    return (
+        <fieldset>
+            <legend className="text-sm font-medium">Which bot answers on this number?</legend>
+            <p className="mt-1 text-xs text-muted-foreground">
+                One number runs one bot. To run both, add a second number.
+            </p>
+
+            <div className="mt-3 space-y-2">
+                {BOT_OPTIONS.map((option) => (
+                    <label
+                        key={option.value}
+                        className={[
+                            'flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-sm transition-colors',
+                            value === option.value
+                                ? 'border-primary bg-accent/50'
+                                : 'border-border hover:border-primary/40',
+                        ].join(' ')}
+                    >
+                        <input
+                            type="radio"
+                            name={name}
+                            value={option.value}
+                            checked={value === option.value}
+                            onChange={(event) => onChange(event.target.value)}
+                            className="mt-0.5 size-4 accent-primary"
+                        />
+                        <span className="min-w-0">
+                            <span className="block font-medium">{option.label}</span>
+                            <span className="block text-xs text-muted-foreground">
+                                {option.hint}
+                            </span>
+                        </span>
+                    </label>
+                ))}
+            </div>
+
+            <FieldError message={error} />
+        </fieldset>
     );
 }
 

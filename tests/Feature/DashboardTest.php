@@ -272,23 +272,26 @@ class DashboardTest extends TestCase
         $this->assertSame('never_replied', $status['support']['state']);
     }
 
-    public function test_a_shared_number_counts_for_both_bots(): void
+    public function test_a_number_counts_only_for_the_bot_it_runs(): void
     {
-        TenantWhatsApp::factory()->for($this->tenant)->create(['bot_type' => 'both']);
+        TenantWhatsApp::factory()->for($this->tenant)->create(['bot_type' => 'order']);
 
         $status = $this->metrics()->botStatus();
 
         $this->assertSame(1, $status['order']['numbersConnected']);
-        $this->assertSame(1, $status['support']['numbersConnected']);
-
-        // Flagged as shared, which is what explains one number appearing
-        // under two bots.
-        $this->assertTrue($status['order']['numbers'][0]['shared']);
+        $this->assertSame(0, $status['support']['numbersConnected']);
     }
 
     public function test_todays_message_count_is_per_bot(): void
     {
-        TenantWhatsApp::factory()->for($this->tenant)->create(['bot_type' => 'both']);
+        TenantWhatsApp::factory()->for($this->tenant)->create([
+            'phone_number_id' => 'order-number',
+            'bot_type' => 'order',
+        ]);
+        TenantWhatsApp::factory()->for($this->tenant)->create([
+            'phone_number_id' => 'support-number',
+            'bot_type' => 'support',
+        ]);
 
         $this->logMessage('in', botType: 'order');
         $this->logMessage('out', botType: 'order');
