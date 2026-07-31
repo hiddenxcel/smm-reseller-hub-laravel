@@ -38,16 +38,64 @@ class Checkout
 
         $quote = Pricing::quote($services, $months, $number);
 
-        return DB::transaction(fn () => SubscriptionPayment::withoutTenantScope()->create([
-            'tenant_id' => $tenant->id,
-            'gateway' => $gateway,
-            'transaction_ref' => $this->reference(),
-            'amount' => Pricing::toAmount($quote['total']),
-            'currency' => $quote['currency'],
-            'months' => $months,
-            'items' => $this->itemsFor($quote, $services, $months, $number),
-            'status' => 'pending',
-        ]));
+        return DB::transaction(function () use ($tenant, $gateway, $months, $services, $number, $quote) {
+            $credit = $this->spendCredit($tenant, $quote['total']);
+
+            return SubscriptionPayment::withoutTenantScope()->create([
+                'tenant_id' => $tenant->id,
+                'gateway' => $gateway,
+                'transaction_ref' => $this->reference(),
+                'amount' => Pricing::toAmount($quote['total'] - $credit),
+                'credit_applied' => Pricing::toAmount($credit),
+                'currency' => $quote['currency'],
+                'months' => $months,
+                'items' => $this->itemsFor($services, $months, $number),
+                'status' => 'pending',
+            ]);
+        });
+    }
+
+    /**
+     * Put a payment back after the gateway refused it or the reseller walked
+     * away. The credit it reserved goes back on their balance — otherwise an
+     * abandoned checkout quietly burns it.
+     */
+    public function abandon(SubscriptionPayment $payment): void
+    {
+        if ($payment->status !== 'pending') {
+            return;
+        }
+
+        DB::transaction(function () use ($payment) {
+            $payment->update(['status' => 'failed']);
+
+            $credit = (float) $payment->credit_applied;
+
+            if ($credit > 0) {
+                Tenant::find($payment->tenant_id)?->refundReferralCredit($credit);
+            }
+        });
+    }
+
+    /**
+     * Spend referral credit against the bill, in cents.
+     *
+     * Never all the way to zero: a fully discounted payment has no
+     * transaction for the gateway to confirm, so the subscription would
+     * activate on a payment that never happened.
+     */
+    private function spendCredit(Tenant $tenant, int $totalCents): int
+    {
+        $floor = Pricing::toCents(config('billing.minimum_charge', 1.00));
+        $spendable = max(0, $totalCents - $floor);
+
+        if ($spendable === 0) {
+            return 0;
+        }
+
+        return Pricing::toCents(
+            $tenant->spendReferralCredit(Pricing::toAmount($spendable)),
+        );
     }
 
     /**
@@ -56,7 +104,7 @@ class Checkout
      * The number carries the bot it was bought for: by the time payment
      * clears, the form that asked is long gone.
      */
-    private function itemsFor(array $quote, array $services, int $months, ?PlatformNumber $number): array
+    private function itemsFor(array $services, int $months, ?PlatformNumber $number): array
     {
         $items = [];
 
@@ -113,9 +161,13 @@ class Checkout
         }
     }
 
+    /**
+     * The gateway must be one we sell through AND hold real credentials for —
+     * offering one with no keys just moves the failure to the next screen.
+     */
     private function assertGatewayIsAllowed(string $gateway): void
     {
-        if (! in_array($gateway, config('billing.gateways', []), true)) {
+        if (! PlatformGateways::exists($gateway) || ! PlatformGateways::isConfigured($gateway)) {
             throw new RuntimeException('That payment method is not available.');
         }
     }

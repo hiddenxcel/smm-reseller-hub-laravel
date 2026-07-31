@@ -16,7 +16,7 @@ class GatewayFactory
      * Returns null for a gateway that has no client yet, so callers can fall
      * back rather than fataling on a reseller's half-configured choice.
      */
-    public function make(TenantPaymentGateway $credentials): SnippeClient|NowPaymentsClient|BinancePayClient|null
+    public function make(TenantPaymentGateway $credentials): SnippeClient|NowPaymentsClient|BinancePayClient|CryptomusClient|null
     {
         $apiKey = (string) $credentials->api_key_enc;
         $secret = (string) $credentials->webhook_secret_enc;
@@ -25,6 +25,10 @@ class GatewayFactory
             'snippe' => new SnippeClient($apiKey, $secret),
             'nowpayments' => new NowPaymentsClient($apiKey, $secret),
             'binance' => new BinancePayClient($apiKey, $secret),
+            // Cryptomus and Heleket have no webhook secret of their own, so
+            // the second slot holds the merchant UUID instead.
+            'cryptomus' => new CryptomusClient($apiKey, $secret),
+            'heleket' => new HeleketClient($apiKey, $secret),
             default => null,
         };
     }

@@ -23,6 +23,7 @@ class SubscriptionPayment extends Model
         'gateway',
         'transaction_ref',
         'amount',
+        'credit_applied',
         'currency',
         'months',
         'items',
@@ -35,6 +36,7 @@ class SubscriptionPayment extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'credit_applied' => 'decimal:2',
             'months' => 'integer',
             // What the cart held: one payment can buy both bots and a number,
             // and the webhook replays this list to apply them.

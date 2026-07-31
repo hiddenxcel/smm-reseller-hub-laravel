@@ -34,6 +34,13 @@ class BillingTest extends TestCase
 
         $this->tenant = Tenant::factory()->create();
 
+        // A gateway with no keys is not offered, so the tests need one that
+        // looks configured.
+        config([
+            'services.billing.cryptomus.api_key' => 'test-key',
+            'services.billing.cryptomus.merchant_id' => 'test-merchant',
+        ]);
+
         Plan::create([
             'code' => 'order_bot',
             'service_key' => ServiceKey::OrderBot,
@@ -327,6 +334,73 @@ class BillingTest extends TestCase
 
         // The order bot was in the same transaction, so it rolled back too.
         $this->assertFalse(Subscription::isServiceActive($this->tenant->id, ServiceKey::OrderBot));
+    }
+
+    // ---- referral credit --------------------------------------------------
+
+    public function test_referral_credit_comes_off_the_bill(): void
+    {
+        $this->tenant->update(['referral_credit' => '5.00']);
+
+        $payment = $this->checkout()->start($this->tenant, ['order_bot'], 1, null, 'cryptomus');
+
+        $this->assertSame('15.00', $payment->amount);
+        $this->assertSame('5.00', $payment->credit_applied);
+        $this->assertSame('0.00', $this->tenant->fresh()->referral_credit);
+    }
+
+    public function test_credit_never_discounts_the_whole_bill(): void
+    {
+        // A fully discounted payment has no transaction for the gateway to
+        // confirm, so the subscription would activate on a payment that never
+        // happened. A dollar is always left to charge.
+        $this->tenant->update(['referral_credit' => '500.00']);
+
+        $payment = $this->checkout()->start($this->tenant, ['order_bot'], 1, null, 'cryptomus');
+
+        $this->assertSame('1.00', $payment->amount);
+        $this->assertSame('19.00', $payment->credit_applied);
+        $this->assertSame('481.00', $this->tenant->fresh()->referral_credit);
+    }
+
+    public function test_credit_is_spent_only_once_across_concurrent_checkouts(): void
+    {
+        // Two tabs, one balance. The conditional update is what stops the
+        // same credit funding both.
+        $this->tenant->update(['referral_credit' => '5.00']);
+
+        $first = $this->checkout()->start($this->tenant, ['order_bot'], 1, null, 'cryptomus');
+        $second = $this->checkout()->start($this->tenant->fresh(), ['order_bot'], 1, null, 'cryptomus');
+
+        $this->assertSame('5.00', $first->credit_applied);
+        $this->assertSame('0.00', $second->credit_applied);
+        $this->assertSame('20.00', $second->amount);
+    }
+
+    public function test_abandoning_a_checkout_gives_the_credit_back(): void
+    {
+        $this->tenant->update(['referral_credit' => '5.00']);
+
+        $payment = $this->checkout()->start($this->tenant, ['order_bot'], 1, null, 'cryptomus');
+        $this->checkout()->abandon($payment);
+
+        $this->assertSame('5.00', $this->tenant->fresh()->referral_credit);
+        $this->assertSame('failed', $payment->fresh()->status);
+    }
+
+    public function test_abandoning_a_paid_payment_does_nothing(): void
+    {
+        // Refunding credit on an already-successful payment would hand back
+        // money that was spent.
+        $this->tenant->update(['referral_credit' => '5.00']);
+
+        $payment = $this->checkout()->start($this->tenant, ['order_bot'], 1, null, 'cryptomus');
+        $this->activate()->apply($payment);
+
+        $this->checkout()->abandon($payment->fresh());
+
+        $this->assertSame('0.00', $this->tenant->fresh()->referral_credit);
+        $this->assertSame('success', $payment->fresh()->status);
     }
 
     // ---- isolation --------------------------------------------------------

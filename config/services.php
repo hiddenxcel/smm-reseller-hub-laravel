@@ -52,4 +52,46 @@ return [
         'verify_token' => env('META_VERIFY_TOKEN'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | The platform's own merchant accounts
+    |--------------------------------------------------------------------------
+    |
+    | HiddenXcel's credentials, used when a RESELLER pays the platform for a
+    | subscription. Not to be confused with the keys a reseller stores in
+    | tenant_payment_gateways, which are their own accounts for taking money
+    | from their customers — two different directions of money.
+    |
+    | A gateway listed in config/billing.php but missing its keys here is
+    | skipped at checkout rather than offered and then failing.
+    |
+    */
+
+    'billing' => [
+        'nowpayments' => [
+            'api_key' => env('BILLING_NOWPAYMENTS_API_KEY'),
+            'ipn_secret' => env('BILLING_NOWPAYMENTS_IPN_SECRET'),
+            'pay_currency' => env('BILLING_NOWPAYMENTS_PAY_CURRENCY', 'usdttrc20'),
+        ],
+
+        'cryptomus' => [
+            'api_key' => env('BILLING_CRYPTOMUS_API_KEY'),
+            'merchant_id' => env('BILLING_CRYPTOMUS_MERCHANT_ID'),
+        ],
+
+        'heleket' => [
+            'api_key' => env('BILLING_HELEKET_API_KEY'),
+            'merchant_id' => env('BILLING_HELEKET_MERCHANT_ID'),
+        ],
+
+        'snippe' => [
+            'api_key' => env('BILLING_SNIPPE_API_KEY'),
+            'webhook_secret' => env('BILLING_SNIPPE_WEBHOOK_SECRET'),
+            // Snippe is Tanzanian mobile money and charges in TZS, but plans
+            // are priced in USD — so the amount is converted for this gateway
+            // alone. The payment row stays in USD for accounting.
+            'usd_to_tzs' => (float) env('BILLING_SNIPPE_USD_TO_TZS', 2600),
+        ],
+    ],
+
 ];

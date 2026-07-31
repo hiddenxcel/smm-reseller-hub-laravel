@@ -43,15 +43,44 @@ return [
 
     /*
     | The platform's own gateways — HiddenXcel's credentials, not a
-    | reseller's. Only gateways listed here can take a subscription payment.
-    | Each must have its keys set in config/services.php.
+    | reseller's. Only what is listed here can take a subscription payment,
+    | and only if its keys are set in config/services.php under 'billing'.
+    |
+    | `charge_currency` is what the gateway is actually charged in, when that
+    | differs from the price. Snippe is Tanzanian mobile money and settles in
+    | TZS; the payment row stays in USD so accounting has one currency.
+    |
+    | Binance is deliberately absent: it has no webhook, so it needs the payer
+    | to report an order ID and a screen to verify it on. It can be added back
+    | once that flow is built.
     */
     'gateways' => [
-        'cryptomus',
-        'heleket',
-        'nowpayments',
+        'snippe' => [
+            'label' => 'Mobile Money',
+            'type' => 'mobile',
+            'charge_currency' => 'TZS',
+        ],
+        'cryptomus' => [
+            'label' => 'Crypto (Cryptomus)',
+            'type' => 'crypto',
+        ],
+        'heleket' => [
+            'label' => 'Crypto (Heleket)',
+            'type' => 'crypto',
+        ],
+        'nowpayments' => [
+            'label' => 'Crypto (NOWPayments)',
+            'type' => 'crypto',
+        ],
     ],
 
     'currency' => 'USD',
+
+    /*
+    | Referral credit is spent as a discount, but never all the way to zero:
+    | there has to be a real transaction for the gateway to confirm, or a
+    | subscription would activate on a payment that never happened.
+    */
+    'minimum_charge' => 1.00,
 
 ];
