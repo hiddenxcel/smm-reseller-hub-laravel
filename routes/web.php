@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\Onboarding\ConnectPanelController;
 use App\Http\Controllers\Onboarding\ConnectWhatsAppController;
@@ -9,13 +10,12 @@ use App\Http\Controllers\Onboarding\SetupPaymentsController;
 use App\Http\Controllers\Onboarding\TestBotController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get('/', LandingController::class)->name('home');
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware('auth')->name('dashboard');
+Route::get('/dashboard', DashboardController::class)
+    ->middleware('auth')
+    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     // Setup wizard. `onboarding` sends the reseller to whichever step they

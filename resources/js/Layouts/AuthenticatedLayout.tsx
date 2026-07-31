@@ -1,179 +1,208 @@
-import ApplicationLogo from '@/components/ApplicationLogo';
-import Dropdown from '@/components/Dropdown';
-import NavLink from '@/components/NavLink';
-import ResponsiveNavLink from '@/components/ResponsiveNavLink';
-import { Link, usePage } from '@inertiajs/react';
+import AppLogo from '@/components/AppLogo';
+import { Link, router, usePage } from '@inertiajs/react';
+import {
+    BarChart3,
+    Bot,
+    LayoutDashboard,
+    LifeBuoy,
+    LogOut,
+    LucideIcon,
+    Menu,
+    Package,
+    Settings,
+    ShoppingBag,
+    Users,
+    X,
+} from 'lucide-react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
+import { Tenant } from '@/types';
 
-export default function Authenticated({
+type NavItem = {
+    label: string;
+    icon: LucideIcon;
+    routeName?: string;
+};
+
+/**
+ * Sections that exist are links; the rest are listed but inert.
+ *
+ * Showing what is coming is worth the space — a reseller can see the shape of
+ * the product — but a link that goes nowhere is worse than no link, so the
+ * unbuilt ones are visibly disabled rather than quietly broken.
+ */
+const NAV: NavItem[] = [
+    { label: 'Dashboard', icon: LayoutDashboard, routeName: 'dashboard' },
+    { label: 'Orders', icon: ShoppingBag },
+    { label: 'Customers', icon: Users },
+    { label: 'Services', icon: Package },
+    { label: 'Support', icon: LifeBuoy },
+    { label: 'Bot settings', icon: Bot },
+    { label: 'Reports', icon: BarChart3 },
+    { label: 'Setup', icon: Settings, routeName: 'onboarding' },
+];
+
+export default function AuthenticatedLayout({
     header,
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
-    const user = usePage().props.auth.user;
+    const tenant = usePage().props.auth.user;
 
-    const [showingNavigationDropdown, setShowingNavigationDropdown] =
-        useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
 
     return (
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-            <nav className="border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 justify-between">
-                        <div className="flex">
-                            <div className="flex shrink-0 items-center">
-                                <Link href="/">
-                                    <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200" />
-                                </Link>
-                            </div>
+        <div className="min-h-dvh bg-background">
+            <div className="lg:grid lg:grid-cols-[248px_1fr]">
+                <Sidebar
+                    tenant={tenant}
+                    mobileOpen={mobileOpen}
+                    onClose={() => setMobileOpen(false)}
+                />
 
-                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
-                                >
-                                    Dashboard
-                                </NavLink>
-                            </div>
-                        </div>
-
-                        <div className="hidden sm:ms-6 sm:flex sm:items-center">
-                            <div className="relative ms-3">
-                                <Dropdown>
-                                    <Dropdown.Trigger>
-                                        <span className="inline-flex rounded-md">
-                                            <button
-                                                type="button"
-                                                className="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none dark:bg-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
-                                            >
-                                                {user.name}
-
-                                                <svg
-                                                    className="-me-0.5 ms-2 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </Dropdown.Trigger>
-
-                                    <Dropdown.Content>
-                                        <Dropdown.Link
-                                            href={route('profile.edit')}
-                                        >
-                                            Profile
-                                        </Dropdown.Link>
-                                        <Dropdown.Link
-                                            href={route('logout')}
-                                            method="post"
-                                            as="button"
-                                        >
-                                            Log Out
-                                        </Dropdown.Link>
-                                    </Dropdown.Content>
-                                </Dropdown>
-                            </div>
-                        </div>
-
-                        <div className="-me-2 flex items-center sm:hidden">
-                            <button
-                                onClick={() =>
-                                    setShowingNavigationDropdown(
-                                        (previousState) => !previousState,
-                                    )
-                                }
-                                className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none dark:text-gray-500 dark:hover:bg-gray-900 dark:hover:text-gray-400 dark:focus:bg-gray-900 dark:focus:text-gray-400"
-                            >
-                                <svg
-                                    className="h-6 w-6"
-                                    stroke="currentColor"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        className={
-                                            !showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
-                                        }
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                    <path
-                                        className={
-                                            showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
-                                        }
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div
-                    className={
-                        (showingNavigationDropdown ? 'block' : 'hidden') +
-                        ' sm:hidden'
-                    }
-                >
-                    <div className="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
+                <div className="min-w-0">
+                    {/* Mobile bar — the sidebar collapses behind it. */}
+                    <div className="flex items-center gap-3 border-b border-border px-4 py-3 lg:hidden">
+                        <button
+                            type="button"
+                            onClick={() => setMobileOpen(true)}
+                            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent"
+                            aria-label="Open menu"
                         >
-                            Dashboard
-                        </ResponsiveNavLink>
+                            <Menu className="size-5" />
+                        </button>
+                        <AppLogo className="size-7" />
+                        <span className="font-heading font-extrabold">Resellers Hub</span>
                     </div>
 
-                    <div className="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600">
-                        <div className="px-4">
-                            <div className="text-base font-medium text-gray-800 dark:text-gray-200">
-                                {user.name}
-                            </div>
-                            <div className="text-sm font-medium text-gray-500">
-                                {user.email}
-                            </div>
-                        </div>
+                    {header && (
+                        <header className="border-b border-border px-4 py-5 sm:px-8">
+                            {header}
+                        </header>
+                    )}
 
-                        <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink href={route('profile.edit')}>
-                                Profile
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink
-                                method="post"
-                                href={route('logout')}
-                                as="button"
-                            >
-                                Log Out
-                            </ResponsiveNavLink>
-                        </div>
-                    </div>
+                    <main className="px-4 py-6 sm:px-8 sm:py-8">{children}</main>
                 </div>
-            </nav>
+            </div>
+        </div>
+    );
+}
 
-            {header && (
-                <header className="bg-white shadow dark:bg-gray-800">
-                    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        {header}
-                    </div>
-                </header>
+function Sidebar({
+    tenant,
+    mobileOpen,
+    onClose,
+}: {
+    tenant: Tenant;
+    mobileOpen: boolean;
+    onClose: () => void;
+}) {
+    return (
+        <>
+            {mobileOpen && (
+                <div
+                    className="fixed inset-0 z-40 bg-foreground/20 lg:hidden"
+                    onClick={onClose}
+                    aria-hidden
+                />
             )}
 
-            <main>{children}</main>
-        </div>
+            <aside
+                className={[
+                    'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-sidebar transition-transform lg:sticky lg:top-0 lg:z-auto lg:h-dvh lg:w-auto lg:translate-x-0',
+                    mobileOpen ? 'translate-x-0' : '-translate-x-full',
+                ].join(' ')}
+            >
+                <div className="flex items-center justify-between gap-2 px-5 py-5">
+                    <Link href={route('dashboard')} className="flex min-w-0 items-center gap-2.5">
+                        <AppLogo className="size-8 shrink-0" />
+                        <span className="font-heading truncate font-extrabold">
+                            Resellers Hub
+                        </span>
+                    </Link>
+
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-lg p-1 text-muted-foreground lg:hidden"
+                        aria-label="Close menu"
+                    >
+                        <X className="size-5" />
+                    </button>
+                </div>
+
+                <nav className="flex-1 overflow-y-auto px-3" aria-label="Main">
+                    <ul className="space-y-0.5">
+                        {NAV.map((item) => (
+                            <li key={item.label}>
+                                <NavRow item={item} onNavigate={onClose} />
+                            </li>
+                        ))}
+                    </ul>
+                </nav>
+
+                <div className="border-t border-border p-3">
+                    <div className="px-2 py-1.5">
+                        <p className="truncate text-sm font-semibold">{tenant.business_name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{tenant.email}</p>
+                    </div>
+
+                    <div className="mt-1 space-y-0.5">
+                        <Link
+                            href={route('profile.edit')}
+                            className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        >
+                            <Settings className="size-4" />
+                            Profile
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => router.post(route('logout'))}
+                            className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        >
+                            <LogOut className="size-4" />
+                            Log out
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </>
+    );
+}
+
+function NavRow({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
+    const Icon = item.icon;
+
+    const classes =
+        'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors';
+
+    if (!item.routeName) {
+        return (
+            <span
+                className={`${classes} cursor-not-allowed text-muted-foreground/60`}
+                title="Not built yet"
+            >
+                <Icon className="size-4 shrink-0" />
+                <span className="flex-1">{item.label}</span>
+                <span className="text-[10px] uppercase tracking-wide">Soon</span>
+            </span>
+        );
+    }
+
+    const isCurrent = route().current(item.routeName);
+
+    return (
+        <Link
+            href={route(item.routeName)}
+            onClick={onNavigate}
+            className={[
+                classes,
+                isCurrent
+                    ? 'bg-sidebar-accent font-semibold text-sidebar-accent-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+            ].join(' ')}
+            aria-current={isCurrent ? 'page' : undefined}
+        >
+            <Icon className="size-4 shrink-0" />
+            {item.label}
+        </Link>
     );
 }

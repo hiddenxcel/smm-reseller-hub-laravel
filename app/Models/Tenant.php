@@ -57,6 +57,11 @@ class Tenant extends Authenticatable implements AuthenticatableContract
         return $this->hasMany(TenantPanel::class);
     }
 
+    public function whatsAppNumbers(): HasMany
+    {
+        return $this->hasMany(TenantWhatsApp::class);
+    }
+
     public function referredBy(): BelongsTo
     {
         return $this->belongsTo(self::class, 'referred_by');
