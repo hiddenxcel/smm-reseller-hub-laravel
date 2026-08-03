@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Webhooks\BillingWebhookController;
 use App\Http\Controllers\Webhooks\PaymentWebhookController;
 use App\Http\Controllers\Webhooks\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -29,4 +30,12 @@ Route::prefix('webhooks')->group(function () {
     // belongs to comes from our reference in the payload, not the URL.
     Route::post('payment/{gateway}', PaymentWebhookController::class)
         ->name('webhooks.payment');
+
+    // Subscriptions, on a separate path from the one above. Same gateways,
+    // opposite direction: this is a reseller paying the platform, on the
+    // platform's own merchant accounts, and it grants subscriptions rather
+    // than crediting a customer's wallet. One URL deciding between two
+    // unrelated payment tables is exactly how money lands in the wrong place.
+    Route::post('billing/{gateway}', BillingWebhookController::class)
+        ->name('webhooks.billing');
 });

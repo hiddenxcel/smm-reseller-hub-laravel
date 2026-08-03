@@ -106,7 +106,7 @@ const MAIN: NavSection[] = [
         label: 'Platform',
         items: [
             { label: 'Setup', icon: Settings, routeName: 'onboarding' },
-            { label: 'Billing', icon: CreditCard },
+            { label: 'Billing', icon: CreditCard, routeName: 'billing' },
             { label: 'Team', icon: UsersRound },
         ],
     },

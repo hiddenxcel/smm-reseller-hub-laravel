@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CustomersController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LandingController;
@@ -84,6 +85,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/support-bot/{tab?}', [SupportBotController::class, 'show'])
         ->whereIn('tab', ['overview', 'rules', 'templates', 'settings'])
         ->name('support-bot');
+
+    // Billing — the reseller paying US, as opposed to their customers paying
+    // them. Runs on the platform's own merchant accounts.
+    Route::get('/billing', [BillingController::class, 'index'])->name('billing');
+    Route::post('/billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
 
     // Orders. Everything about the list lives in the query string, so a
     // filtered view is a shareable URL rather than throwaway React state.
