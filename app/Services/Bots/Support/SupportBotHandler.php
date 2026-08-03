@@ -6,6 +6,8 @@ use App\Models\BotConversation;
 use App\Models\BotOrder;
 use App\Models\Tenant;
 use App\Models\TenantPanel;
+use App\Models\Ticket;
+use App\Models\TicketMessage;
 use App\Services\Bots\BotHandler;
 use App\Services\Bots\BotMessenger;
 use App\Services\Bots\BotSettings;
@@ -44,6 +46,23 @@ class SupportBotHandler implements BotHandler
     {
         $text = trim($text);
         $lower = mb_strtolower($text);
+
+        // A person is answering this customer. Record what they said so it
+        // reaches the inbox, and stay out of the way — the whole point of the
+        // handoff is that the customer is talking to one voice, not two.
+        $handoff = Ticket::handoffFor($this->tenantId, $from);
+
+        if ($handoff !== null) {
+            TicketMessage::create([
+                'ticket_id' => $handoff->id,
+                'sender' => 'customer',
+                'message' => $text,
+            ]);
+
+            $handoff->touchCustomerMessage();
+
+            return;
+        }
 
         if (in_array($lower, self::EXIT_WORDS, true)) {
             $this->finish($from);
@@ -285,16 +304,32 @@ class SupportBotHandler implements BotHandler
         $this->notifyStaff("🧾 Partial/Fake-comp report for *#{$orderId}* by {$from} — please review.");
     }
 
+    /**
+     * Option 5. From here a person answers, on this same number.
+     *
+     * The old platform handed out a `wa.me` link to a staff member's personal
+     * WhatsApp, which moved the conversation somewhere the reseller's inbox
+     * could not see and left the bot still listening on this one. Instead the
+     * conversation is claimed: a ticket carries the thread, staff reply from
+     * the inbox, and the bot goes quiet until they hand it back.
+     */
     private function connectToHuman(string $from): void
     {
-        $agent = $this->firstStaffNumber();
+        Ticket::openHandoff($this->tenantId, $from);
 
-        $this->messenger->sendText($from, $agent !== null
-            ? "👤 Tap to chat with our team: https://wa.me/{$agent}"
-            : '👤 Our team will get back to you shortly.');
+        // The bot's own state is cleared: when staff hand the conversation
+        // back, the customer should get the menu fresh rather than resume a
+        // half-finished question from before the handoff.
+        $this->finish($from);
 
-        $this->notifyStaff("👤 {$from} asked to speak to a human.");
-        $this->moveTo($from, SupportState::Menu);
+        $this->messenger->sendText(
+            $from,
+            "👤 Connecting you to our team — someone will reply here shortly.\n"
+                .'You can keep typing; your messages reach them directly.',
+            'HUMAN_HANDOFF',
+        );
+
+        $this->notifyStaff("👤 {$from} asked to speak to a human — replying in the Support inbox.");
     }
 
     private function explainTopupIssue(string $from): void
@@ -345,19 +380,6 @@ class SupportBotHandler implements BotHandler
                 ->where('provider_order_id', $orderId)
                 ->orWhere('id', is_numeric($orderId) ? (int) $orderId : 0))
             ->value('service_name');
-    }
-
-    private function firstStaffNumber(): ?string
-    {
-        foreach (Arr::get(BotSettings::for($this->tenantId, self::BOT), 'staff.numbers', []) as $number) {
-            $digits = preg_replace('/\D/', '', (string) $number);
-
-            if ($digits !== '') {
-                return $digits;
-            }
-        }
-
-        return null;
     }
 
     private function notifyStaff(string $message): void

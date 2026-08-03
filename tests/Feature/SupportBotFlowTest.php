@@ -7,6 +7,7 @@ use App\Models\BotOrder;
 use App\Models\GuaranteeRule;
 use App\Models\Tenant;
 use App\Models\TenantPanel;
+use App\Models\Ticket;
 use App\Services\Bots\BotSettings;
 use App\Services\Bots\Support\SupportBotHandler;
 use App\Services\Bots\Support\SupportState;
@@ -296,14 +297,31 @@ class SupportBotFlowTest extends TestCase
         $this->assertStringContainsString('48220', json_encode($toStaff));
     }
 
-    public function test_talk_to_a_human_hands_over_the_staff_number(): void
+    /**
+     * The old platform answered this with a `wa.me` link to a staff member's
+     * personal WhatsApp, which moved the conversation out of the reseller's
+     * inbox and left the bot still listening on this number. Now the
+     * conversation is claimed instead: a ticket carries the thread and staff
+     * answer from the inbox.
+     */
+    public function test_talk_to_a_human_opens_a_ticket_and_keeps_the_conversation_here(): void
     {
         $this->withStaff();
 
         $this->send('hi');
         $this->send('5');
 
-        $this->assertStringContainsString('wa.me/'.self::STAFF, $this->lastToCustomer());
+        $ticket = Ticket::withoutTenantScope()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('customer_identifier', self::CUSTOMER)
+            ->first();
+
+        $this->assertNotNull($ticket, 'asking for a human should open a ticket');
+        $this->assertSame('human', $ticket->category);
+        $this->assertNotNull($ticket->handed_over_at, 'the ticket should be handed over');
+
+        $this->assertStringNotContainsString('wa.me', $this->lastToCustomer());
+        $this->assertStringContainsString('reply here', $this->lastToCustomer());
     }
 
     public function test_talk_to_a_human_still_answers_with_no_staff_configured(): void
@@ -311,7 +329,74 @@ class SupportBotFlowTest extends TestCase
         $this->send('hi');
         $this->send('5');
 
-        $this->assertStringContainsString('get back to you', $this->lastToCustomer());
+        $this->assertStringContainsString('reply here', $this->lastToCustomer());
+        $this->assertNotNull(Ticket::handoffFor($this->tenant->id, self::CUSTOMER));
+    }
+
+    /**
+     * The whole point of the handoff: once a person owns the conversation the
+     * bot must not answer alongside them.
+     */
+    public function test_the_bot_stays_silent_once_a_person_has_taken_over(): void
+    {
+        $this->send('hi');
+        $this->send('5');
+
+        $before = count($this->toCustomer());
+
+        $this->send('are you there?');
+
+        $this->assertCount($before, $this->toCustomer(), 'the bot should not reply during a handoff');
+    }
+
+    /** What the customer says while waiting has to reach the person reading it. */
+    public function test_messages_during_a_handoff_are_recorded_on_the_ticket(): void
+    {
+        $this->send('hi');
+        $this->send('5');
+        $this->send('my order 123 never arrived');
+
+        $ticket = Ticket::handoffFor($this->tenant->id, self::CUSTOMER);
+
+        $this->assertNotNull($ticket);
+        $this->assertDatabaseHas('ticket_messages', [
+            'ticket_id' => $ticket->id,
+            'sender' => 'customer',
+            'message' => 'my order 123 never arrived',
+        ]);
+    }
+
+    /** Asking twice is still one conversation, not two threads to answer. */
+    public function test_asking_for_a_human_twice_reuses_the_same_ticket(): void
+    {
+        $this->send('hi');
+        $this->send('5');
+
+        $first = Ticket::handoffFor($this->tenant->id, self::CUSTOMER);
+
+        // Handing back lets the menu answer again, so 5 can be pressed twice.
+        $first->returnToBot();
+
+        $this->send('hi');
+        $this->send('5');
+
+        $this->assertSame(1, Ticket::withoutTenantScope()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('customer_identifier', self::CUSTOMER)
+            ->count());
+    }
+
+    public function test_the_bot_answers_again_once_the_conversation_is_handed_back(): void
+    {
+        $this->send('hi');
+        $this->send('5');
+
+        Ticket::handoffFor($this->tenant->id, self::CUSTOMER)->returnToBot();
+
+        $before = count($this->toCustomer());
+        $this->send('hi');
+
+        $this->assertGreaterThan($before, count($this->toCustomer()));
     }
 
     public function test_a_top_up_issue_explains_what_to_send(): void
