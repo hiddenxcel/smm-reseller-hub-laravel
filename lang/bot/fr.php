@@ -63,6 +63,8 @@ return [
     'btn_services' => 'Services',
     'per_1k' => '/ 1k',
     'pick_service_again' => 'Veuillez choisir un service dans la liste. Envoyez *hi* pour recommencer.',
+    'service_paused_label' => 'Indisponible',
+    'service_paused' => "⏸️ Celui-ci est indisponible pour le moment. Choisissez-en un autre, ou réessayez plus tard.",
     'how_many' => 'Combien de *{service}* ?',
     'packages_header' => 'Quantité',
     'btn_packages' => 'Forfaits',
@@ -124,6 +126,13 @@ return [
         "Vos parrainages jusqu'à présent : *{count}*\n".
         "Gains : *{earnings}*\n\n".
         'Envoyez *hi* pour le menu.',
+    'referral_ask_code' => "🎁 Avez-vous été invité par un ami ?\n\n".
+        'Envoyez son code pour lier votre compte, ou envoyez *skip* pour continuer.',
+    'referral_claimed' => "✅ Vous êtes maintenant lié à *{code}*. Cette personne gagnera un bonus sur votre premier rechargement.\n\n".
+        'Envoyez *hi* pour le menu.',
+    'referral_unknown_code' => "❌ Personne ici n'a ce code. Vérifiez-le et renvoyez-le, ou envoyez *skip*.",
+    'referral_already_linked' => "Vous êtes déjà lié à quelqu'un.\n\nEnvoyez *hi* pour le menu.",
+    'referral_skipped' => "Pas de problème.\n\nEnvoyez *hi* pour le menu.",
 
     // ---- Track order ---------------------------------------------------------
     'track_none' => "📦 Vous n'avez pas encore de commande. Envoyez *hi* et choisissez *Nouvelle commande* pour en passer une.",

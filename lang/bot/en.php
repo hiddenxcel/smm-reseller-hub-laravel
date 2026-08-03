@@ -66,6 +66,8 @@ return [
     'btn_services' => 'Services',
     'per_1k' => '/ 1k',
     'pick_service_again' => 'Please pick a service from the list. Send *hi* to start over.',
+    'service_paused_label' => 'Unavailable',
+    'service_paused' => "⏸️ That one is unavailable right now. Please pick another, or try again later.",
     'how_many' => 'How many *{service}*?',
     'packages_header' => 'Quantity',
     'btn_packages' => 'Packages',
@@ -127,6 +129,13 @@ return [
         "Your referrals so far: *{count}*\n".
         "Earnings: *{earnings}*\n\n".
         'Send *hi* for the menu.',
+    'referral_ask_code' => "🎁 Were you invited by a friend?\n\n".
+        "Send their code to link your account, or send *skip* to carry on.",
+    'referral_claimed' => "✅ You are now linked to *{code}*. They will earn a bonus on your first top-up.\n\n".
+        'Send *hi* for the menu.',
+    'referral_unknown_code' => "❌ No one here has that code. Check it and send it again, or send *skip*.",
+    'referral_already_linked' => "You are already linked to someone.\n\nSend *hi* for the menu.",
+    'referral_skipped' => "No problem.\n\nSend *hi* for the menu.",
 
     // ---- Track order ---------------------------------------------------------
     'track_none' => '📦 You have no orders yet. Send *hi* and choose *New Order* to place one.',

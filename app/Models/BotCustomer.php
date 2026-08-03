@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
@@ -20,7 +21,13 @@ class BotCustomer extends Model
         'tenant_id',
         'phone',
         'name',
+        'email',
         'lang',
+        'country',
+        'notes',
+        'tags',
+        'blocked_at',
+        'last_seen_at',
         'balance',
         'total_spent',
         'referral_code',
@@ -37,12 +44,37 @@ class BotCustomer extends Model
             'total_spent' => 'decimal:2',
             'referral_earnings' => 'decimal:2',
             'first_deposit_done' => 'boolean',
+            'tags' => 'array',
+            'blocked_at' => 'datetime',
+            'last_seen_at' => 'datetime',
         ];
     }
 
     public function orders(): HasMany
     {
         return $this->hasMany(BotOrder::class, 'customer_id');
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(BotPayment::class, 'customer_id');
+    }
+
+    /** Whoever invited them, and whoever they invited. */
+    public function referrer(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'referred_by');
+    }
+
+    public function referrals(): HasMany
+    {
+        return $this->hasMany(self::class, 'referred_by');
+    }
+
+    /** A blocked customer is one the reseller has told the bot to ignore. */
+    public function isBlocked(): bool
+    {
+        return $this->blocked_at !== null;
     }
 
     /**

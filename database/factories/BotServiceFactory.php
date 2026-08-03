@@ -44,8 +44,24 @@ class BotServiceFactory extends Factory
         ]);
     }
 
-    public function inactive(): static
+    /** Not offered at all — the customer never sees it. */
+    public function hidden(): static
     {
-        return $this->state(fn () => ['status' => 'inactive']);
+        return $this->state(fn () => ['status' => BotService::HIDDEN]);
+    }
+
+    /** Listed but not orderable; `auto` marks a pause the sync applied. */
+    public function paused(bool $auto = false): static
+    {
+        return $this->state(fn () => [
+            'status' => BotService::PAUSED,
+            'auto_paused' => $auto,
+        ]);
+    }
+
+    /** No cost from the panel — profit and margin are unknown, not zero. */
+    public function withoutCost(): static
+    {
+        return $this->state(fn () => ['cost_price' => null]);
     }
 }

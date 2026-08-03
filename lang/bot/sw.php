@@ -63,6 +63,8 @@ return [
     'btn_services' => 'Huduma',
     'per_1k' => '/ 1k',
     'pick_service_again' => 'Tafadhali chagua huduma kwenye orodha. Tuma *hi* kuanza upya.',
+    'service_paused_label' => 'Haipatikani',
+    'service_paused' => '⏸️ Hiyo haipatikani kwa sasa. Tafadhali chagua nyingine, au jaribu tena baadaye.',
     'how_many' => 'Unahitaji *{service}* kiasi gani?',
     'packages_header' => 'Kiasi',
     'btn_packages' => 'Vifurushi',
@@ -124,6 +126,13 @@ return [
         "Marafiki uliowaalika: *{count}*\n".
         "Mapato: *{earnings}*\n\n".
         'Tuma *hi* kupata menyu.',
+    'referral_ask_code' => "🎁 Je, umealikwa na rafiki?\n\n".
+        'Tuma namba yake ili kuunganisha akaunti yako, au tuma *skip* kuendelea.',
+    'referral_claimed' => "✅ Sasa umeunganishwa na *{code}*. Atapata bonus utakapoweka pesa mara ya kwanza.\n\n".
+        'Tuma *hi* kupata menyu.',
+    'referral_unknown_code' => '❌ Hakuna mtu mwenye namba hiyo. Iangalie tena uitume, au tuma *skip*.',
+    'referral_already_linked' => "Tayari umeunganishwa na mtu.\n\nTuma *hi* kupata menyu.",
+    'referral_skipped' => "Hakuna shida.\n\nTuma *hi* kupata menyu.",
 
     // ---- Track order ---------------------------------------------------------
     'track_none' => '📦 Bado huna oda yoyote. Tuma *hi* uchague *Weka Oda Mpya* kuanza.',
