@@ -11,10 +11,17 @@ export interface Tenant {
     lang: string;
 }
 
+/** One-shot messages from the action just performed. */
+export interface Flash {
+    success?: string | null;
+    error?: string | null;
+}
+
 export type PageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & {
     auth: {
         user: Tenant;
     };
+    flash: Flash;
 };

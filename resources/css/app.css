@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/nunito";
+@import "@fontsource-variable/geist";
 
 @theme inline {
   --color-background: var(--background);
@@ -52,6 +53,11 @@
 @theme {
   --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-heading: 'Nunito Variable', 'Inter Variable', system-ui, sans-serif;
+
+  /* Geist earns its place on data, not prose: its figures are even-width and
+     unambiguous, which is what a column of balances and phone numbers needs.
+     Used for table numerics and IDs — never for running text. */
+  --font-data: 'Geist Variable', 'Inter Variable', ui-monospace, monospace;
 
   /* Brand green, straight from the original --primary: #0EA472 */
   --color-brand-50: oklch(0.96 0.02 162);
@@ -185,5 +191,37 @@
 
   .soft-inset {
     box-shadow: var(--shadow-inset);
+  }
+
+  /* The browser default bar — arrows, full-width track — is heavier than the
+     cards it sits in. This is the same scroll, drawn to match the surface:
+     no arrows, a track that disappears, a thumb that only firms up on hover.
+     Firefox gets the two properties it supports; WebKit gets the rest. */
+  .scroll-slim {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .scroll-slim::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scroll-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scroll-slim::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 999px;
+  }
+
+  .scroll-slim::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+  }
+
+  /* Kills the little square where the two bars meet. */
+  .scroll-slim::-webkit-scrollbar-corner {
+    background: transparent;
   }
 }

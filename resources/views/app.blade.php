@@ -6,9 +6,26 @@
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        {{-- Theme, applied before first paint.
+
+             Inline and blocking on purpose: doing this from React means the
+             page renders light for a frame and then snaps to dark, which is
+             worse than a few bytes here. Falls back to the OS preference until
+             the reseller picks a side. --}}
+        <script>
+            (function () {
+                try {
+                    var stored = localStorage.getItem('theme');
+                    var dark = stored
+                        ? stored === 'dark'
+                        : window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    document.documentElement.classList.toggle('dark', dark);
+                    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+                } catch (e) {
+                    /* private mode with storage disabled — the OS default stands */
+                }
+            })();
+        </script>
 
         <!-- Scripts -->
         @routes

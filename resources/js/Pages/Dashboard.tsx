@@ -328,7 +328,7 @@ export default function Dashboard({
                                 Nothing yet. Orders your customers place will appear here.
                             </Empty>
                         ) : (
-                            <div className="overflow-x-auto">
+                            <div className="scroll-slim overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-border text-left text-xs text-muted-foreground">
@@ -614,7 +614,7 @@ function ChartCard({
 
             <div className="mt-4">
                 {showTable ? (
-                    <div className="max-h-64 overflow-y-auto">
+                    <div className="scroll-slim max-h-64 overflow-y-auto pr-2">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
