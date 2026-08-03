@@ -3,6 +3,7 @@
 namespace App\Services\Bots;
 
 use App\Enums\ServiceKey;
+use App\Models\BotCustomer;
 use App\Models\BotMessage;
 use App\Models\Subscription;
 use App\Models\Tenant;
@@ -55,6 +56,13 @@ class BotRouter
         // refused is still on the record — a reseller asking "did they ever
         // message me?" needs the ones we did not answer most of all.
         $this->logInbound($tenant->id, $message, $bot);
+        $this->touchCustomer($tenant->id, $message->from);
+
+        // A reseller who blocked this number wants silence, not an
+        // explanation — a reply would tell a nuisance they got through.
+        if ($this->isBlocked($tenant->id, $message->from)) {
+            return BotRoute::SpamBlocked;
+        }
 
         $target = $this->mayRun($tenant->id, $bot, $message->from) ? $bot : null;
 
@@ -145,5 +153,29 @@ class BotRouter
             'message' => $message->text,
             'bot_type' => $botType,
         ]);
+    }
+
+    /**
+     * Stamp when this number was last heard from.
+     *
+     * A bare UPDATE, not a read-modify-write, and it deliberately does not
+     * create the row: a customer who has never got as far as the order bot has
+     * no record yet, and the message log above already holds the fact.
+     */
+    private function touchCustomer(int $tenantId, string $from): void
+    {
+        BotCustomer::withoutTenantScope()
+            ->where('tenant_id', $tenantId)
+            ->where('phone', $from)
+            ->update(['last_seen_at' => now()]);
+    }
+
+    private function isBlocked(int $tenantId, string $from): bool
+    {
+        return BotCustomer::withoutTenantScope()
+            ->where('tenant_id', $tenantId)
+            ->where('phone', $from)
+            ->whereNotNull('blocked_at')
+            ->exists();
     }
 }
