@@ -5,11 +5,10 @@ namespace App\Http\Controllers\Onboarding;
 use App\Http\Controllers\Controller;
 use App\Models\TenantPaymentGateway;
 use App\Services\Payments\Gateway;
+use App\Services\Payments\GatewayCredentials;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 /**
  * Where a reseller plugs in the gateway their own customers pay through.
@@ -31,7 +30,7 @@ class SetupPaymentsController extends Controller
         $gateway = $validated['gateway'];
         $existing = $this->existingFor($request->user()->id, $gateway);
 
-        $columns = $this->credentialColumns($gateway, $validated['credentials'], $existing);
+        $columns = GatewayCredentials::columns($gateway, $validated['credentials'], $existing);
 
         TenantPaymentGateway::updateOrCreate(
             [
@@ -62,45 +61,6 @@ class SetupPaymentsController extends Controller
         return redirect()
             ->route('onboarding.step', 'payments')
             ->with('status', Gateway::label($gateway).' disconnected.');
-    }
-
-    /**
-     * Map the submitted credentials onto the two encrypted columns.
-     *
-     * A field left blank on a gateway that is already connected means "leave
-     * it as it is" — the form never sends back the stored secret, so treating
-     * blank as a deletion would wipe a key the reseller only meant to keep.
-     *
-     * @param  array<string, string|null>  $submitted
-     * @return array<string, string>
-     */
-    private function credentialColumns(
-        string $gateway,
-        array $submitted,
-        ?TenantPaymentGateway $existing,
-    ): array {
-        $columns = [];
-
-        foreach (Arr::get(Gateway::all(), "{$gateway}.fields", []) as $field) {
-            $column = $field['store'].'_enc';
-            $value = trim((string) ($submitted[$field['name']] ?? ''));
-
-            if ($value !== '') {
-                $columns[$column] = $value;
-
-                continue;
-            }
-
-            // Nothing typed and nothing stored — the gateway would be
-            // connected but unusable, so say so instead.
-            if ($existing?->{$column} === null) {
-                throw ValidationException::withMessages([
-                    "credentials.{$field['name']}" => "{$field['label']} is required.",
-                ]);
-            }
-        }
-
-        return $columns;
     }
 
     private function existingFor(int $tenantId, string $gateway): ?TenantPaymentGateway

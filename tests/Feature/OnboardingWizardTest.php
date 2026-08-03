@@ -10,6 +10,7 @@ use App\Models\TenantWhatsApp;
 use App\Services\Bots\BotSettings;
 use App\Services\Onboarding\OnboardingProgress;
 use App\Services\Onboarding\OnboardingStep;
+use App\Services\Payments\Gateway;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
@@ -236,10 +237,24 @@ class OnboardingWizardTest extends TestCase
         $this->assertTrue(OnboardingProgress::for($this->tenant)->isReadyToGoLive());
     }
 
+    /**
+     * Connecting a gateway with no client behind it is not setup done — the
+     * reseller would finish the wizard unable to take a payment.
+     *
+     * The example is read out of config rather than named here: it used to say
+     * 'stripe', which stopped meaning anything the day Stripe got a client.
+     */
     public function test_a_gateway_that_is_not_wired_up_does_not_count(): void
     {
+        $unwired = collect(array_keys(Gateway::all()))
+            ->first(fn (string $code) => ! Gateway::isReady($code));
+
+        if ($unwired === null) {
+            $this->markTestSkipped('Every configured gateway is wired up.');
+        }
+
         TenantPaymentGateway::factory()->for($this->tenant)->create([
-            'gateway' => 'stripe', // selectable, but not yet driveable
+            'gateway' => $unwired,
             'status' => 'active',
         ]);
 

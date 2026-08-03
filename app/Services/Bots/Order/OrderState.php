@@ -27,5 +27,8 @@ enum OrderState: string
     case AwaitingPayment = 'AWAITING_PAYMENT';
     case AwaitingBinanceOrder = 'AWAITING_BINANCE_ORDER';
 
+    /** Typing in the code of whoever invited them. */
+    case ReferralCode = 'REFERRAL_CODE';
+
     case AiChat = 'AI_CHAT';
 }

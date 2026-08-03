@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Webhooks\PaymentWebhookController;
 use App\Http\Controllers\Webhooks\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -23,4 +24,9 @@ Route::prefix('webhooks')->group(function () {
 
     Route::post('whatsapp', [WhatsAppWebhookController::class, 'handle'])
         ->name('webhooks.whatsapp');
+
+    // One URL per gateway, shared by every reseller. Which reseller a payment
+    // belongs to comes from our reference in the payload, not the URL.
+    Route::post('payment/{gateway}', PaymentWebhookController::class)
+        ->name('webhooks.payment');
 });
