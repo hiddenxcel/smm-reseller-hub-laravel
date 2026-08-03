@@ -3,6 +3,7 @@
 namespace App\Services\Bots;
 
 use App\Models\BotMessage;
+use App\Models\ResponseTemplate;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -31,10 +32,14 @@ class WhatsAppCloudMessenger implements BotMessenger
         private int $tenantId,
         private string $footer = '',
         private string $botType = 'order',
+        /** Which locale's template override to look for. */
+        private string $lang = BotLang::DEFAULT,
     ) {}
 
     public function sendText(string $to, string $message, ?string $templateKey = null): bool
     {
+        $message = $this->applyTemplate($templateKey, $message);
+
         $sent = $this->send([
             'messaging_product' => 'whatsapp',
             'to' => $to,
@@ -45,6 +50,29 @@ class WhatsAppCloudMessenger implements BotMessenger
         $this->logOutbound($to, $message, $templateKey);
 
         return $sent;
+    }
+
+    /**
+     * A reseller's own wording for this message, if they wrote one.
+     *
+     * Keyed messages are the ones the Templates screen can override; the rest
+     * pass through untouched. Falling back to the handler's own text matters
+     * more than the override does — a reseller who has customised nothing must
+     * still get a working bot, and one who deletes a template must not get
+     * silence.
+     *
+     * The log below records what was actually sent, so a reseller reading their
+     * message log sees their own wording rather than the default it replaced.
+     */
+    private function applyTemplate(?string $templateKey, string $fallback): string
+    {
+        if ($templateKey === null) {
+            return $fallback;
+        }
+
+        $override = ResponseTemplate::resolve($this->tenantId, $templateKey, $this->lang);
+
+        return blank($override) ? $fallback : $override;
     }
 
     /** @param array<int, array{id: string, title: string, description?: string}> $rows */
