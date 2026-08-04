@@ -39,6 +39,7 @@ type Props = {
     numbers: ConnectedNumber[];
     rentable: RentableNumber[];
     rentals: Rental[];
+    canSkip: boolean;
 };
 
 /**
@@ -61,6 +62,7 @@ export default function ConnectWhatsApp({
     numbers,
     rentable,
     rentals,
+    canSkip,
 }: Props) {
     // Renting is the default because setting up a Meta app is where most
     // resellers stall — but bringing your own number stays a peer, not a
@@ -70,7 +72,7 @@ export default function ConnectWhatsApp({
     );
 
     return (
-        <OnboardingLayout step={step} steps={steps} completed={completed}>
+        <OnboardingLayout step={step} steps={steps} completed={completed} canSkip={canSkip}>
             <Head title="Connect WhatsApp" />
 
             <div className="max-w-xl">

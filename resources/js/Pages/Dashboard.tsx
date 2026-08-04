@@ -98,6 +98,8 @@ type Props = {
             title: string;
             complete: boolean;
             required: boolean;
+            /** Put off for later — still counts as outstanding, not done. */
+            skipped: boolean;
         }>;
         completed: number;
         readyToGoLive: boolean;
@@ -571,8 +573,11 @@ function SetupCard({
                             <Clock className="size-3.5" />
                         )}
                         {step.title}
-                        {!step.required && !step.complete && (
-                            <span className="opacity-70">(optional)</span>
+                        {step.skipped && !step.complete ? (
+                            <span className="opacity-70">(skipped)</span>
+                        ) : (
+                            !step.required &&
+                            !step.complete && <span className="opacity-70">(optional)</span>
                         )}
                     </li>
                 ))}

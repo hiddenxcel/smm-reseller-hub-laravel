@@ -56,6 +56,10 @@ class OnboardingController extends Controller
             'steps' => $progress->toArray(),
             'completed' => $progress->completedCount(),
             'readyToGoLive' => $progress->isReadyToGoLive(),
+            // Whether this step can be put off, so the page does not have to
+            // restate the rule. Test is the exception: putting it off is what
+            // staying in sandbox means, and it has its own wording for that.
+            'canSkip' => ! $progress->isComplete($current),
         ];
 
         return match ($current) {

@@ -43,6 +43,10 @@ class BotSettings
             'website_url' => '',
             // Phones allowed to exercise the bot while the service is in sandbox.
             'test_numbers' => [],
+            // Wizard steps the reseller chose to come back to later. Held
+            // here rather than derived, because skipping is a decision, not
+            // a state of the data.
+            'skipped_steps' => [],
         ],
     ];
 

@@ -1,5 +1,5 @@
-import { Link } from '@inertiajs/react';
-import { Check } from 'lucide-react';
+import { Link, router } from '@inertiajs/react';
+import { Check, SkipForward } from 'lucide-react';
 import { PropsWithChildren } from 'react';
 
 export type WizardStep = {
@@ -8,19 +8,23 @@ export type WizardStep = {
     description: string;
     complete: boolean;
     required: boolean;
+    /** Put off for later. Not the same as done — nothing treats it as done. */
+    skipped: boolean;
 };
 
 type Props = PropsWithChildren<{
     step: string;
     steps: WizardStep[];
     completed: number;
+    /** False once this step is done — there is nothing left to put off. */
+    canSkip?: boolean;
 }>;
 
 /**
  * The frame around every wizard step: where you are, what is left, and a way
  * back to a step you already finished.
  */
-export default function OnboardingLayout({ step, steps, completed, children }: Props) {
+export default function OnboardingLayout({ step, steps, completed, canSkip = true, children }: Props) {
     const total = steps.length;
     const percent = Math.round((completed / total) * 100);
 
@@ -75,7 +79,11 @@ export default function OnboardingLayout({ step, steps, completed, children }: P
                     </ol>
                 </nav>
 
-                <main>{children}</main>
+                <main>
+                    {children}
+
+                    {canSkip && <SkipControl step={step} />}
+                </main>
             </div>
         </div>
     );
@@ -106,22 +114,27 @@ function StepLink({
                       : 'bg-muted text-muted-foreground',
             ].join(' ')}
         >
-            {item.complete ? <Check className="size-3.5" /> : index + 1}
+            {item.complete ? <Check className="size-3.5" /> : item.skipped ? '\u2013' : index + 1}
         </span>
     );
 
     const label = (
         <span className="min-w-0">
             <span className="block truncate">{item.title}</span>
-            {! item.required && (
-                <span className="block text-xs font-normal opacity-70">Optional</span>
+            {item.skipped && ! item.complete ? (
+                <span className="block text-xs font-normal opacity-70">Skipped</span>
+            ) : (
+                ! item.required && (
+                    <span className="block text-xs font-normal opacity-70">Optional</span>
+                )
             )}
         </span>
     );
 
-    // Only finished steps are safe to jump back to; the rest depend on
-    // what comes before them.
-    if (item.complete && ! isCurrent) {
+    // Finished steps are safe to jump back to; the rest depend on what comes
+    // before them. Skipped ones are reachable too — without that, a reseller
+    // who skipped everything would have no way back into the wizard at all.
+    if ((item.complete || item.skipped) && ! isCurrent) {
         return (
             <Link href={route('onboarding.step', item.key)} className={`${classes} hover:text-foreground`}>
                 {marker}
@@ -135,5 +148,42 @@ function StepLink({
             {marker}
             {label}
         </span>
+    );
+}
+
+
+/**
+ * A way past a step the reseller cannot finish today.
+ *
+ * Without one, someone who signed up before getting their panel key has no
+ * route forward at all, and a wizard with no way past its first screen is a
+ * wizard people abandon.
+ *
+ * It records a decision, not progress: the step stays incomplete, the
+ * dashboard keeps asking for it, and going live still refuses without it.
+ * Which is why the wording promises "later" and names where later lives.
+ */
+function SkipControl({ step }: { step: string }) {
+    const isTestStep = step === 'test';
+
+    return (
+        <div className="mt-10 border-t border-border pt-6">
+            <button
+                type="button"
+                onClick={() => router.post(route('onboarding.skip', step))}
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+            >
+                <SkipForward className="size-4" aria-hidden />
+                {isTestStep
+                    ? 'I’ll test it later'
+                    : 'Skip for now — I’ll come back to this'}
+            </button>
+
+            <p className="mt-2 max-w-md text-xs text-muted-foreground">
+                {isTestStep
+                    ? 'Your bot stays in sandbox until you have tested it, so only your own test numbers get replies.'
+                    : 'Nothing is lost — your shop just is not finished yet. You can pick this up in Settings whenever you are ready.'}
+            </p>
+        </div>
     );
 }

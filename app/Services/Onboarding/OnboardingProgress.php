@@ -55,16 +55,53 @@ class OnboardingProgress
         };
     }
 
-    /** The next thing to do, or null when everything required is done. */
+    /**
+     * The next thing to do, or null when nothing is left to show.
+     *
+     * A skipped step is passed over here but is NOT complete: the reseller
+     * said "later", not "done". Everything that reads completion — going
+     * live, the dashboard's setup card, the settings tabs — still sees it as
+     * outstanding, so a skip can never quietly become a finished shop.
+     */
     public function currentStep(): ?OnboardingStep
     {
         foreach (OnboardingStep::ordered() as $step) {
-            if (! $this->isComplete($step)) {
+            if (! $this->isComplete($step) && ! $this->isSkipped($step)) {
                 return $step;
             }
         }
 
         return null;
+    }
+
+    /** Steps the reseller chose to come back to later. */
+    public function isSkipped(OnboardingStep $step): bool
+    {
+        return in_array($step->value, $this->skippedSteps(), true);
+    }
+
+    /** @return array<int, string> */
+    public function skippedSteps(): array
+    {
+        return array_values(Arr::get(
+            BotSettings::for($this->tenant->id, 'order'),
+            'shop.skipped_steps',
+            [],
+        ));
+    }
+
+    /**
+     * Required steps that are neither done nor skipped — what actually
+     * stands between the reseller and a working shop.
+     *
+     * @return array<int, OnboardingStep>
+     */
+    public function outstanding(): array
+    {
+        return array_values(array_filter(
+            OnboardingStep::ordered(),
+            fn (OnboardingStep $step) => $step->isRequired() && ! $this->isComplete($step),
+        ));
     }
 
     /** Whether the reseller can go live, ignoring optional steps. */
@@ -79,7 +116,7 @@ class OnboardingProgress
         return true;
     }
 
-    /** @return array<int, array{key: string, title: string, description: string, complete: bool, required: bool}> */
+    /** @return array<int, array{key: string, title: string, description: string, complete: bool, required: bool, skipped: bool}> */
     public function toArray(): array
     {
         return array_map(fn (OnboardingStep $step) => [
@@ -88,6 +125,7 @@ class OnboardingProgress
             'description' => $step->description(),
             'complete' => $this->isComplete($step),
             'required' => $step->isRequired(),
+            'skipped' => $this->isSkipped($step),
         ], OnboardingStep::ordered());
     }
 

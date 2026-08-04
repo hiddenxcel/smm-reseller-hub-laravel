@@ -40,6 +40,7 @@ type Props = {
     orderPlaced: boolean;
     recentMessages: LoggedMessage[];
     botNumbers: BotNumber[];
+    canSkip: boolean;
 };
 
 export default function TestBot({
@@ -52,6 +53,7 @@ export default function TestBot({
     orderPlaced,
     recentMessages,
     botNumbers,
+    canSkip,
 }: Props) {
     const numberForm = useForm({ phone: '' });
     // Going live sends no fields, so its rejection arrives on the page's
@@ -78,7 +80,7 @@ export default function TestBot({
     const botNumber = botNumbers[0];
 
     return (
-        <OnboardingLayout step={step} steps={steps} completed={completed}>
+        <OnboardingLayout step={step} steps={steps} completed={completed} canSkip={canSkip}>
             <Head title="Test your bot" />
 
             <div className="max-w-xl">

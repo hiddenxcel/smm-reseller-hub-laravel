@@ -10,9 +10,10 @@ type Props = {
     step: string;
     steps: WizardStep[];
     completed: number;
+    canSkip: boolean;
 };
 
-export default function ConnectPanel({ step, steps, completed }: Props) {
+export default function ConnectPanel({ step, steps, completed, canSkip }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         api_url: '',
@@ -25,7 +26,7 @@ export default function ConnectPanel({ step, steps, completed }: Props) {
     };
 
     return (
-        <OnboardingLayout step={step} steps={steps} completed={completed}>
+        <OnboardingLayout step={step} steps={steps} completed={completed} canSkip={canSkip}>
             <Head title="Connect your panel" />
 
             <div className="max-w-lg">

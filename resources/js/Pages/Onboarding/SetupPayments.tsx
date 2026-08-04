@@ -31,6 +31,7 @@ type Props = {
     completed: number;
     gateways: GatewayOption[];
     connected: ConnectedGateway[];
+    canSkip: boolean;
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -39,7 +40,7 @@ const TYPE_LABELS: Record<string, string> = {
     card: 'Cards',
 };
 
-export default function SetupPayments({ step, steps, completed, gateways, connected }: Props) {
+export default function SetupPayments({ step, steps, completed, gateways, connected, canSkip }: Props) {
     // Ready gateways first: a reseller picking from the top gets one that
     // actually takes money today.
     const ordered = useMemo(
@@ -77,7 +78,7 @@ export default function SetupPayments({ step, steps, completed, gateways, connec
     };
 
     return (
-        <OnboardingLayout step={step} steps={steps} completed={completed}>
+        <OnboardingLayout step={step} steps={steps} completed={completed} canSkip={canSkip}>
             <Head title="Set up payments" />
 
             <div className="max-w-xl">

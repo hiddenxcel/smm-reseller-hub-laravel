@@ -9,6 +9,7 @@ use App\Http\Controllers\Onboarding\ConnectWhatsAppController;
 use App\Http\Controllers\Onboarding\ImportServicesController;
 use App\Http\Controllers\Onboarding\OnboardingController;
 use App\Http\Controllers\Onboarding\RentNumberController;
+use App\Http\Controllers\Onboarding\SkipStepController;
 use App\Http\Controllers\Onboarding\SetupPaymentsController;
 use App\Http\Controllers\Onboarding\TestBotController;
 use App\Http\Controllers\OrderBotController;
@@ -45,6 +46,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/onboarding/test/number', [TestBotController::class, 'storeNumber'])->name('onboarding.test.number.store');
     Route::delete('/onboarding/test/number/{phone}', [TestBotController::class, 'destroyNumber'])->name('onboarding.test.number.destroy');
     Route::post('/onboarding/test/go-live', [TestBotController::class, 'goLive'])->name('onboarding.test.golive');
+
+    // "I'll come back to this." Skipping records a decision; it never marks
+    // the step done, so the dashboard and go-live still ask for it.
+    Route::post('/onboarding/skip/{step}', [SkipStepController::class, 'store'])->name('onboarding.skip');
+    Route::delete('/onboarding/skip/{step}', [SkipStepController::class, 'destroy'])->name('onboarding.unskip');
 
     // Order bot. `{tab}` is real navigation — each tab is a URL a reseller can
     // link to — so it renders a page rather than answering JSON.
