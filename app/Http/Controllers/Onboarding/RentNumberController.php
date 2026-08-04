@@ -36,7 +36,7 @@ class RentNumberController extends Controller
             ]);
         }
 
-        return back(fallback: route('onboarding'))
+        return $this->afterSave($request)
             ->with('status', 'Number rented — your bot is ready to use it.');
     }
 
@@ -52,5 +52,23 @@ class RentNumberController extends Controller
 
         return back(fallback: route('onboarding.step', 'whatsapp'))
             ->with('status', 'Number released.');
+    }
+
+    /**
+     * Where to go after a setup action succeeds.
+     *
+     * The same forms serve two screens with opposite needs: the wizard must
+     * advance to the next step, while Settings must stay on the tab the
+     * reseller is working in. Submitting from Settings is the special case,
+     * so that is what gets detected; everything else advances, which keeps
+     * the wizard's behaviour identical to before Settings existed.
+     */
+    private function afterSave(Request $request): RedirectResponse
+    {
+        if (str_contains((string) $request->headers->get('referer'), '/settings')) {
+            return back(fallback: route('settings'));
+        }
+
+        return redirect()->route('onboarding');
     }
 }

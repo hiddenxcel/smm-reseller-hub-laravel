@@ -48,6 +48,44 @@ class OnboardingWizardTest extends TestCase
         TenantWhatsApp::factory()->for($this->tenant)->create();
     }
 
+
+    // ---- where a finished step sends you ---------------------------------
+
+    /**
+     * The same forms serve the wizard and Settings, so where they return to
+     * depends on where they were submitted from. Both directions are asserted
+     * with a Referer, because posting without one takes a fallback path and
+     * hides exactly the mistake this is here to catch: a reseller who saves a
+     * panel inside the wizard and lands back on the panel form.
+     */
+    public function test_saving_from_the_wizard_advances_rather_than_returning_to_the_form(): void
+    {
+        BotService::factory()->for($this->tenant)->create(['status' => 'active']);
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->from(route('onboarding.step', 'whatsapp'))
+            ->post(route('onboarding.whatsapp.store'), [
+                'phone_number_id' => 'wizard-1',
+                'token' => 'a-token',
+                'display_number' => '+255700000009',
+                'bot_type' => 'order',
+            ])
+            ->assertRedirect(route('onboarding'));
+    }
+
+    public function test_saving_from_settings_stays_in_settings(): void
+    {
+        $this->actingAs($this->tenant, 'tenant')
+            ->from(route('settings', 'whatsapp'))
+            ->post(route('onboarding.whatsapp.store'), [
+                'phone_number_id' => 'settings-1',
+                'token' => 'a-token',
+                'display_number' => '+255700000008',
+                'bot_type' => 'order',
+            ])
+            ->assertRedirect(route('settings', 'whatsapp'));
+    }
+
     // ---- where the wizard sends you --------------------------------------
 
     public function test_registering_lands_in_the_wizard_not_the_dashboard(): void
