@@ -18,6 +18,7 @@ use App\Http\Controllers\OrderBotProvidersController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ServicesController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SupportBotController;
 use App\Http\Controllers\SupportBotInboxController;
 use App\Http\Controllers\SupportBotTicketsController;
@@ -135,6 +136,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/services/{service}', [ServicesController::class, 'act'])->name('services.act');
     Route::patch('/services/{service}', [ServicesController::class, 'update'])->name('services.update');
     Route::delete('/services/{service}', [ServicesController::class, 'destroy'])->name('services.destroy');
+
+    // Settings. The wizard is for getting set up once; this is for changing
+    // what it put in place, so each tab is a URL a reseller can link to.
+    Route::get('/settings/{tab?}', [SettingsController::class, 'show'])
+        ->whereIn('tab', ['panel', 'services', 'whatsapp', 'payments'])
+        ->name('settings');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

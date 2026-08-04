@@ -58,8 +58,7 @@ class ImportServicesController extends Controller
 
         $count = count($validated['services']);
 
-        return redirect()
-            ->route('onboarding')
+        return back(fallback: route('onboarding'))
             ->with('status', $count === 1 ? '1 service imported.' : "{$count} services imported.");
     }
 

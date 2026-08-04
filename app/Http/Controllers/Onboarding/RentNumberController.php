@@ -36,8 +36,7 @@ class RentNumberController extends Controller
             ]);
         }
 
-        return redirect()
-            ->route('onboarding')
+        return back(fallback: route('onboarding'))
             ->with('status', 'Number rented — your bot is ready to use it.');
     }
 
@@ -51,8 +50,7 @@ class RentNumberController extends Controller
 
         $this->rentals->release($request->user(), $rental);
 
-        return redirect()
-            ->route('onboarding.step', 'whatsapp')
+        return back(fallback: route('onboarding.step', 'whatsapp'))
             ->with('status', 'Number released.');
     }
 }

@@ -43,8 +43,7 @@ class SetupPaymentsController extends Controller
             ],
         );
 
-        return redirect()
-            ->route('onboarding')
+        return back(fallback: route('onboarding'))
             ->with('status', Gateway::label($gateway).' connected.');
     }
 
@@ -58,8 +57,7 @@ class SetupPaymentsController extends Controller
             ->where('gateway', $gateway)
             ->update(['status' => 'inactive']);
 
-        return redirect()
-            ->route('onboarding.step', 'payments')
+        return back(fallback: route('onboarding.step', 'payments'))
             ->with('status', Gateway::label($gateway).' disconnected.');
     }
 

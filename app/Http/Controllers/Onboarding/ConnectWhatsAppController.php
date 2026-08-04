@@ -41,8 +41,7 @@ class ConnectWhatsAppController extends Controller
             ],
         );
 
-        return redirect()
-            ->route('onboarding')
+        return back(fallback: route('onboarding'))
             ->with('status', 'WhatsApp number connected.');
     }
 
