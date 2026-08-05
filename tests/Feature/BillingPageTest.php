@@ -123,6 +123,10 @@ class BillingPageTest extends TestCase
     /** A gateway with no keys is left out rather than offered and then failing. */
     public function test_only_gateways_holding_real_credentials_are_offered(): void
     {
+        // Blanked here rather than assumed absent: a developer whose .env holds
+        // real Snippe keys would otherwise see this fail for the wrong reason.
+        config(['services.billing.snippe.api_key' => null]);
+
         $this->actingAs($this->tenant)
             ->get(route('billing'))
             ->assertInertia(function (AssertableInertia $page) {

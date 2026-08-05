@@ -8,6 +8,7 @@ import {
     formatCompact,
     formatMoney,
 } from '@/components/charts/chart-tokens';
+import AnnouncementBanner from '@/components/AnnouncementBanner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/components/ui/button';
 import { Head, Link } from '@inertiajs/react';
@@ -159,6 +160,10 @@ export default function Dashboard({
             <Head title="Dashboard" />
 
             <div className="space-y-8">
+                {/* Platform notices, above everything: a maintenance window is
+                    worth reading before the numbers underneath it. */}
+                <AnnouncementBanner />
+
                 <header className="flex flex-wrap items-end justify-between gap-4">
                     <div>
                         <h1 className="font-heading text-2xl font-extrabold tracking-tight">

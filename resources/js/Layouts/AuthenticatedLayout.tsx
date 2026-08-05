@@ -1,4 +1,5 @@
 import AppLogo from '@/components/AppLogo';
+import ImpersonationBanner from '@/components/ImpersonationBanner';
 import { Toaster } from '@/components/ui/sonner';
 import { useFlashToasts } from '@/hooks/useFlashToasts';
 import { useTheme } from '@/hooks/useTheme';
@@ -9,6 +10,7 @@ import {
     ChevronLeft,
     ChevronRight,
     CreditCard,
+    HelpCircle,
     Inbox,
     LayoutDashboard,
     LifeBuoy,
@@ -110,6 +112,12 @@ const MAIN: NavSection[] = [
             { label: 'Team', icon: UsersRound },
         ],
     },
+    {
+        label: 'Help',
+        items: [
+            { label: 'Support Center', icon: HelpCircle, routeName: 'help.support' },
+        ],
+    },
 ];
 
 const ORDER_BOT: NavItem[] = [
@@ -154,7 +162,12 @@ export default function AuthenticatedLayout({
 
     return (
         <div className="min-h-dvh bg-background">
+            {/* Above the grid, not inside it: while an admin is viewing this
+                account the warning has to span the sidebar too. */}
+            <ImpersonationBanner />
+
             <div className="lg:grid lg:grid-cols-[248px_1fr]">
+
                 <Sidebar
                     tenant={tenant}
                     mobileOpen={mobileOpen}

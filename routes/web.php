@@ -23,6 +23,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SupportBotController;
 use App\Http\Controllers\SupportBotInboxController;
 use App\Http\Controllers\SupportBotTicketsController;
+use App\Http\Controllers\SupportCenterController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', LandingController::class)->name('home');
@@ -148,6 +149,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings/{tab?}', [SettingsController::class, 'show'])
         ->whereIn('tab', ['panel', 'services', 'whatsapp', 'payments'])
         ->name('settings');
+
+    // Help. The one place in the app where the reseller is the one asking for
+    // support rather than giving it — see SupportCenterController.
+    Route::get('/help/support', [SupportCenterController::class, 'index'])->name('help.support');
+    Route::post('/help/tickets', [SupportCenterController::class, 'store'])->name('help.tickets.store');
+    Route::get('/help/tickets/{ticket}', [SupportCenterController::class, 'show'])
+        ->whereNumber('ticket')
+        ->name('help.tickets.show');
+    Route::post('/help/tickets/{ticket}/reply', [SupportCenterController::class, 'reply'])
+        ->whereNumber('ticket')
+        ->name('help.tickets.reply');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
