@@ -21,6 +21,13 @@ return Application::configure(basePath: dirname(__DIR__))
             // CSRF token, and authenticate by signature instead.
             Route::middleware('api')->group(base_path('routes/webhooks.php'));
 
+            // The reseller API, called by their customers' own code. Same
+            // reasoning as the webhooks above: no session, no CSRF — the API
+            // key in the body is the credential.
+            Route::middleware('api')
+                ->prefix('api')
+                ->group(base_path('routes/api.php'));
+
             // The super-admin console. Its own prefix and name space, so an
             // admin route can never collide with a reseller's.
             Route::middleware('web')
