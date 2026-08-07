@@ -94,9 +94,10 @@ export default function Guest({
 
                     <dl className="mt-12 flex gap-10 border-t border-white/15 pt-8">
                         {[
-                            { value: '500+', label: 'Panels connected' },
-                            { value: '10M+', label: 'Orders processed' },
-                            { value: '99.9%', label: 'Uptime' },
+                            // True on day one — see the note on TRUST in Landing.tsx.
+                            { value: '24/7', label: 'Never closes' },
+                            { value: '~5 min', label: 'To go live' },
+                            { value: '$0', label: 'To start' },
                         ].map((stat) => (
                             <div key={stat.label}>
                                 <dt className="font-heading text-2xl font-extrabold">

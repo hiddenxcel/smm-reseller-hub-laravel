@@ -142,9 +142,12 @@ export default function PhoneDemo() {
                 </div>
 
                 {/* messages */}
+                {/* Stacked from the bottom, the way a real chat sits. Anchored
+                    to the top, the first message hung under an empty panel and
+                    the phone read as broken rather than as waiting. */}
                 <div
                     ref={chatRef}
-                    className="h-[380px] space-y-2 overflow-y-auto bg-[#0b141a] px-3 py-4"
+                    className="flex h-[380px] flex-col justify-end space-y-2 overflow-y-auto bg-[#0b141a] px-3 py-4"
                     aria-live="polite"
                     aria-label="Example conversation with the order bot"
                 >

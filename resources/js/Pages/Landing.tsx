@@ -35,11 +35,21 @@ type Props = {
     plans: Record<string, PlanSummary>;
 };
 
+/**
+ * Claims that are true on day one.
+ *
+ * The counts that were here before — panels connected, orders processed —
+ * were invented. A reseller who works out that one number is fiction stops
+ * believing the rest of the page, including what it says about keeping their
+ * WhatsApp number safe and their customers' money theirs. That is a bad trade
+ * for a figure nobody was asked to verify. These say what the product does
+ * instead, which is checkable and needs no head start.
+ */
 const TRUST = [
-    { value: '500+', label: 'Panels connected' },
-    { value: '10M+', label: 'Orders processed' },
-    { value: '99.9%', label: 'Uptime' },
-    { value: '24/7', label: 'Always answering' },
+    { value: '24/7', label: 'Your shop never closes' },
+    { value: '~5 min', label: 'From signup to selling' },
+    { value: 'Meta', label: 'Official Cloud API' },
+    { value: '$0', label: 'To start — no card' },
 ];
 
 const WHY = [
