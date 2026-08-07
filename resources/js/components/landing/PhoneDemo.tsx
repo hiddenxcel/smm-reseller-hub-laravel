@@ -43,7 +43,7 @@ const SCRIPT: Message[] = [
 const REPLAY_PAUSE = 3200;
 
 export default function PhoneDemo() {
-    const [visible, setVisible] = useState<Message[]>([]);
+    const [visible, setVisible] = useState<Message[]>([SCRIPT[0]]);
     const [typing, setTyping] = useState(false);
     const [clock, setClock] = useState('09:41');
     const chatRef = useRef<HTMLDivElement>(null);
@@ -74,9 +74,12 @@ export default function PhoneDemo() {
 
         const play = async () => {
             while (!cancelled) {
-                setVisible([]);
+                // Opens on the customer's "hi" rather than on nothing. An
+                // empty panel — on first paint and again between replays —
+                // looks like a demo that failed to load.
+                setVisible([SCRIPT[0]]);
 
-                for (const message of SCRIPT) {
+                for (const message of SCRIPT.slice(1)) {
                     if (cancelled) return;
 
                     // Only the bot "types" — a customer's message just lands.
@@ -145,9 +148,12 @@ export default function PhoneDemo() {
                 {/* Stacked from the bottom, the way a real chat sits. Anchored
                     to the top, the first message hung under an empty panel and
                     the phone read as broken rather than as waiting. */}
+                {/* Shorter on a phone: at 380px the visible area was mostly
+                    empty dark panel between replays, which reads as a demo
+                    that failed to load rather than one about to start. */}
                 <div
                     ref={chatRef}
-                    className="flex h-[380px] flex-col justify-end space-y-2 overflow-y-auto bg-[#0b141a] px-3 py-4"
+                    className="flex h-[300px] flex-col justify-end space-y-2 overflow-y-auto bg-[#0b141a] px-3 py-4 sm:h-[380px]"
                     aria-live="polite"
                     aria-label="Example conversation with the order bot"
                 >
