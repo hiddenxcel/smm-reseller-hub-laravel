@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Announcement;
+use App\Models\SupportTicket;
 use App\Services\Admin\Impersonation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -48,12 +49,21 @@ class HandleInertiaRequests extends Middleware
             // Platform notices. A closure, so the query only runs on a response
             // that actually renders a reseller page.
             'announcements' => fn () => $this->announcements($request),
+            // Support replies the reseller has not opened yet, for the sidebar
+            // badge. Email tells them once; this is what tells them on the
+            // visit after that.
+            'supportUnread' => fn () => $this->supportUnread(),
             // One-shot messages from the action just performed, shown as
             // toasts. Closures so the session is only read on a response that
             // actually carries one.
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                // A freshly issued API key, travelling from the redirect that
+                // created it to the one render that may show it. It is not
+                // stored in recoverable form anywhere else, so this is the
+                // only moment it exists — see ApiAccessController::store.
+                'newApiKey' => fn () => $request->session()->get('newApiKey'),
             ],
         ];
     }
@@ -104,6 +114,27 @@ class HandleInertiaRequests extends Middleware
                 'dismissible' => (bool) $announcement->dismissible,
             ])
             ->all();
+    }
+
+    /**
+     * How many of this reseller's tickets we answered last.
+     *
+     * A count of threads rather than of messages: the badge is answering "is
+     * there something here for me?", and three replies on one ticket is still
+     * one conversation to go and read.
+     *
+     * `pending` is exactly the state where the last word was ours, so no extra
+     * read-tracking column is needed — opening the thread does not clear it,
+     * but replying or our resolving it does, which is the point at which the
+     * reseller has demonstrably seen it.
+     */
+    private function supportUnread(): int
+    {
+        if (Auth::guard('tenant')->guest()) {
+            return 0;
+        }
+
+        return SupportTicket::query()->where('status', 'pending')->count();
     }
 
     /**

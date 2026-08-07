@@ -12,6 +12,7 @@ import {
     CreditCard,
     HelpCircle,
     Inbox,
+    KeyRound,
     LayoutDashboard,
     LifeBuoy,
     LogOut,
@@ -44,6 +45,8 @@ type NavItem = {
      * so the row needs the tab as well as the route name to link anywhere.
      */
     routeParams?: string;
+    /** Which shared prop, if any, supplies this row's unread count. */
+    badge?: 'supportUnread';
 };
 
 /** A row that opens a sub-panel instead of navigating. */
@@ -108,6 +111,7 @@ const MAIN: NavSection[] = [
         label: 'Platform',
         items: [
             { label: 'Setup', icon: Settings, routeName: 'settings' },
+            { label: 'API', icon: KeyRound, routeName: 'api-access' },
             { label: 'Billing', icon: CreditCard, routeName: 'billing' },
             { label: 'Team', icon: UsersRound },
         ],
@@ -115,7 +119,12 @@ const MAIN: NavSection[] = [
     {
         label: 'Help',
         items: [
-            { label: 'Support Center', icon: HelpCircle, routeName: 'help.support' },
+            {
+                label: 'Support Center',
+                icon: HelpCircle,
+                routeName: 'help.support',
+                badge: 'supportUnread',
+            },
         ],
     },
 ];
@@ -423,6 +432,11 @@ function ThemeToggle() {
 
 function NavRow({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
     const Icon = item.icon;
+    const page = usePage().props;
+
+    // Zero renders nothing at all: a badge showing "0" is a permanent mark
+    // against a row where there is nothing to see.
+    const count = item.badge ? Number(page[item.badge] ?? 0) : 0;
 
     const classes =
         'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors';
@@ -459,7 +473,16 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate: () => void })
             aria-current={isCurrent ? 'page' : undefined}
         >
             <Icon className="size-4 shrink-0" />
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+
+            {count > 0 && (
+                <span
+                    className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary-foreground"
+                    aria-label={`${count} waiting`}
+                >
+                    {count > 9 ? '9+' : count}
+                </span>
+            )}
         </Link>
     );
 }

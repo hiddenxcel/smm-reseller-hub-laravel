@@ -1,3 +1,5 @@
+import AppLogo from '@/components/AppLogo';
+import { Button } from '@/components/ui/button';
 import { Link, router } from '@inertiajs/react';
 import { Check, SkipForward } from 'lucide-react';
 import { PropsWithChildren } from 'react';
@@ -33,12 +35,7 @@ export default function OnboardingLayout({ step, steps, completed, canSkip = tru
             <header className="border-b border-border/60">
                 <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
                     <Link href="/" className="font-heading flex items-center gap-2 font-extrabold">
-                        <span
-                            className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground"
-                            aria-hidden
-                        >
-                            ⚡
-                        </span>
+                        <AppLogo />
                         Resellers Hub
                     </Link>
 
@@ -82,7 +79,12 @@ export default function OnboardingLayout({ step, steps, completed, canSkip = tru
                 <main>
                     {children}
 
-                    {canSkip && <SkipControl step={step} />}
+                    {canSkip && (
+                        <SkipControl
+                            step={step}
+                            required={steps.find((item) => item.key === step)?.required ?? true}
+                        />
+                    )}
                 </main>
             </div>
         </div>
@@ -163,27 +165,41 @@ function StepLink({
  * dashboard keeps asking for it, and going live still refuses without it.
  * Which is why the wording promises "later" and names where later lives.
  */
-function SkipControl({ step }: { step: string }) {
+function SkipControl({ step, required }: { step: string; required: boolean }) {
     const isTestStep = step === 'test';
 
+    const heading = isTestStep
+        ? 'Not ready to test?'
+        : required
+          ? 'Cannot do this right now?'
+          : 'This step is optional';
+
+    const body = isTestStep
+        ? 'Your bot stays in sandbox until you have tested it, so only your own test numbers get replies.'
+        : required
+          ? 'Nothing is lost — your shop just is not finished yet. You can pick this up in Settings whenever you are ready.'
+          : 'Your bot works either way — you would just credit customer wallets by hand. You can set this up in Settings later.';
+
     return (
-        <div className="mt-10 border-t border-border pt-6">
-            <button
+        <div className="mt-10 flex flex-col gap-4 rounded-xl border border-dashed border-border bg-muted/40 p-5 sm:flex-row sm:items-center sm:justify-between">
+            {/* Dashed and muted on purpose: this is the secondary way out of the
+                step, and it should never compete with the primary action above
+                it for a reseller who can finish today. */}
+            <div className="min-w-0">
+                <p className="text-sm font-medium">{heading}</p>
+                <p className="mt-1 max-w-md text-xs text-muted-foreground">{body}</p>
+            </div>
+
+            <Button
                 type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 sm:self-center"
                 onClick={() => router.post(route('onboarding.skip', step))}
-                className="inline-flex items-center gap-2 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
             >
                 <SkipForward className="size-4" aria-hidden />
-                {isTestStep
-                    ? 'I’ll test it later'
-                    : 'Skip for now — I’ll come back to this'}
-            </button>
-
-            <p className="mt-2 max-w-md text-xs text-muted-foreground">
-                {isTestStep
-                    ? 'Your bot stays in sandbox until you have tested it, so only your own test numbers get replies.'
-                    : 'Nothing is lost — your shop just is not finished yet. You can pick this up in Settings whenever you are ready.'}
-            </p>
+                {isTestStep ? 'Test it later' : 'Skip for now'}
+            </Button>
         </div>
     );
 }

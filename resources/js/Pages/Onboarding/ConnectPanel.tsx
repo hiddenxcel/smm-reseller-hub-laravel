@@ -15,7 +15,6 @@ type Props = {
 
 export default function ConnectPanel({ step, steps, completed, canSkip }: Props) {
     const { data, setData, post, processing, errors } = useForm({
-        name: '',
         api_url: '',
         api_key: '',
     });
@@ -33,27 +32,10 @@ export default function ConnectPanel({ step, steps, completed, canSkip }: Props)
                 <h1 className="font-heading text-2xl font-extrabold">Connect your panel</h1>
                 <p className="mt-2 text-muted-foreground">
                     Paste your panel address and admin API key. We will work out the rest —
-                    which API version it speaks, and how it wants the key sent.
+                    its name, which API version it speaks, and how it wants the key sent.
                 </p>
 
                 <form onSubmit={submit} className="mt-8 space-y-5">
-                    <div>
-                        <Label htmlFor="name">Panel name</Label>
-                        <Input
-                            id="name"
-                            value={data.name}
-                            onChange={(event) => setData('name', event.target.value)}
-                            placeholder="My main panel"
-                            className="mt-1.5"
-                            autoFocus
-                            required
-                        />
-                        <p className="mt-1.5 text-xs text-muted-foreground">
-                            Just for you — it is how this panel appears in your dashboard.
-                        </p>
-                        <FieldError message={errors.name} />
-                    </div>
-
                     <div>
                         <Label htmlFor="api_url">Panel URL</Label>
                         <Input
@@ -62,6 +44,7 @@ export default function ConnectPanel({ step, steps, completed, canSkip }: Props)
                             onChange={(event) => setData('api_url', event.target.value)}
                             placeholder="yourpanel.com"
                             className="mt-1.5"
+                            autoFocus
                             required
                         />
                         <p className="mt-1.5 text-xs text-muted-foreground">

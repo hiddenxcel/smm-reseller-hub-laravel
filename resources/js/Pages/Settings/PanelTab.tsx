@@ -93,7 +93,6 @@ function ConnectPanelCard({ hasPanel }: { hasPanel: boolean }) {
     const [open, setOpen] = useState(! hasPanel);
 
     const { data, setData, post, processing, errors, reset } = useForm({
-        name: '',
         api_url: '',
         api_key: '',
     });
@@ -120,22 +119,6 @@ function ConnectPanelCard({ hasPanel }: { hasPanel: boolean }) {
             description="Entering an address you already use will rotate its key instead of adding a duplicate."
         >
             <form onSubmit={submit} className="max-w-lg space-y-5">
-                <div>
-                    <Label htmlFor="name">Panel name</Label>
-                    <Input
-                        id="name"
-                        value={data.name}
-                        onChange={(event) => setData('name', event.target.value)}
-                        placeholder="My main panel"
-                        className="mt-1.5"
-                        required
-                    />
-                    <p className="mt-1.5 text-xs text-muted-foreground">
-                        Just for you — it is how this panel appears in your dashboard.
-                    </p>
-                    <FieldError message={errors.name} />
-                </div>
-
                 <div>
                     <Label htmlFor="api_url">Panel URL</Label>
                     <Input

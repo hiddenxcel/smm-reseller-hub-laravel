@@ -168,7 +168,6 @@ class OnboardingWizardTest extends TestCase
 
         $this->actingAs($this->tenant, 'tenant')
             ->post(route('onboarding.panel.store'), [
-                'name' => 'My Panel',
                 'api_url' => 'mypanel.com',
                 'api_key' => 'secret-key',
             ])
@@ -176,11 +175,47 @@ class OnboardingWizardTest extends TestCase
 
         $this->assertDatabaseHas('tenant_panels', [
             'tenant_id' => $this->tenant->id,
-            'name' => 'My Panel',
+            // Never asked for — taken from the address.
+            'name' => 'Mypanel',
             'api_url' => 'https://mypanel.com/api/v2',
             'auth_method' => 'param',
             'status' => 'active',
         ]);
+    }
+
+    public function test_it_names_a_panel_from_its_address(): void
+    {
+        Http::fake(['*' => Http::response(['balance' => '10.00'])]);
+
+        $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.panel.store'), [
+            'api_url' => 'https://www.best-smm.co.uk/api/v2',
+            'api_key' => 'key',
+        ]);
+
+        // `www.` and the two-part suffix carry no meaning; the hyphen becomes
+        // a space so the label reads as words.
+        $this->assertDatabaseHas('tenant_panels', ['name' => 'Best Smm']);
+    }
+
+    public function test_reconnecting_a_panel_keeps_the_name_the_reseller_chose(): void
+    {
+        Http::fake(['*' => Http::response(['balance' => '10.00'])]);
+
+        $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.panel.store'), [
+            'api_url' => 'mypanel.com',
+            'api_key' => 'first-key',
+        ]);
+
+        TenantPanel::where('tenant_id', $this->tenant->id)->update(['name' => 'Renamed by hand']);
+
+        // Rotating the key must not undo the rename.
+        $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.panel.store'), [
+            'api_url' => 'mypanel.com',
+            'api_key' => 'second-key',
+        ]);
+
+        $this->assertDatabaseCount('tenant_panels', 1);
+        $this->assertDatabaseHas('tenant_panels', ['name' => 'Renamed by hand']);
     }
 
     public function test_it_appends_the_api_path_to_a_bare_domain(): void
@@ -188,7 +223,6 @@ class OnboardingWizardTest extends TestCase
         Http::fake(['*' => Http::response(['balance' => '10.00'])]);
 
         $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.panel.store'), [
-            'name' => 'Panel',
             'api_url' => 'https://panel.example.com',
             'api_key' => 'key',
         ]);
@@ -203,7 +237,6 @@ class OnboardingWizardTest extends TestCase
         Http::fake(['*' => Http::response(['balance' => '10.00'])]);
 
         $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.panel.store'), [
-            'name' => 'Panel',
             'api_url' => 'https://panel.example.com/api/v2',
             'api_key' => 'key',
         ]);
@@ -219,7 +252,6 @@ class OnboardingWizardTest extends TestCase
 
         $this->actingAs($this->tenant, 'tenant')
             ->post(route('onboarding.panel.store'), [
-                'name' => 'Panel',
                 'api_url' => 'panel.example.com',
                 'api_key' => 'wrong',
             ])
@@ -236,7 +268,6 @@ class OnboardingWizardTest extends TestCase
         $this->assertFalse($progress->isComplete(OnboardingStep::ConnectPanel));
 
         $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.panel.store'), [
-            'name' => 'Panel',
             'api_url' => 'panel.example.com',
             'api_key' => 'key',
         ]);

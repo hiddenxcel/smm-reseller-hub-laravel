@@ -44,6 +44,11 @@ export interface Announcement {
 export interface Flash {
     success?: string | null;
     error?: string | null;
+    /**
+     * A newly issued API key, in plaintext, for the single render after it was
+     * created. Nothing can show it a second time — only a hash is stored.
+     */
+    newApiKey?: string | null;
 }
 
 export type PageProps<
@@ -55,5 +60,7 @@ export type PageProps<
     };
     impersonation: Impersonation | null;
     announcements: Announcement[];
+    /** Support tickets whose last word was ours — the sidebar badge. */
+    supportUnread: number;
     flash: Flash;
 };

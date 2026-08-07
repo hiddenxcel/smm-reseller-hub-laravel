@@ -2,10 +2,14 @@
 
 namespace App\Services\Support;
 
+use App\Models\Superadmin;
 use App\Models\SupportTicket;
 use App\Models\SupportTicketMessage;
 use App\Models\Tenant;
+use App\Notifications\SupportTicketReceived;
+use App\Notifications\SupportTicketReplied;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * Opening and answering platform support tickets.
@@ -35,7 +39,7 @@ class SupportTickets
      */
     public static function open(Tenant $tenant, array $data): SupportTicket
     {
-        return DB::transaction(function () use ($tenant, $data) {
+        $ticket = DB::transaction(function () use ($tenant, $data) {
             $ticket = SupportTicket::withoutTenantScope()->create([
                 'reference' => SupportTicket::makeReference(),
                 'tenant_id' => $tenant->id,
@@ -54,6 +58,13 @@ class SupportTickets
 
             return $ticket;
         });
+
+        // After the transaction, not inside it: a queued notification picked up
+        // before the commit lands would look up a ticket that does not exist
+        // yet, and a mail failure must not roll back a ticket we accepted.
+        static::alertAdmins($ticket->setRelation('tenant', $tenant), isNew: true);
+
+        return $ticket;
     }
 
     /**
@@ -66,7 +77,7 @@ class SupportTickets
      */
     public function replyAsTenant(string $body): SupportTicketMessage
     {
-        return DB::transaction(function () use ($body) {
+        $message = DB::transaction(function () use ($body) {
             $message = $this->ticket->messages()->create([
                 'author' => 'tenant',
                 'body' => $body,
@@ -81,6 +92,10 @@ class SupportTickets
 
             return $message;
         });
+
+        static::alertAdmins($this->ticket, isNew: false);
+
+        return $message;
     }
 
     /**
@@ -92,7 +107,7 @@ class SupportTickets
      */
     public function replyAsAdmin(int $adminId, string $body, bool $internal = false): SupportTicketMessage
     {
-        return DB::transaction(function () use ($adminId, $body, $internal) {
+        $message = DB::transaction(function () use ($adminId, $body, $internal) {
             $message = $this->ticket->messages()->create([
                 'superadmin_id' => $adminId,
                 'author' => 'admin',
@@ -115,6 +130,14 @@ class SupportTickets
 
             return $message;
         });
+
+        // A note is not correspondence — telling the reseller we replied when
+        // we only wrote to ourselves is the one mistake this must never make.
+        if (! $internal) {
+            $this->ticket->tenant?->notify(new SupportTicketReplied($this->ticket));
+        }
+
+        return $message;
     }
 
     public function resolve(): void
@@ -145,5 +168,31 @@ class SupportTickets
     public function setPriority(string $priority): void
     {
         $this->ticket->forceFill(['priority' => $priority])->save();
+    }
+
+    /**
+     * Tell the people who can answer that something is waiting.
+     *
+     * Every active admin who may work tickets, rather than one owner: a queue
+     * whose only alert goes to somebody on leave is a queue nobody answers.
+     * Disabled accounts are excluded — they cannot sign in to act on it.
+     *
+     * Failures are swallowed deliberately. A ticket that was accepted must stay
+     * accepted even when the mail host is refusing connections; the ticket is
+     * still in the console, which is the record that matters.
+     */
+    private static function alertAdmins(SupportTicket $ticket, bool $isNew): void
+    {
+        $admins = Superadmin::query()
+            ->where('status', 'active')
+            ->whereNotNull('email')
+            ->get()
+            ->filter(fn (Superadmin $admin) => $admin->can('tickets.manage'));
+
+        if ($admins->isEmpty()) {
+            return;
+        }
+
+        Notification::send($admins, new SupportTicketReceived($ticket, $isNew));
     }
 }

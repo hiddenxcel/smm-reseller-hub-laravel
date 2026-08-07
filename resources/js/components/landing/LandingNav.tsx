@@ -1,3 +1,4 @@
+import AppLogo from '@/components/AppLogo';
 import { Button } from '@/components/ui/button';
 import { Link } from '@inertiajs/react';
 import { Menu, X } from 'lucide-react';
@@ -17,12 +18,7 @@ export default function LandingNav() {
         <header className="sticky top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur">
             <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
                 <Link href="/" className="flex items-center gap-2 font-heading text-lg font-extrabold">
-                    <span
-                        className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground"
-                        aria-hidden
-                    >
-                        ⚡
-                    </span>
+                    <AppLogo />
                     Resellers Hub
                 </Link>
 

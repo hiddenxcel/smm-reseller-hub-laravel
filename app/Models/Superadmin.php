@@ -6,6 +6,7 @@ use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 
 /**
  * The platform owner (HiddenXcel), behind /hx-control. Deliberately
@@ -14,7 +15,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
  */
 class Superadmin extends Authenticatable implements AuthenticatableContract
 {
-    use HasFactory;
+    use HasFactory, Notifiable;
 
     public $timestamps = false;
 

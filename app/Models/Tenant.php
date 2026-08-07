@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  */
 class Tenant extends Authenticatable implements AuthenticatableContract
 {
-    use HasFactory;
+    use HasFactory, Notifiable;
 
     protected $fillable = [
         'business_name',

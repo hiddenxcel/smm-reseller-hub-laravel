@@ -2,7 +2,7 @@ import OnboardingLayout, { WizardStep } from '@/Layouts/OnboardingLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { AlertCircle, Check, Clock, Loader2, Trash2 } from 'lucide-react';
 import { FormEventHandler, useMemo, useState } from 'react';
 
@@ -84,8 +84,8 @@ export default function SetupPayments({ step, steps, completed, gateways, connec
             <div className="max-w-xl">
                 <h1 className="font-heading text-2xl font-extrabold">Set up payments</h1>
                 <p className="mt-2 text-muted-foreground">
-                    Add a gateway so your customers can top up their wallets themselves. You can
-                    skip this and credit wallets by hand for now &mdash; your bot works either way.
+                    Add a gateway so your customers can top up their wallets themselves,
+                    without waiting on you to confirm anything.
                 </p>
 
                 {connected.length > 0 && (
@@ -204,16 +204,6 @@ export default function SetupPayments({ step, steps, completed, gateways, connec
                         </div>
                     )}
                 </form>
-
-                {/* Payments are optional, so the way past this step is visible
-                    rather than something a reseller has to guess at. */}
-                <div className="mt-8 border-t border-border pt-6">
-                    <Button variant="ghost" asChild>
-                        <Link href={route('onboarding.step', 'test')}>
-                            Skip for now &mdash; I&rsquo;ll credit wallets myself
-                        </Link>
-                    </Button>
-                </div>
             </div>
         </OnboardingLayout>
     );

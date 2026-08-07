@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ApiAccessController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CustomersController;
 use App\Http\Controllers\DashboardController;
@@ -9,8 +10,8 @@ use App\Http\Controllers\Onboarding\ConnectWhatsAppController;
 use App\Http\Controllers\Onboarding\ImportServicesController;
 use App\Http\Controllers\Onboarding\OnboardingController;
 use App\Http\Controllers\Onboarding\RentNumberController;
-use App\Http\Controllers\Onboarding\SkipStepController;
 use App\Http\Controllers\Onboarding\SetupPaymentsController;
+use App\Http\Controllers\Onboarding\SkipStepController;
 use App\Http\Controllers\Onboarding\TestBotController;
 use App\Http\Controllers\OrderBotController;
 use App\Http\Controllers\OrderBotGatewaysController;
@@ -149,6 +150,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings/{tab?}', [SettingsController::class, 'show'])
         ->whereIn('tab', ['panel', 'services', 'whatsapp', 'payments'])
         ->name('settings');
+
+    // API access. This screen is where a reseller hands out keys to their own
+    // customers; the API those keys open is in routes/api.php and is not part
+    // of the web group at all. Literal segments before `{apiKey}`, as
+    // everywhere else.
+    Route::get('/api-access/{tab?}', [ApiAccessController::class, 'show'])
+        ->whereIn('tab', ['keys', 'docs', 'logs'])
+        ->name('api-access');
+    Route::post('/api-access/keys', [ApiAccessController::class, 'store'])->name('api-access.store');
+    Route::patch('/api-access/keys/{apiKey}', [ApiAccessController::class, 'update'])->name('api-access.update');
+    Route::delete('/api-access/keys/{apiKey}', [ApiAccessController::class, 'destroy'])->name('api-access.destroy');
 
     // Help. The one place in the app where the reseller is the one asking for
     // support rather than giving it — see SupportCenterController.
