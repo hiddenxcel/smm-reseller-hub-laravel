@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
  * initiate() creates the invoice and returns its checkout URL; the payer pays
  * there and NOWPayments POSTs an IPN callback back to us.
  */
-class NowPaymentsClient implements WebhookVerifier
+class NowPaymentsClient implements PaymentGateway, StatusCheckable, WebhookVerifier
 {
     private const INVOICE_URL = 'https://api.nowpayments.io/v1/invoice';
 

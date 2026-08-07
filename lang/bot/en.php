@@ -90,6 +90,16 @@ return [
     'topup_prompt' => '💰 How much would you like to add to your wallet? Enter an amount in {cur} (minimum {min}).',
     'topup_amount_invalid' => 'Please enter a valid amount (minimum {min} {cur}).',
 
+    // ---- Choosing a payment method ------------------------------------------
+    // Only shown when the reseller has connected more than one gateway. The
+    // gateway names themselves are brands and come from config, not from here.
+    'choose_payment_method' => '💳 How would you like to pay *{amount}*?',
+    'btn_choose_payment' => 'Payment methods',
+    'payment_header' => 'Pay with',
+    'pay_method_mobile' => 'Pay from your phone',
+    'pay_method_online' => 'Pay online',
+    'pay_method_invalid' => "That payment method isn't available. Please pick one from the list.",
+
     // ---- Payment phone (mobile money) ---------------------------------------
     'ask_pay_phone' => '📱 Enter the phone to pay from (mobile money). Use *{suggest}* or send another number.',
     'pay_phone_invalid' => "That phone number doesn't look right. Please send it again (e.g. 07XXXXXXXX).",

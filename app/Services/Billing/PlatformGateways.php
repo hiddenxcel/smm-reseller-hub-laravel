@@ -5,6 +5,7 @@ namespace App\Services\Billing;
 use App\Services\Payments\CryptomusClient;
 use App\Services\Payments\HeleketClient;
 use App\Services\Payments\NowPaymentsClient;
+use App\Services\Payments\PaymentGateway;
 use App\Services\Payments\SnippeClient;
 use Illuminate\Support\Arr;
 
@@ -93,7 +94,11 @@ class PlatformGateways
         return (string) (int) ceil(($cents / 100) * $rate);
     }
 
-    public static function make(string $code): SnippeClient|NowPaymentsClient|CryptomusClient|null
+    /**
+     * The platform's own client for a gateway, built from config rather than
+     * from a reseller's stored credentials — this is how resellers pay us.
+     */
+    public static function make(string $code): ?PaymentGateway
     {
         $keys = config("services.billing.{$code}", []);
 

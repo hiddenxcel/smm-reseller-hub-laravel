@@ -90,6 +90,14 @@ return [
     'topup_prompt' => '💰 Cüzdanınıza ne kadar eklemek istersiniz? {cur} cinsinden bir tutar girin (en az {min}).',
     'topup_amount_invalid' => 'Lütfen geçerli bir tutar girin (en az {min} {cur}).',
 
+    // ---- Choosing a payment method ------------------------------------------
+    'choose_payment_method' => '💳 *{amount}* tutarını nasıl ödemek istersiniz?',
+    'btn_choose_payment' => 'Ödeme yöntemleri',
+    'payment_header' => 'Şununla öde',
+    'pay_method_mobile' => 'Telefonunuzdan ödeyin',
+    'pay_method_online' => 'Çevrimiçi ödeyin',
+    'pay_method_invalid' => 'Bu ödeme yöntemi kullanılamıyor. Lütfen listeden birini seçin.',
+
     // ---- Payment phone (mobile money) ---------------------------------------
     'ask_pay_phone' => '📱 Ödeme yapılacak telefon numarasını girin (mobil ödeme). *{suggest}* kullanın veya başka bir numara gönderin.',
     'pay_phone_invalid' => 'Bu telefon numarası doğru görünmüyor. Lütfen tekrar gönderin (örn. 07XXXXXXXX).',

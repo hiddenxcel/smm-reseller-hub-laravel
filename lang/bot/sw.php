@@ -87,6 +87,14 @@ return [
     'topup_prompt' => '💰 Ungependa kuongeza kiasi gani kwenye salio lako? Andika kiasi kwa {cur} (kima cha chini {min}).',
     'topup_amount_invalid' => 'Tafadhali andika kiasi sahihi (kima cha chini {min} {cur}).',
 
+    // ---- Choosing a payment method ------------------------------------------
+    'choose_payment_method' => '💳 Ungependa kulipa *{amount}* kwa njia gani?',
+    'btn_choose_payment' => 'Njia za malipo',
+    'payment_header' => 'Lipa kwa',
+    'pay_method_mobile' => 'Lipa kwa simu yako',
+    'pay_method_online' => 'Lipa mtandaoni',
+    'pay_method_invalid' => 'Njia hiyo ya malipo haipatikani. Tafadhali chagua moja kwenye orodha.',
+
     // ---- Payment phone (mobile money) ---------------------------------------
     'ask_pay_phone' => '📱 Andika namba ya simu ya kulipia (mobile money). Tumia *{suggest}* au tuma namba nyingine.',
     'pay_phone_invalid' => 'Namba hiyo ya simu haionekani sahihi. Tafadhali tuma tena (mfano 07XXXXXXXX).',

@@ -6,9 +6,11 @@ use App\Models\TenantPaymentGateway;
 use App\Services\Payments\Gateway;
 use App\Services\Payments\GatewayCredentials;
 use App\Services\Payments\GatewayFactory;
+use App\Services\Payments\IpnRegistrar;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -47,7 +49,7 @@ class OrderBotGatewaysController extends Controller
      * Secrets never travel — only whether each field has something saved, so
      * the form can say "leave blank to keep" instead of showing a key back.
      *
-     * @param  \Illuminate\Support\Collection<string, TenantPaymentGateway>  $connected
+     * @param  Collection<string, TenantPaymentGateway>  $connected
      * @return array<int, array>
      */
     private function gateways($connected): array
@@ -172,7 +174,7 @@ class OrderBotGatewaysController extends Controller
 
         $client = $this->factory->make($row);
 
-        if (! method_exists($client, 'registerIpn')) {
+        if (! $client instanceof IpnRegistrar) {
             return back()->with('error', 'This gateway does not need an IPN.');
         }
 

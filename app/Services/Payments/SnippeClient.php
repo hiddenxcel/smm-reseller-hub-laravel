@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
  * confirmation arrives later on the webhook. There is no redirect URL — the
  * customer approves on the handset.
  */
-class SnippeClient implements WebhookVerifier
+class SnippeClient implements PaymentGateway, StatusCheckable, WebhookVerifier
 {
     private const PAYMENTS_URL = 'https://api.snippe.sh/v1/payments';
 
@@ -25,7 +25,8 @@ class SnippeClient implements WebhookVerifier
         private string $webhookSecret,
     ) {}
 
-    public function initiate(PaymentRequest $request): PaymentInitiation
+    /** The description goes unused: a USSD prompt shows the amount, not a label. */
+    public function initiate(PaymentRequest $request, string $description = 'Wallet top-up'): PaymentInitiation
     {
         try {
             $response = Http::withToken($this->apiKey)

@@ -8,6 +8,7 @@ use App\Models\Tenant;
 use App\Models\TenantPanel;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
+use App\Services\Ai\AiAnswers;
 use App\Services\Bots\BotHandler;
 use App\Services\Bots\BotMessenger;
 use App\Services\Bots\BotSettings;
@@ -32,6 +33,14 @@ class SupportBotHandler implements BotHandler
     private const EXIT_WORDS = ['cancel', 'exit', 'toka'];
 
     private const MENU_WORDS = ['0', 'menu', 'back', 'hi', 'hello', 'help', 'habari', 'start'];
+
+    /**
+     * Question-and-answer pairs carried into the next AI question.
+     *
+     * Enough for a follow-up to make sense, few enough that the reseller is
+     * not re-billed for a long conversation on every turn.
+     */
+    private const AI_HISTORY_TURNS = 4;
 
     private int $tenantId;
 
@@ -83,10 +92,7 @@ class SupportBotHandler implements BotHandler
         match ($state) {
             SupportState::Menu => $this->onMenuChoice($from, $text),
             SupportState::AwaitOrderId => $this->onOrderId($from, $text, $conversation->context ?? []),
-
-            // AI FAQ arrives with the DeepSeek port; until then the menu is
-            // better than silence.
-            SupportState::AiFaq => $this->showMenu($from),
+            SupportState::AiFaq => $this->onAiQuestion($from, $text, $conversation->context ?? []),
         };
     }
 
@@ -144,12 +150,100 @@ class SupportBotHandler implements BotHandler
         match ($action) {
             SupportAction::Human => $this->connectToHuman($from),
             SupportAction::TopupIssue => $this->explainTopupIssue($from),
-
-            // Without the AI add-on ported yet, route this to a human rather
-            // than leaving the customer with nothing.
-            SupportAction::Faq => $this->connectToHuman($from),
+            SupportAction::Faq => $this->startAiFaq($from),
             default => $this->showMenu($from),
         };
+    }
+
+    // ---- AI FAQ ----------------------------------------------------------
+
+    /**
+     * Option 8. A reseller without the add-on gets a human instead.
+     *
+     * Checked here rather than hidden from the menu because the menu is one
+     * static block of text — and a customer who picked it must land somewhere
+     * that helps, not on an apology.
+     */
+    private function startAiFaq(string $from): void
+    {
+        if (! app(AiAnswers::class)->isAvailable($this->tenantId)) {
+            $this->connectToHuman($from);
+
+            return;
+        }
+
+        $this->moveTo($from, SupportState::AiFaq, ['history' => []]);
+
+        $this->messenger->sendText(
+            $from,
+            "🤖 Ask me anything about our services or prices.\n"
+                .'Reply *0* for the menu, or *5* to reach a human.',
+            'AI_FAQ_OPEN',
+        );
+    }
+
+    /**
+     * A question for the AI.
+     *
+     * The menu and exit words are handled before this is ever reached, so a
+     * customer is never trapped in a conversation with the assistant — that
+     * escape hatch matters more than any answer it gives.
+     */
+    private function onAiQuestion(string $from, string $text, array $context): void
+    {
+        if ($text === '') {
+            $this->messenger->sendText($from, 'Please type your question, or *0* for the menu.');
+
+            return;
+        }
+
+        $history = is_array($context['history'] ?? null) ? $context['history'] : [];
+
+        $answer = app(AiAnswers::class)->answer(
+            tenant: $this->tenant,
+            question: $text,
+            shop: Arr::get(BotSettings::for($this->tenantId, self::BOT), 'shop', []),
+            history: $history,
+        );
+
+        // DeepSeek was unreachable, refused the key, or the add-on lapsed
+        // mid-conversation. A customer who has already typed a question is
+        // owed a person, not a retry.
+        if ($answer === null) {
+            $this->messenger->sendText(
+                $from,
+                "⚠️ I couldn't answer that one. Let me get you a human.",
+                'AI_FAQ_FAILED',
+            );
+
+            $this->connectToHuman($from);
+
+            return;
+        }
+
+        $this->messenger->sendText($from, $answer, 'AI_FAQ_ANSWER');
+
+        $this->moveTo($from, SupportState::AiFaq, [
+            'history' => $this->trimmedHistory($history, $text, $answer),
+        ]);
+    }
+
+    /**
+     * The last few turns, so a follow-up like "and for TikTok?" makes sense.
+     *
+     * Capped because the whole history is re-sent on every question and the
+     * reseller pays for those tokens each time — an hour-long conversation
+     * would bill them for the same opening exchange fifty times over.
+     *
+     * @param  array<int, array{role: string, content: string}>  $history
+     * @return array<int, array{role: string, content: string}>
+     */
+    private function trimmedHistory(array $history, string $question, string $answer): array
+    {
+        $history[] = ['role' => 'user', 'content' => $question];
+        $history[] = ['role' => 'assistant', 'content' => $answer];
+
+        return array_slice($history, -self::AI_HISTORY_TURNS * 2);
     }
 
     private function onOrderId(string $from, string $text, array $context): void

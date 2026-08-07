@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
  * Both the outgoing request signature and the incoming webhook signature are
  * HMAC-SHA512, uppercased, over "{timestamp}\n{nonce}\n{body}\n".
  */
-class BinancePayClient implements WebhookVerifier
+class BinancePayClient implements PaymentGateway, WebhookVerifier
 {
     private const ORDER_URL = 'https://bpay.binanceapi.com/binancepay/openapi/v3/order';
 

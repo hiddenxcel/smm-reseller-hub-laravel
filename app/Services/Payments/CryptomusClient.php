@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
  * md5(base64(json_body) + api_key) — in the `sign` header on the way out, and
  * in the body on the way back.
  */
-class CryptomusClient implements WebhookVerifier
+class CryptomusClient implements PaymentGateway, WebhookVerifier
 {
     protected const INVOICE_URL = 'https://api.cryptomus.com/v1/payment';
 

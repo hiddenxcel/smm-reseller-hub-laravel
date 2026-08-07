@@ -9,6 +9,7 @@ use App\Models\BotCustomer;
 use App\Models\BotOrder;
 use App\Models\BotService;
 use App\Models\Tenant;
+use App\Models\TenantPaymentGateway;
 use App\Services\Bots\BotHandler;
 use App\Services\Bots\BotLang;
 use App\Services\Bots\BotMessenger;
@@ -18,6 +19,7 @@ use App\Services\Payments\Gateway;
 use App\Services\Payments\GatewayFactory;
 use App\Services\Payments\StartTopup;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 
 /**
  * The selling bot: a customer messages the reseller's number and walks out
@@ -102,6 +104,7 @@ class OrderBotHandler implements BotHandler
 
             OrderState::TopupDecision => $this->onTopupDecision($from, $text, $context, $customer),
             OrderState::TopupAmount => $this->onTopupAmount($from, $text, $customer),
+            OrderState::SelectGateway => $this->onGatewayChosen($from, $text, $context, $customer),
             OrderState::TopupPhone => $this->onTopupPhone($from, $text, $context, $customer),
 
             // AI chat is wired in the next step; until then the customer is
@@ -763,8 +766,14 @@ class OrderBotHandler implements BotHandler
     }
 
     /**
-     * Ask for a phone first if the gateway pushes to one, otherwise go
-     * straight to the gateway.
+     * Decide how the customer will pay, then collect it.
+     *
+     * A reseller who has connected several gateways has done so because their
+     * customers want the choice — a Tanzanian shop taking both mobile money and
+     * crypto serves two different customers — so the choice is offered rather
+     * than silently resolved to the default.
+     *
+     * One gateway means no question worth asking, so it is used directly.
      */
     private function collect(
         string $from,
@@ -772,15 +781,110 @@ class OrderBotHandler implements BotHandler
         array $context,
         BotCustomer $customer,
     ): void {
-        $credentials = $this->gateways->firstUsableFor($this->tenantId);
+        $usable = $this->gateways->usableFor($this->tenantId);
 
-        if ($credentials === null) {
+        if ($usable->isEmpty()) {
             $this->sayAndFinish($from, 'topup_no_gateway');
 
             return;
         }
 
-        if (Gateway::needsPhone($credentials->gateway)) {
+        if ($usable->count() === 1) {
+            $this->collectVia($from, $usable->first()->gateway, $amount, $context, $customer);
+
+            return;
+        }
+
+        $this->askGateway($from, $usable, $amount, $context);
+    }
+
+    /**
+     * The payment-method menu.
+     *
+     * Labels come from config/gateways.php rather than from translations: a
+     * gateway's name is a brand and stays as it is in every language, and a
+     * reseller adding one must not have to wait for five translations.
+     *
+     * @param  Collection<int, TenantPaymentGateway>  $usable
+     */
+    private function askGateway(string $from, $usable, string $amount, array $context): void
+    {
+        $rows = $usable
+            // WhatsApp silently drops a list longer than this, which would hide
+            // the gateways at the end rather than fail visibly.
+            ->take(self::MAX_LIST_ROWS)
+            ->map(fn ($row) => [
+                'id' => "pay:{$row->gateway}",
+                'title' => mb_substr(Gateway::label($row->gateway), 0, 24),
+                'description' => $this->t('pay_method_'.(Gateway::needsPhone($row->gateway) ? 'mobile' : 'online')),
+            ])
+            ->all();
+
+        $context['pay_amount'] = $amount;
+        $this->moveTo($from, OrderState::SelectGateway, $context);
+
+        $this->messenger->sendList(
+            $from,
+            $this->t('choose_payment_method', ['amount' => $this->money($amount)]),
+            $this->t('btn_choose_payment'),
+            $this->t('payment_header'),
+            $rows,
+            'PAY',
+        );
+    }
+
+    /**
+     * The customer picked a method.
+     *
+     * Re-checked against what is usable rather than trusted: a list reply can
+     * arrive minutes later, by which time the reseller may have paused that
+     * gateway.
+     */
+    private function onGatewayChosen(
+        string $from,
+        string $text,
+        array $context,
+        BotCustomer $customer,
+    ): void {
+        $chosen = str_starts_with($text, 'pay:') ? substr($text, 4) : '';
+        $amount = (string) ($context['pay_amount'] ?? '0');
+
+        if ($chosen === '' || $this->gateways->usableGateway($this->tenantId, $chosen) === null) {
+            // Ask again rather than dropping them to the menu — they are one tap
+            // from paying, and the amount is still in context.
+            $usable = $this->gateways->usableFor($this->tenantId);
+
+            if ($usable->isEmpty()) {
+                $this->sayAndFinish($from, 'topup_no_gateway');
+
+                return;
+            }
+
+            $this->say($from, 'pay_method_invalid');
+            $this->askGateway($from, $usable, $amount, $context);
+
+            return;
+        }
+
+        $this->collectVia($from, $chosen, $amount, $context, $customer);
+    }
+
+    /**
+     * Ask for a phone first if this gateway pushes to one, otherwise go
+     * straight to it.
+     */
+    private function collectVia(
+        string $from,
+        string $gateway,
+        string $amount,
+        array $context,
+        BotCustomer $customer,
+    ): void {
+        // Carried so the phone step, which happens after the choice, still
+        // knows which gateway the number is for.
+        $context['pay_gateway'] = $gateway;
+
+        if (Gateway::needsPhone($gateway)) {
             $context['pay_amount'] = $amount;
             $this->moveTo($from, OrderState::TopupPhone, $context);
 
@@ -812,6 +916,9 @@ class OrderBotHandler implements BotHandler
             amount: $amount,
             currency: $this->currency,
             phone: $phone,
+            // Blank when the shop has a single gateway and nothing was asked,
+            // which lets StartTopup fall back to the reseller's default.
+            gateway: (string) ($context['pay_gateway'] ?? ''),
         );
 
         if ($result->noGateway) {

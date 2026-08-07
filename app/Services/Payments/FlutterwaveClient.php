@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
  * header. That makes it a shared secret in transit, so the comparison below is
  * constant-time and an empty secret is refused outright.
  */
-class FlutterwaveClient implements WebhookVerifier
+class FlutterwaveClient implements PaymentGateway, WebhookVerifier
 {
     private const PAYMENTS_URL = 'https://api.flutterwave.com/v3/payments';
 

@@ -3,15 +3,18 @@
 namespace Tests\Feature;
 
 use App\Services\Payments\FlutterwaveClient;
-use App\Services\Payments\PayPalClient;
 use App\Services\Payments\PaymentRequest;
+use App\Services\Payments\PayPalClient;
+use App\Services\Payments\PaystackClient;
 use App\Services\Payments\PesapalClient;
+use App\Services\Payments\RazorpayClient;
 use App\Services\Payments\StripeClient;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * The four gateways added last: Stripe, Flutterwave, PayPal and Pesapal.
+ * The hosted-checkout gateways: Stripe, Flutterwave, PayPal, Pesapal, Paystack
+ * and Razorpay.
  *
  * Each is tested against the shape its own documentation describes, because
  * that is the only thing standing between a reseller's customers and a payment
@@ -365,6 +368,231 @@ class PaymentGatewayClientsTest extends TestCase
         $client = new PesapalClient('key', 'secret', 'IPN-1');
 
         $this->assertFalse($client->verifyWebhook('{"OrderTrackingId":"OT-1"}', []));
+    }
+
+    // ---- Paystack --------------------------------------------------------
+
+    public function test_paystack_returns_the_hosted_checkout_url(): void
+    {
+        Http::fake([
+            'api.paystack.co/*' => Http::response([
+                'status' => true,
+                'data' => [
+                    'authorization_url' => 'https://checkout.paystack.com/abc123',
+                    'reference' => 'tu_test123',
+                ],
+            ]),
+        ]);
+
+        $result = (new PaystackClient('sk_test', 'sk_test'))->initiate($this->request());
+
+        $this->assertTrue($result->started);
+        $this->assertSame('https://checkout.paystack.com/abc123', $result->redirectUrl);
+    }
+
+    /**
+     * Paystack charges in kobo. Sending 25 instead of 2500 would take
+     * twenty-five kobo for a twenty-five naira top-up.
+     */
+    public function test_paystack_converts_the_amount_to_minor_units(): void
+    {
+        Http::fake([
+            'api.paystack.co/*' => Http::response([
+                'status' => true,
+                'data' => ['authorization_url' => 'https://checkout.paystack.com/x'],
+            ]),
+        ]);
+
+        (new PaystackClient('sk_test', 'sk_test'))->initiate($this->request());
+
+        Http::assertSent(fn ($request) => $request['amount'] === 2500
+            && $request['reference'] === 'tu_test123');
+    }
+
+    public function test_paystack_reports_a_refusal(): void
+    {
+        Http::fake([
+            'api.paystack.co/*' => Http::response([
+                'status' => false,
+                'message' => 'Invalid key',
+            ], 401),
+        ]);
+
+        $result = (new PaystackClient('sk_bad', 'sk_bad'))->initiate($this->request());
+
+        $this->assertFalse($result->started);
+        $this->assertSame('Invalid key', $result->message);
+    }
+
+    public function test_paystack_accepts_a_correctly_signed_webhook(): void
+    {
+        $body = '{"event":"charge.success","data":{"reference":"tu_test123"}}';
+        $client = new PaystackClient('sk_test', 'sk_test');
+
+        $this->assertTrue($client->verifyWebhook($body, [
+            'x-paystack-signature' => hash_hmac('sha512', $body, 'sk_test'),
+        ]));
+    }
+
+    public function test_paystack_refuses_a_wrong_signature(): void
+    {
+        $body = '{"event":"charge.success"}';
+        $client = new PaystackClient('sk_test', 'sk_test');
+
+        $this->assertFalse($client->verifyWebhook($body, [
+            'x-paystack-signature' => hash_hmac('sha512', $body, 'someone-elses-key'),
+        ]));
+        $this->assertFalse($client->verifyWebhook($body, []));
+    }
+
+    /** SHA512, not SHA256: a correct hash of the wrong algorithm is still wrong. */
+    public function test_paystack_refuses_a_sha256_signature(): void
+    {
+        $body = '{"event":"charge.success"}';
+        $client = new PaystackClient('sk_test', 'sk_test');
+
+        $this->assertFalse($client->verifyWebhook($body, [
+            'x-paystack-signature' => hash_hmac('sha256', $body, 'sk_test'),
+        ]));
+    }
+
+    public function test_paystack_refuses_everything_without_a_secret(): void
+    {
+        $body = '{"event":"charge.success"}';
+        $client = new PaystackClient('sk_test', '');
+
+        $this->assertFalse($client->verifyWebhook($body, [
+            'x-paystack-signature' => hash_hmac('sha512', $body, ''),
+        ]));
+    }
+
+    public function test_paystack_reads_the_status_from_the_api(): void
+    {
+        Http::fake([
+            'api.paystack.co/transaction/verify/*' => Http::response([
+                'status' => true,
+                'data' => ['status' => 'success'],
+            ]),
+        ]);
+
+        $status = (new PaystackClient('sk_test', 'sk_test'))->checkStatus('tu_test123');
+
+        $this->assertSame('success', $status);
+    }
+
+    // ---- Razorpay --------------------------------------------------------
+
+    public function test_razorpay_returns_the_payment_link(): void
+    {
+        Http::fake([
+            'api.razorpay.com/*' => Http::response([
+                'id' => 'plink_1',
+                'reference_id' => 'tu_test123',
+                'short_url' => 'https://rzp.io/i/abc123',
+                'status' => 'created',
+            ]),
+        ]);
+
+        $result = (new RazorpayClient('rzp_key', 'rzp_secret', 'wh_secret'))
+            ->initiate($this->request());
+
+        $this->assertTrue($result->started);
+        $this->assertSame('https://rzp.io/i/abc123', $result->redirectUrl);
+    }
+
+    /** Paise, and our reference must ride along as reference_id. */
+    public function test_razorpay_sends_minor_units_and_our_reference(): void
+    {
+        Http::fake([
+            'api.razorpay.com/*' => Http::response([
+                'short_url' => 'https://rzp.io/i/x',
+            ]),
+        ]);
+
+        (new RazorpayClient('rzp_key', 'rzp_secret', 'wh_secret'))->initiate($this->request());
+
+        Http::assertSent(fn ($request) => $request['amount'] === 2500
+            && $request['reference_id'] === 'tu_test123');
+    }
+
+    /**
+     * Razorpay would otherwise SMS and email the link itself. The bot is what
+     * delivers it, and a chat customer has given no email to send it to.
+     */
+    public function test_razorpay_does_not_ask_razorpay_to_notify_the_customer(): void
+    {
+        Http::fake(['api.razorpay.com/*' => Http::response(['short_url' => 'https://rzp.io/i/x'])]);
+
+        (new RazorpayClient('rzp_key', 'rzp_secret', 'wh_secret'))->initiate($this->request());
+
+        Http::assertSent(fn ($request) => $request['notify'] === ['sms' => false, 'email' => false]);
+    }
+
+    public function test_razorpay_reports_a_refusal(): void
+    {
+        Http::fake([
+            'api.razorpay.com/*' => Http::response([
+                'error' => ['description' => 'The amount must be at least INR 1.00'],
+            ], 400),
+        ]);
+
+        $result = (new RazorpayClient('rzp_key', 'rzp_secret', 'wh_secret'))
+            ->initiate($this->request());
+
+        $this->assertFalse($result->started);
+        $this->assertSame('The amount must be at least INR 1.00', $result->message);
+    }
+
+    public function test_razorpay_accepts_a_correctly_signed_webhook(): void
+    {
+        $body = '{"event":"payment_link.paid"}';
+        $client = new RazorpayClient('rzp_key', 'rzp_secret', 'wh_secret');
+
+        $this->assertTrue($client->verifyWebhook($body, [
+            'x-razorpay-signature' => hash_hmac('sha256', $body, 'wh_secret'),
+        ]));
+    }
+
+    /**
+     * Signed with the API key secret rather than the webhook secret — the
+     * mistake a reseller filling in three credentials is most likely to make,
+     * and it must fail rather than pass.
+     */
+    public function test_razorpay_refuses_a_signature_made_with_the_api_secret(): void
+    {
+        $body = '{"event":"payment_link.paid"}';
+        $client = new RazorpayClient('rzp_key', 'rzp_secret', 'wh_secret');
+
+        $this->assertFalse($client->verifyWebhook($body, [
+            'x-razorpay-signature' => hash_hmac('sha256', $body, 'rzp_secret'),
+        ]));
+    }
+
+    public function test_razorpay_refuses_everything_without_a_webhook_secret(): void
+    {
+        $body = '{"event":"payment_link.paid"}';
+        $client = new RazorpayClient('rzp_key', 'rzp_secret', '');
+
+        $this->assertFalse($client->verifyWebhook($body, [
+            'x-razorpay-signature' => hash_hmac('sha256', $body, ''),
+        ]));
+        $this->assertFalse($client->verifyWebhook($body, []));
+    }
+
+    public function test_razorpay_reads_the_status_from_the_api(): void
+    {
+        Http::fake([
+            'api.razorpay.com/*' => Http::response([
+                'payment_links' => [
+                    ['id' => 'plink_1', 'reference_id' => 'tu_test123', 'status' => 'paid'],
+                ],
+            ]),
+        ]);
+
+        $status = (new RazorpayClient('rzp_key', 'rzp_secret', 'wh_secret'))
+            ->checkStatus('tu_test123');
+
+        $this->assertSame('paid', $status);
     }
 
     /** @return array<string, string> */

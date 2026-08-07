@@ -87,6 +87,14 @@ return [
     'topup_prompt' => '💰 Combien souhaitez-vous ajouter à votre portefeuille ? Saisissez un montant en {cur} (minimum {min}).',
     'topup_amount_invalid' => 'Veuillez saisir un montant valide (minimum {min} {cur}).',
 
+    // ---- Choosing a payment method ------------------------------------------
+    'choose_payment_method' => '💳 Comment souhaitez-vous payer *{amount}* ?',
+    'btn_choose_payment' => 'Moyens de paiement',
+    'payment_header' => 'Payer avec',
+    'pay_method_mobile' => 'Payer depuis votre téléphone',
+    'pay_method_online' => 'Payer en ligne',
+    'pay_method_invalid' => "Ce moyen de paiement n'est pas disponible. Veuillez en choisir un dans la liste.",
+
     // ---- Payment phone (mobile money) ---------------------------------------
     'ask_pay_phone' => '📱 Saisissez le numéro pour payer (mobile money). Utilisez *{suggest}* ou envoyez un autre numéro.',
     'pay_phone_invalid' => 'Ce numéro de téléphone ne semble pas correct. Veuillez le renvoyer (ex. 07XXXXXXXX).',

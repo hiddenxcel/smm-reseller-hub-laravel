@@ -24,7 +24,10 @@ class StartTopup
 
     /**
      * @param  string  $amount  decimal string, in the shop's currency
-     * @param  string  $phone   the payer's number, for mobile money only
+     * @param  string  $phone  the payer's number, for mobile money only
+     * @param  string  $gateway  the one the customer picked; blank lets the
+     *                           reseller's default decide, which is what a
+     *                           single-gateway shop wants
      */
     public function handle(
         int $tenantId,
@@ -32,8 +35,14 @@ class StartTopup
         string $amount,
         string $currency,
         string $phone = '',
+        string $gateway = '',
     ): TopupResult {
-        $credentials = $this->factory->firstUsableFor($tenantId);
+        // A named gateway is still looked up through the factory, so a customer
+        // replying with the code of one that has since been paused gets the
+        // no-gateway message rather than a payment nobody can complete.
+        $credentials = $gateway !== ''
+            ? $this->factory->usableGateway($tenantId, $gateway)
+            : $this->factory->firstUsableFor($tenantId);
 
         if ($credentials === null) {
             return TopupResult::noGateway();

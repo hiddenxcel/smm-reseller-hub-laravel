@@ -9,6 +9,7 @@ use App\Models\TenantPaymentGateway;
 use App\Services\Payments\Gateway;
 use App\Services\Payments\GatewayFactory;
 use App\Services\Payments\PayPalClient;
+use App\Services\Payments\StatusCheckable;
 use App\Services\Payments\WebhookVerifier;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -138,6 +139,10 @@ class PaymentWebhookController extends Controller
             'resource.purchase_units.0.custom_id',
             // Pesapal echoes the id we submitted.
             'OrderMerchantReference',
+            // Razorpay nests the entity that carries our reference_id, and
+            // which entity that is depends on the event.
+            'payload.payment_link.entity.reference_id',
+            'payload.payment.entity.notes.reference',
         ];
 
         foreach ($candidates as $key) {
@@ -162,7 +167,7 @@ class PaymentWebhookController extends Controller
     {
         $client = $this->factory->make($credentials);
 
-        if (! method_exists($client, 'checkStatus')) {
+        if (! $client instanceof StatusCheckable) {
             return false;
         }
 
@@ -224,17 +229,28 @@ class PaymentWebhookController extends Controller
     {
         $payload = $request->all();
 
-        // Stripe and PayPal say what happened in an event name rather than a
+        // Several gateways say what happened in an event name rather than a
         // status field, so those are matched first — their payloads also carry
-        // a `status` that means something else entirely.
-        $event = data_get($payload, 'type') ?? data_get($payload, 'event_type');
+        // a `status` that means something else entirely. Razorpay is the clear
+        // case: `payload.payment.entity.status` reads "captured" on a refund
+        // event too, so only the event name can be trusted.
+        $event = data_get($payload, 'type')
+            ?? data_get($payload, 'event_type')
+            ?? data_get($payload, 'event');
 
         if (is_string($event)) {
             return in_array($event, [
+                // Stripe
                 'checkout.session.completed',
                 'checkout.session.async_payment_succeeded',
                 'payment_intent.succeeded',
+                // PayPal
                 PayPalClient::COMPLETED_EVENT,
+                // Paystack
+                'charge.success',
+                // Razorpay: the link being paid, and the payment behind it.
+                'payment_link.paid',
+                'payment.captured',
             ], true);
         }
 
