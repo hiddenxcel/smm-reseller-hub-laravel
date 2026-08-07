@@ -168,7 +168,38 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
 
     return (
         <>
-            <Head title="WhatsApp Bots for Your SMM Panel" />
+            {/* Spelled out rather than using <Seo>, which would title this
+                "X — Resellers Hub" and read as a subpage. The tags are still
+                keyed: Inertia drops any `inertia`-marked default a page does
+                not restate, so leaving them off would strip the description
+                from the one page most likely to be shared. */}
+            <Head title="WhatsApp Bots for Your SMM Panel">
+                <meta
+                    name="description"
+                    content="Sell followers, likes and views on WhatsApp around the clock. Your customers order, pay by mobile money or crypto, and get support automatically — on top of the SMM panel you already run."
+                    head-key="description"
+                />
+                <meta
+                    property="og:title"
+                    content="Resellers Hub — WhatsApp Bots for SMM Panels"
+                    head-key="og:title"
+                />
+                <meta
+                    property="og:description"
+                    content="Sell followers, likes and views on WhatsApp around the clock — paid by mobile money or crypto, on top of the panel you already run."
+                    head-key="og:description"
+                />
+                <meta
+                    name="twitter:title"
+                    content="Resellers Hub — WhatsApp Bots for SMM Panels"
+                    head-key="twitter:title"
+                />
+                <meta
+                    name="twitter:description"
+                    content="Sell followers, likes and views on WhatsApp around the clock — paid by mobile money or crypto, on top of the panel you already run."
+                    head-key="twitter:description"
+                />
+            </Head>
 
             <LandingNav />
 

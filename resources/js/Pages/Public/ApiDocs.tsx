@@ -2,6 +2,7 @@ import Reveal from '@/components/landing/Reveal';
 import { Section, SectionHeading } from '@/components/landing/Section';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { Head } from '@inertiajs/react';
+import Seo from '@/components/Seo';
 import { AlertTriangle, Check, Copy } from 'lucide-react';
 import { useState } from 'react';
 
@@ -162,7 +163,10 @@ export default function ApiDocs({ baseUrl, demoNumber }: Props) {
             description="One endpoint, the standard SMM API v2 — so anything already written against a panel works here unchanged."
             demoNumber={demoNumber}
         >
-            <Head title="API docs" />
+            <Seo
+                title="API docs"
+                description="The Resellers Hub API: one endpoint speaking the standard SMM API v2, so anything already written against a panel works unchanged. Place orders, check status and request refills from your own site."
+            />
 
             {/* ---- getting started ---- */}
             <Section className="pt-0">

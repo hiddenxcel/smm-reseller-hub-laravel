@@ -3,6 +3,7 @@ import { Section } from '@/components/landing/Section';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { Button } from '@/components/ui/button';
 import { Head, Link } from '@inertiajs/react';
+import Seo from '@/components/Seo';
 import { ArrowRight, PenLine } from 'lucide-react';
 
 type Post = {
@@ -41,7 +42,10 @@ export default function BlogIndex({ posts, demoNumber }: Props) {
             description="What we are learning about panels, WhatsApp and getting paid — written for the people doing it."
             demoNumber={demoNumber}
         >
-            <Head title="Blog" />
+            <Seo
+                title="Blog"
+                description="Notes on running an SMM reseller shop: keeping your WhatsApp number safe, connecting a panel, taking mobile money and crypto, and automating the questions that eat your evenings."
+            />
 
             <Section className="pt-0">
                 {posts.data.length === 0 ? (

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import Seo from '@/components/Seo';
 import { BookOpen, CheckCircle2, Clock, LifeBuoy, Mail, Send } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
@@ -43,7 +44,10 @@ export default function Contact({ demoNumber }: Props) {
             description="Questions before signing up, or something not working? Write to us and we will answer by email."
             demoNumber={demoNumber}
         >
-            <Head title="Contact" />
+            <Seo
+                title="Contact"
+                description="Questions before signing up, or something not working? Write to the Resellers Hub team and we will answer by email — or reach us on WhatsApp for anything urgent."
+            />
 
             <Section className="pt-0">
                 <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-[1.2fr_1fr]">

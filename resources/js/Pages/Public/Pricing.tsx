@@ -5,6 +5,7 @@ import Reveal from '@/components/landing/Reveal';
 import { Section, SectionHeading } from '@/components/landing/Section';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { Head } from '@inertiajs/react';
+import Seo from '@/components/Seo';
 import { Check, X } from 'lucide-react';
 
 type PlanSummary = {
@@ -81,7 +82,10 @@ export default function Pricing({ plans, gateways, demoNumber }: Props) {
             description="Every service is sold on its own. No commission, no per-order fee, no contract."
             demoNumber={demoNumber}
         >
-            <Head title="Pricing" />
+            <Seo
+                title="Pricing"
+                description="Flat monthly pricing per service, 20% off yearly. No commission on your sales, no per-order fee and no contract — your customers pay into your own gateway accounts."
+            />
 
             <Section className="pt-0">
                 <PricingTable plans={plans} />

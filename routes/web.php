@@ -27,6 +27,7 @@ use App\Http\Controllers\SupportBotTicketsController;
 use App\Http\Controllers\Site\BlogController;
 use App\Http\Controllers\Site\ContactController;
 use App\Http\Controllers\Site\PublicPageController;
+use App\Http\Controllers\Site\SitemapController;
 use App\Http\Controllers\SupportCenterController;
 use Illuminate\Support\Facades\Route;
 
@@ -61,6 +62,10 @@ Route::post('/contact', [ContactController::class, 'store'])
 
 Route::get('/blog', [BlogController::class, 'index'])->name('blog');
 Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
+
+// Generated rather than kept by hand: a static one goes stale the first time
+// a post is published, which is exactly when it matters.
+Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 
 Route::get('/dashboard', DashboardController::class)
     ->middleware('auth')

@@ -1,7 +1,8 @@
 import Reveal from '@/components/landing/Reveal';
 import { Section } from '@/components/landing/Section';
+import Seo from '@/components/Seo';
 import PublicLayout from '@/Layouts/PublicLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 type Post = {
@@ -104,9 +105,10 @@ export default function BlogShow({ post, more, demoNumber }: Props) {
             description={post.excerpt}
             demoNumber={demoNumber}
         >
-            <Head title={post.title}>
-                <meta name="description" content={post.excerpt} />
-            </Head>
+            {/* Through Seo rather than a bare Head: its tags are keyed, so a
+                post's description replaces the site default instead of
+                leaving both in the document for a crawler to choose between. */}
+            <Seo title={post.title} description={post.excerpt} />
 
             <Section className="pt-0">
                 <Reveal className="mx-auto max-w-2xl">
