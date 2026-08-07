@@ -5,12 +5,14 @@ import { useEffect, useState } from 'react';
  * A way to meet the bot before signing up.
  *
  * We are selling a WhatsApp bot, so the strongest argument is the thing
- * itself answering on the visitor's own phone. Nothing on the page competes
- * with that.
+ * itself answering. Where it answers depends on what is actually live:
  *
- * Renders nothing without a number configured — a button that opens a chat
- * nobody answers is worse than no button, because the silence reads as the
- * product being broken.
+ *   - with a demo number configured, straight into the visitor's WhatsApp
+ *   - without one, down to the interactive demo on this page
+ *
+ * It never points at WhatsApp on hope. A chat that stays silent does not read
+ * as "the demo is not ready" — it reads as the product being broken, which is
+ * the opposite of what a landing page is for.
  */
 export default function TryOnWhatsApp({ number }: { number?: string | null }) {
     const [dismissed, setDismissed] = useState(false);
@@ -23,12 +25,15 @@ export default function TryOnWhatsApp({ number }: { number?: string | null }) {
         return () => window.clearTimeout(timer);
     }, []);
 
-    if (! number || dismissed) {
+    if (dismissed) {
         return null;
     }
 
-    const digits = number.replace(/\D/g, '');
-    const href = `https://wa.me/${digits}?text=${encodeURIComponent('hi')}`;
+    const live = Boolean(number);
+    const digits = (number ?? '').replace(/\D/g, '');
+    const href = live
+        ? `https://wa.me/${digits}?text=${encodeURIComponent('hi')}`
+        : '#demo';
 
     return (
         <div
@@ -39,8 +44,7 @@ export default function TryOnWhatsApp({ number }: { number?: string | null }) {
         >
             <a
                 href={href}
-                target="_blank"
-                rel="noopener noreferrer"
+                {...(live ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                 className="group flex items-center gap-3 rounded-full bg-[#25D366] py-3 pr-5 pl-4 text-white shadow-lg transition-transform hover:scale-[1.03] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
             >
                 <span className="relative flex size-6 items-center justify-center">
@@ -54,7 +58,7 @@ export default function TryOnWhatsApp({ number }: { number?: string | null }) {
                         Try the bot now
                     </span>
                     <span className="block text-xs leading-tight text-white/85">
-                        On your own WhatsApp
+                        {live ? 'On your own WhatsApp' : 'Right here, no signup'}
                     </span>
                 </span>
             </a>
