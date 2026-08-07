@@ -2,6 +2,7 @@ import ComparisonTable from '@/components/landing/ComparisonTable';
 import FeatureGrid from '@/components/landing/FeatureGrid';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import LandingNav from '@/components/landing/LandingNav';
+import PanelCompatibility from '@/components/landing/PanelCompatibility';
 import PaymentRail from '@/components/landing/PaymentRail';
 import PhoneDemo from '@/components/landing/PhoneDemo';
 import TryOnWhatsApp from '@/components/landing/TryOnWhatsApp';
@@ -18,6 +19,7 @@ import {
     Link2,
     MessageSquare,
     Phone,
+    PlayCircle,
     Rocket,
     ShieldCheck,
     Sparkles,
@@ -45,20 +47,23 @@ type Props = {
 };
 
 /**
- * Claims that are true on day one.
+ * Claims that are true on day one, each against what it replaces.
  *
  * The counts that were here before — panels connected, orders processed —
  * were invented. A reseller who works out that one number is fiction stops
  * believing the rest of the page, including what it says about keeping their
  * WhatsApp number safe and their customers' money theirs. That is a bad trade
- * for a figure nobody was asked to verify. These say what the product does
- * instead, which is checkable and needs no head start.
+ * for a figure nobody was asked to verify.
+ *
+ * The `against` line is what makes these land: a reseller is not comparing us
+ * with a rival, they are comparing us with their own evening. Naming that is
+ * more persuasive than any number we could claim.
  */
 const TRUST = [
-    { value: '24/7', label: 'Your shop never closes' },
-    { value: '~5 min', label: 'From signup to selling' },
-    { value: 'Meta', label: 'Official Cloud API' },
-    { value: '$0', label: 'To start — no card' },
+    { value: '24/7', label: 'Your shop never closes', against: 'vs. only while you are awake' },
+    { value: '~5 min', label: 'From signup to selling', against: 'vs. building a bot yourself' },
+    { value: 'Instant', label: 'Orders reach your panel', against: 'vs. copy and paste, one by one' },
+    { value: '$0', label: 'To start — no card', against: 'vs. paying to find out' },
 ];
 
 const WHY = [
@@ -162,8 +167,14 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                                         Start free
                                     </Link>
                                 </Button>
+                                {/* Points at the demo rather than the price
+                                    list: someone who is not sure yet wants to
+                                    see it work, not to find out what it costs. */}
                                 <Button size="lg" variant="outline" asChild>
-                                    <a href="#services">See what it does</a>
+                                    <a href="#demo">
+                                        <PlayCircle className="size-4" />
+                                        See it work
+                                    </a>
                                 </Button>
                             </div>
 
@@ -179,13 +190,16 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
 
                 {/* ---- trust bar ---- */}
                 <Section muted className="py-10 sm:py-12">
-                    <dl className="grid grid-cols-2 gap-8 text-center sm:grid-cols-4">
+                    <dl className="grid grid-cols-2 gap-x-8 gap-y-9 text-center sm:grid-cols-4">
                         {TRUST.map((item) => (
                             <div key={item.label}>
                                 <dt className="font-heading text-3xl font-extrabold text-primary">
                                     {item.value}
                                 </dt>
-                                <dd className="mt-1 text-sm text-muted-foreground">{item.label}</dd>
+                                <dd className="mt-1 text-sm font-medium">{item.label}</dd>
+                                <dd className="mt-0.5 text-xs text-muted-foreground">
+                                    {item.against}
+                                </dd>
                             </div>
                         ))}
                     </dl>
@@ -299,6 +313,17 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                             </li>
                         ))}
                     </ol>
+                </Section>
+
+                {/* ---- panel compatibility ---- */}
+                <Section id="panels">
+                    <SectionHeading
+                        eyebrow="Your panel"
+                        title="It works with the panel you already have"
+                        subtitle="No migration, no second panel to run. This sits on top of the one you use now."
+                    />
+
+                    <PanelCompatibility />
                 </Section>
 
                 {/* ---- features ---- */}
