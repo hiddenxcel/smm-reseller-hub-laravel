@@ -42,6 +42,32 @@ class LandingPageTest extends TestCase
         );
     }
 
+    public function test_the_page_leads_with_three_services_not_five(): void
+    {
+        // AI Tickets and AI Chat are add-ons to a bot rather than a first
+        // purchase, so they stay out of the landing page's price list. Both
+        // remain buyable in the dashboard.
+        foreach (
+            [
+                ['ai_chat', ServiceKey::AiChat],
+                ['ai_tickets', ServiceKey::AiTickets],
+                ['order_bot', ServiceKey::OrderBot],
+                ['support_bot', ServiceKey::SupportBot],
+                ['number_rental', ServiceKey::NumberRental],
+            ] as [$code, $key]
+        ) {
+            Plan::factory()->create(['code' => $code, 'service_key' => $key]);
+        }
+
+        $this->get('/')->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('plans.order_bot')
+            ->has('plans.support_bot')
+            ->has('plans.number_rental')
+            ->missing('plans.ai_chat')
+            ->missing('plans.ai_tickets')
+        );
+    }
+
     public function test_inactive_plans_are_not_advertised(): void
     {
         Plan::factory()->create([

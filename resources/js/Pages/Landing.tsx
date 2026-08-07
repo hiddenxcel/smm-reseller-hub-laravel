@@ -5,7 +5,7 @@ import LandingNav from '@/components/landing/LandingNav';
 import PanelCompatibility from '@/components/landing/PanelCompatibility';
 import PaymentRail from '@/components/landing/PaymentRail';
 import PhoneDemo from '@/components/landing/PhoneDemo';
-import ProblemSolution from '@/components/landing/ProblemSolution';
+import PricingTable from '@/components/landing/PricingTable';
 import Reveal from '@/components/landing/Reveal';
 import TwoBots from '@/components/landing/TwoBots';
 import TryOnWhatsApp from '@/components/landing/TryOnWhatsApp';
@@ -296,13 +296,6 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                     </div>
                 </Section>
 
-                {/* ---- the ban objection ---- */}
-                <Section className="pt-0 pb-14 sm:pb-16">
-                    <Reveal>
-                        <ProblemSolution />
-                    </Reveal>
-                </Section>
-
                 {/* ---- trust bar ---- */}
                 <Section muted tight>
                     {/* Cards rather than text floating in a band. As four
@@ -387,49 +380,10 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                     <SectionHeading
                         eyebrow="Pricing"
                         title="Pay for what you use"
-                        subtitle="Every service is sold on its own. Take the order bot alone, or the lot — yearly billing saves 20%."
+                        subtitle="Every service is sold on its own. Take the order bot alone, or the lot."
                     />
 
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {planList.map(([key, plan], index) => {
-                            const Icon = SERVICE_ICONS[key] ?? Bot;
-
-                            return (
-                                <Reveal key={key} delay={index * 90} className="h-full">
-                                <Card className="soft flex h-full flex-col border-transparent transition-transform duration-300 hover:-translate-y-1">
-                                    <CardContent className="flex flex-1 flex-col pt-6">
-                                        <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-                                            <Icon className="size-5" />
-                                        </span>
-
-                                        <h3 className="font-heading text-lg font-bold">{plan.name}</h3>
-
-                                        {plan.description && (
-                                            <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
-                                                {plan.description}
-                                            </p>
-                                        )}
-
-                                        <p className="mt-5 flex items-baseline gap-1">
-                                            <span className="font-heading text-3xl font-extrabold">
-                                                ${plan.monthly.toFixed(0)}
-                                            </span>
-                                            <span className="text-sm text-muted-foreground">/month</span>
-                                        </p>
-
-                                        <p className="mt-1 text-xs text-muted-foreground">
-                                            or ${plan.yearly.toFixed(2)} a year
-                                        </p>
-
-                                        <Button className="mt-5 w-full" asChild>
-                                            <Link href={route('register')}>Start free</Link>
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                                </Reveal>
-                            );
-                        })}
-                    </div>
+                    <PricingTable plans={plans} />
                 </Section>
 
                 {/* ---- interactive demo ---- */}

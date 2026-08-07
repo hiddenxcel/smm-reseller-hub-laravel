@@ -14,9 +14,18 @@ class LandingController extends Controller
     {
         // Prices come from the plans table so the page can never drift from
         // what checkout actually charges.
+        //
+        // Three of the five are advertised. AI Tickets and AI Chat are add-ons
+        // to a bot rather than something to buy first, and putting all five on
+        // the landing page asked a visitor to choose between services they
+        // have no way to tell apart yet. All five remain purchasable in the
+        // dashboard — this filter is about what the page leads with.
+        $advertised = ['order_bot', 'support_bot', 'number_rental'];
+
         $plans = Plan::where('status', 'active')
             ->orderBy('sort_order')
             ->get()
+            ->filter(fn (Plan $plan) => in_array($plan->service_key->value, $advertised, true))
             ->keyBy(fn (Plan $plan) => $plan->service_key->value)
             ->map(fn (Plan $plan) => [
                 'name' => $plan->name,
