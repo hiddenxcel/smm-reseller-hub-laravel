@@ -4,6 +4,7 @@ use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\BlockListedIps;
 use App\Http\Middleware\EnsureAdminIsActive;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -46,6 +47,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->web(append: [
+            // On every web response, including error pages — a 500 is served
+            // by the same browser and deserves the same protections.
+            SecurityHeaders::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             // Applied to the whole web group, not to individual routes: an

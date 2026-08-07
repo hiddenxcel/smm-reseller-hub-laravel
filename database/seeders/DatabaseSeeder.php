@@ -14,6 +14,11 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PlanSeeder::class,
             SuperadminSeeder::class,
+            // The opening blog posts. Idempotent on the slug, so running the
+            // seeders on a live database refreshes them rather than
+            // duplicating — which is what makes it safe to edit a post here
+            // and re-seed.
+            BlogSeeder::class,
         ]);
 
         // ResponseTemplateSeeder (18 keys x 3 langs) is ported alongside the

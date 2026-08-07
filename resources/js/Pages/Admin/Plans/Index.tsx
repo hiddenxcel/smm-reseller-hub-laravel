@@ -343,6 +343,12 @@ function PlanDialog({
                             onChange={(e) => setData('price_yearly', e.target.value)}
                             className={inputClass}
                         />
+
+                        <YearlyHint
+                            monthly={data.price_monthly}
+                            yearly={data.price_yearly}
+                            onApply={(value) => setData('price_yearly', value)}
+                        />
                     </Field>
 
                     <Field label="Currency" error={errors.currency}>
@@ -470,5 +476,83 @@ function Field({
             {children}
             {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
         </div>
+    );
+}
+
+/**
+ * What the yearly price actually works out to.
+ *
+ * The public pages advertise "20% off yearly" in the pricing toggle, the
+ * subtitle and the FAQ. Nothing stopped the two numbers drifting apart, so a
+ * plan could quietly be sold at 21% off while the site promised 20 — and the
+ * mismatch is only visible to whoever divides by twelve.
+ *
+ * Shows the real discount, and offers the figure that matches the promise.
+ */
+const ADVERTISED_DISCOUNT = 0.2;
+
+function YearlyHint({
+    monthly,
+    yearly,
+    onApply,
+}: {
+    monthly: string;
+    yearly: string;
+    onApply: (value: string) => void;
+}) {
+    const monthlyValue = Number.parseFloat(monthly);
+    const yearlyValue = Number.parseFloat(yearly);
+
+    if (! Number.isFinite(monthlyValue) || monthlyValue <= 0) {
+        return null;
+    }
+
+    const suggested = (monthlyValue * 12 * (1 - ADVERTISED_DISCOUNT)).toFixed(2);
+
+    if (! Number.isFinite(yearlyValue) || yearlyValue <= 0) {
+        return (
+            <Suggestion suggested={suggested} onApply={onApply}>
+                20% off twelve months is ${suggested}.
+            </Suggestion>
+        );
+    }
+
+    const perMonth = yearlyValue / 12;
+    const discount = Math.round((1 - yearlyValue / (monthlyValue * 12)) * 100);
+    const matches = discount === Math.round(ADVERTISED_DISCOUNT * 100);
+
+    return (
+        <div className="mt-1.5 space-y-1">
+            <p className={`text-xs ${matches ? 'text-muted-foreground' : 'text-destructive'}`}>
+                ${perMonth.toFixed(2)}/month — {discount}% off
+                {! matches && ` (the site advertises ${ADVERTISED_DISCOUNT * 100}%)`}
+            </p>
+
+            {! matches && (
+                <Suggestion suggested={suggested} onApply={onApply}>
+                    Use ${suggested} for {ADVERTISED_DISCOUNT * 100}%
+                </Suggestion>
+            )}
+        </div>
+    );
+}
+
+function Suggestion({
+    suggested,
+    onApply,
+    children,
+}: {
+    suggested: string;
+    onApply: (value: string) => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={() => onApply(suggested)}
+            className="mt-1.5 text-xs font-medium text-primary hover:underline"
+        >
+            {children}
+        </button>
     );
 }
