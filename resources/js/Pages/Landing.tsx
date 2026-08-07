@@ -131,7 +131,7 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
 
             <main>
                 {/* ---- hero ---- */}
-                <Section className="relative overflow-hidden pt-12 pb-8 sm:pt-16">
+                <Section className="relative overflow-hidden pt-8 pb-10 sm:pt-10">
                     {/* Two soft washes behind the fold. Enough to stop the
                         canvas reading as flat white, far short of the neon
                         gradients that make a payments product look like a
@@ -145,8 +145,11 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                         className="pointer-events-none absolute -bottom-52 -left-40 -z-10 size-[28rem] rounded-full bg-accent-500/10 blur-3xl"
                     />
 
-                    <div className="grid items-center gap-12 lg:grid-cols-2">
-                        <div>
+                    {/* items-start rather than items-center: centring left a
+                        band of empty canvas under the shorter column, which is
+                        what made the fold read as unfinished. */}
+                    <div className="grid items-start gap-10 lg:grid-cols-2 lg:gap-12">
+                        <div className="lg:pt-6">
                             {/* The two fears a reseller arrives with — losing
                                 the number, and paying to find out. Given the
                                 brand colour and a border so they read as
@@ -164,10 +167,24 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                                 </div>
                             </Reveal>
 
+                            {/* Bigger and heavier than the section headings
+                                below it. Measured against the reference site,
+                                ours started 50px lower and two steps smaller —
+                                the first screen is the one that has to work,
+                                and it was giving the headline the least room. */}
                             <Reveal delay={80}>
-                                <h1 className="font-heading text-4xl leading-[1.1] font-extrabold tracking-tight text-balance sm:text-5xl">
+                                <h1 className="font-heading text-[2.75rem] leading-[1.05] font-black tracking-[-0.02em] text-balance sm:text-6xl">
                                     WhatsApp bots for your{' '}
-                                    <span className="text-primary">SMM panel</span>
+                                    <span className="relative text-primary">
+                                        SMM panel
+                                        {/* Underlined rather than just coloured:
+                                            it marks the phrase as the point of
+                                            the sentence, not as decoration. */}
+                                        <span
+                                            aria-hidden
+                                            className="absolute -bottom-1 left-0 h-1 w-full rounded-full bg-primary/30"
+                                        />
+                                    </span>
                                 </h1>
                             </Reveal>
 
@@ -200,10 +217,52 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                                     </Button>
                                 </div>
 
-                                <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-                                    <CheckCircle2 className="size-4 text-primary" />
-                                    Free to start · No card required
+                                {/* The three objections that stop a signup,
+                                    answered on one line under the button where
+                                    they are read as part of the decision. */}
+                                <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+                                    {[
+                                        'Free to start',
+                                        'No card required',
+                                        'Live in ~5 minutes',
+                                    ].map((item) => (
+                                        <span key={item} className="flex items-center gap-1.5">
+                                            <CheckCircle2 className="size-4 shrink-0 text-primary" />
+                                            {item}
+                                        </span>
+                                    ))}
                                 </p>
+                            </Reveal>
+
+                            {/* What the bot actually does, under the fold's
+                                own column rather than three screens down. The
+                                reference site fills this space with a customer
+                                count; we do not have one, and the capability
+                                list is both true and more use to a reseller
+                                deciding whether this fits their shop. */}
+                            <Reveal delay={320}>
+                                <div className="mt-9 border-t border-border/70 pt-6">
+                                    <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                        Your bot handles
+                                    </p>
+
+                                    <div className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+                                        {[
+                                            'Orders, start to finish',
+                                            'Wallet top-ups',
+                                            'Refills and order status',
+                                            'Support questions',
+                                        ].map((item) => (
+                                            <p
+                                                key={item}
+                                                className="flex items-center gap-2 text-sm text-muted-foreground"
+                                            >
+                                                <CheckCircle2 className="size-4 shrink-0 text-primary" />
+                                                {item}
+                                            </p>
+                                        ))}
+                                    </div>
+                                </div>
                             </Reveal>
                         </div>
 
