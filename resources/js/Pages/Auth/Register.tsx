@@ -1,12 +1,15 @@
 import InputError from '@/components/InputError';
-import InputLabel from '@/components/InputLabel';
-import PrimaryButton from '@/components/PrimaryButton';
-import TextInput from '@/components/TextInput';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import { Eye, EyeOff, Rocket } from 'lucide-react';
+import { FormEventHandler, useState } from 'react';
 
 export default function Register() {
+    const [showPassword, setShowPassword] = useState(false);
+
     const { data, setData, post, processing, errors, reset } = useForm({
         business_name: '',
         email: '',
@@ -24,114 +27,152 @@ export default function Register() {
     };
 
     return (
-        <GuestLayout>
+        <GuestLayout
+            title="Create your account"
+            description="Free to start, no card required. You'll be selling in about five minutes."
+        >
             <Head title="Register" />
 
-            <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="business_name" value="Business Name" />
+            <form onSubmit={submit} className="space-y-5">
+                <div className="space-y-2">
+                    <Label htmlFor="business_name">Business name</Label>
 
-                    <TextInput
+                    <Input
                         id="business_name"
                         name="business_name"
                         value={data.business_name}
-                        className="mt-1 block w-full"
+                        className="h-10"
                         autoComplete="organization"
-                        isFocused={true}
+                        autoFocus
+                        placeholder="Your shop's name"
+                        aria-invalid={!!errors.business_name}
                         onChange={(e) => setData('business_name', e.target.value)}
                         required
                     />
 
-                    <InputError message={errors.business_name} className="mt-2" />
+                    <p className="text-xs text-muted-foreground">
+                        This is the name your customers see on WhatsApp.
+                    </p>
+
+                    <InputError message={errors.business_name} />
                 </div>
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="email" value="Email" />
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
 
-                    <TextInput
+                    <Input
                         id="email"
                         type="email"
                         name="email"
                         value={data.email}
-                        className="mt-1 block w-full"
+                        className="h-10"
                         autoComplete="username"
+                        placeholder="you@yourshop.com"
+                        aria-invalid={!!errors.email}
                         onChange={(e) => setData('email', e.target.value)}
                         required
                     />
 
-                    <InputError message={errors.email} className="mt-2" />
+                    <InputError message={errors.email} />
                 </div>
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="phone" value="Phone (optional)" />
+                <div className="space-y-2">
+                    <Label htmlFor="phone">
+                        Phone
+                        <span className="font-normal text-muted-foreground">
+                            (optional)
+                        </span>
+                    </Label>
 
-                    <TextInput
+                    <Input
                         id="phone"
+                        type="tel"
                         name="phone"
                         value={data.phone}
-                        className="mt-1 block w-full"
+                        className="h-10"
                         autoComplete="tel"
+                        placeholder="+255 700 000 000"
+                        aria-invalid={!!errors.phone}
                         onChange={(e) => setData('phone', e.target.value)}
                     />
 
-                    <InputError message={errors.phone} className="mt-2" />
+                    <InputError message={errors.phone} />
                 </div>
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
+                <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
 
-                    <TextInput
-                        id="password"
-                        type="password"
-                        name="password"
-                        value={data.password}
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                        onChange={(e) => setData('password', e.target.value)}
-                        required
-                    />
+                    <div className="relative">
+                        <Input
+                            id="password"
+                            type={showPassword ? 'text' : 'password'}
+                            name="password"
+                            value={data.password}
+                            className="h-10 pr-10"
+                            autoComplete="new-password"
+                            placeholder="At least 8 characters"
+                            aria-invalid={!!errors.password}
+                            onChange={(e) => setData('password', e.target.value)}
+                            required
+                        />
 
-                    <InputError message={errors.password} className="mt-2" />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword((value) => !value)}
+                            className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                            {showPassword ? (
+                                <EyeOff className="size-4" />
+                            ) : (
+                                <Eye className="size-4" />
+                            )}
+                        </button>
+                    </div>
+
+                    <InputError message={errors.password} />
                 </div>
 
-                <div className="mt-4">
-                    <InputLabel
-                        htmlFor="password_confirmation"
-                        value="Confirm Password"
-                    />
+                <div className="space-y-2">
+                    <Label htmlFor="password_confirmation">Confirm password</Label>
 
-                    <TextInput
+                    <Input
                         id="password_confirmation"
-                        type="password"
+                        type={showPassword ? 'text' : 'password'}
                         name="password_confirmation"
                         value={data.password_confirmation}
-                        className="mt-1 block w-full"
+                        className="h-10"
                         autoComplete="new-password"
+                        placeholder="Type it once more"
+                        aria-invalid={!!errors.password_confirmation}
                         onChange={(e) =>
                             setData('password_confirmation', e.target.value)
                         }
                         required
                     />
 
-                    <InputError
-                        message={errors.password_confirmation}
-                        className="mt-2"
-                    />
+                    <InputError message={errors.password_confirmation} />
                 </div>
 
-                <div className="mt-4 flex items-center justify-end">
-                    <Link
-                        href={route('login')}
-                        className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-100 dark:focus:ring-offset-gray-800"
-                    >
-                        Already registered?
-                    </Link>
+                <Button type="submit" size="lg" className="w-full" disabled={processing}>
+                    <Rocket className="size-4" />
+                    {processing ? 'Creating account…' : 'Create free account'}
+                </Button>
 
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Register
-                    </PrimaryButton>
-                </div>
+                <p className="text-center text-xs text-muted-foreground">
+                    By signing up you agree to our terms and privacy policy.
+                </p>
             </form>
+
+            <p className="mt-8 text-center text-sm text-muted-foreground">
+                Already have an account?{' '}
+                <Link
+                    href={route('login')}
+                    className="rounded-sm font-semibold text-primary transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                    Sign in
+                </Link>
+            </p>
         </GuestLayout>
     );
 }

@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Enums\ServiceKey;
-use App\Models\BotConversation;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\TenantWhatsApp;
@@ -173,113 +172,55 @@ class BotRouterTest extends TestCase
         $this->assertSame(BotRoute::GateLocked, $this->router()->route($this->message($number)));
     }
 
-    public function test_a_both_number_falls_back_to_the_bot_that_is_paid_for(): void
+    // ---- the number decides, not the text --------------------------------
+
+    public function test_an_order_number_keeps_support_words_with_the_order_bot(): void
     {
-        // Only support is active, but the message would normally open the
-        // order bot — falling back beats going silent.
-        $tenant = Tenant::factory()->create();
-        $number = TenantWhatsApp::factory()->for($tenant)->create(['bot_type' => 'both']);
-        $this->activate($tenant, ServiceKey::SupportBot);
-
-        $route = $this->router()->route($this->message($number, 'i want followers'));
-
-        $this->assertSame(BotRoute::HandledSupport, $route);
-    }
-
-    // ---- picking a bot on a "both" number --------------------------------
-
-    public function test_a_fresh_message_opens_the_order_bot(): void
-    {
-        $tenant = Tenant::factory()->create();
-        $number = TenantWhatsApp::factory()->for($tenant)->create(['bot_type' => 'both']);
-        $this->activate($tenant, ServiceKey::OrderBot);
-        $this->activate($tenant, ServiceKey::SupportBot);
-
-        $this->router()->route($this->message($number, 'hello'));
-
-        $this->assertSame('order', FakeBotHandler::dispatchedTo());
-    }
-
-    public function test_a_support_word_opens_the_support_bot(): void
-    {
-        $tenant = Tenant::factory()->create();
-        $number = TenantWhatsApp::factory()->for($tenant)->create(['bot_type' => 'both']);
-        $this->activate($tenant, ServiceKey::OrderBot);
-        $this->activate($tenant, ServiceKey::SupportBot);
-
-        $this->router()->route($this->message($number, 'refill my order 123'));
-
-        $this->assertSame('support', FakeBotHandler::dispatchedTo());
-    }
-
-    public function test_a_support_word_must_be_the_first_word(): void
-    {
-        $tenant = Tenant::factory()->create();
-        $number = TenantWhatsApp::factory()->for($tenant)->create(['bot_type' => 'both']);
-        $this->activate($tenant, ServiceKey::OrderBot);
-        $this->activate($tenant, ServiceKey::SupportBot);
-
-        // "status" appears, but the customer is clearly ordering.
-        $this->router()->route($this->message($number, 'i want 500 followers status unknown'));
-
-        $this->assertSame('order', FakeBotHandler::dispatchedTo());
-    }
-
-    public function test_an_in_progress_order_keeps_an_ambiguous_reply_with_the_order_bot(): void
-    {
-        // The reason stickiness exists: mid-order, "refill" is likely part of
-        // a service name, not a support request.
-        $tenant = Tenant::factory()->create();
-        $number = TenantWhatsApp::factory()->for($tenant)->create(['bot_type' => 'both']);
-        $this->activate($tenant, ServiceKey::OrderBot);
-        $this->activate($tenant, ServiceKey::SupportBot);
-
-        BotConversation::withoutTenantScope()->create([
-            'tenant_id' => $tenant->id,
-            'customer_phone' => '255700000001',
-            'bot_type' => 'order',
-            'state' => 'SELECT_SERVICE',
-        ]);
-
-        $this->router()->route($this->message($number, 'refill'));
-
-        $this->assertSame('order', FakeBotHandler::dispatchedTo());
-    }
-
-    public function test_an_idle_conversation_does_not_hold_the_customer(): void
-    {
-        $tenant = Tenant::factory()->create();
-        $number = TenantWhatsApp::factory()->for($tenant)->create(['bot_type' => 'both']);
-        $this->activate($tenant, ServiceKey::OrderBot);
-        $this->activate($tenant, ServiceKey::SupportBot);
-
-        BotConversation::withoutTenantScope()->create([
-            'tenant_id' => $tenant->id,
-            'customer_phone' => '255700000001',
-            'bot_type' => 'order',
-            'state' => 'IDLE',
-        ]);
-
-        $this->router()->route($this->message($number, 'refill'));
-
-        $this->assertSame('support', FakeBotHandler::dispatchedTo());
-    }
-
-    public function test_an_order_only_number_never_reaches_support(): void
-    {
+        // The number is the whole answer. "refill" used to pull a customer
+        // across to support mid-order; now nothing in the message can move
+        // them, because there is nowhere else on this number to go.
         $tenant = Tenant::factory()->create();
         $number = TenantWhatsApp::factory()->for($tenant)->orderOnly()->create();
         $this->activate($tenant, ServiceKey::OrderBot);
         $this->activate($tenant, ServiceKey::SupportBot);
 
-        $this->router()->route($this->message($number, 'refill'));
+        foreach (['hello', 'refill', 'help', 'i want 500 followers'] as $text) {
+            $this->router()->route($this->message($number, $text));
 
-        $this->assertSame('order', FakeBotHandler::dispatchedTo());
+            $this->assertSame('order', FakeBotHandler::dispatchedTo(), "text: {$text}");
+        }
+    }
+
+    public function test_a_support_number_keeps_order_words_with_the_support_bot(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $number = TenantWhatsApp::factory()->for($tenant)->supportOnly()->create();
+        $this->activate($tenant, ServiceKey::OrderBot);
+        $this->activate($tenant, ServiceKey::SupportBot);
+
+        foreach (['hello', 'i want 500 followers', 'buy'] as $text) {
+            $this->router()->route($this->message($number, $text));
+
+            $this->assertSame('support', FakeBotHandler::dispatchedTo(), "text: {$text}");
+        }
+    }
+
+    public function test_a_locked_bot_goes_silent_rather_than_handing_over(): void
+    {
+        // A number running the order bot has no support bot to fall back to.
+        // Answering as the wrong bot would be worse than saying nothing.
+        $tenant = Tenant::factory()->create();
+        $number = TenantWhatsApp::factory()->for($tenant)->orderOnly()->create();
+        $this->activate($tenant, ServiceKey::SupportBot);
+
+        $route = $this->router()->route($this->message($number, 'i want followers'));
+
+        $this->assertSame(BotRoute::GateLocked, $route);
     }
 
     // ---- side effects ----------------------------------------------------
 
-    public function test_it_logs_the_inbound_message(): void
+    public function test_it_logs_the_inbound_message_against_the_bot_that_took_it(): void
     {
         $tenant = Tenant::factory()->create();
         $number = TenantWhatsApp::factory()->for($tenant)->orderOnly()->create();
@@ -292,6 +233,51 @@ class BotRouterTest extends TestCase
             'customer_phone' => '255700000001',
             'direction' => 'in',
             'message' => 'hello there',
+            // Without this the log cannot say which bot a message belonged
+            // to, so nothing downstream can report the two separately.
+            'bot_type' => 'order',
+        ]);
+    }
+
+    public function test_each_number_logs_against_its_own_bot(): void
+    {
+        // Two numbers, two bots, two message streams that cannot mix — which
+        // is what lets each bot have its own inbox.
+        $tenant = Tenant::factory()->create();
+        $this->activate($tenant, ServiceKey::OrderBot);
+        $this->activate($tenant, ServiceKey::SupportBot);
+
+        $orderNumber = TenantWhatsApp::factory()->for($tenant)->orderOnly()->create();
+        $supportNumber = TenantWhatsApp::factory()->for($tenant)->supportOnly()->create();
+
+        $this->router()->route($this->message($orderNumber, 'I need 500 followers'));
+        $this->router()->route($this->message($supportNumber, 'refill please'));
+
+        $this->assertDatabaseHas('bot_messages', [
+            'message' => 'I need 500 followers',
+            'bot_type' => 'order',
+        ]);
+
+        $this->assertDatabaseHas('bot_messages', [
+            'message' => 'refill please',
+            'bot_type' => 'support',
+        ]);
+    }
+
+    public function test_a_message_refused_by_the_gate_is_still_logged(): void
+    {
+        // The ones that went unanswered are exactly the ones a reseller
+        // asking "did anyone message me?" needs to see.
+        $tenant = Tenant::factory()->create();
+        $number = TenantWhatsApp::factory()->for($tenant)->orderOnly()->create();
+
+        $this->router()->route($this->message($number, 'anyone there?'));
+
+        $this->assertDatabaseHas('bot_messages', [
+            'tenant_id' => $tenant->id,
+            'direction' => 'in',
+            'message' => 'anyone there?',
+            'bot_type' => 'order',
         ]);
     }
 

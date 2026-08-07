@@ -1,179 +1,488 @@
-import ApplicationLogo from '@/components/ApplicationLogo';
-import Dropdown from '@/components/Dropdown';
-import NavLink from '@/components/NavLink';
-import ResponsiveNavLink from '@/components/ResponsiveNavLink';
-import { Link, usePage } from '@inertiajs/react';
+import AppLogo from '@/components/AppLogo';
+import ImpersonationBanner from '@/components/ImpersonationBanner';
+import { Toaster } from '@/components/ui/sonner';
+import { useFlashToasts } from '@/hooks/useFlashToasts';
+import { useTheme } from '@/hooks/useTheme';
+import { Link, router, usePage } from '@inertiajs/react';
+import {
+    BarChart3,
+    Bot,
+    ChevronLeft,
+    ChevronRight,
+    CreditCard,
+    HelpCircle,
+    Inbox,
+    KeyRound,
+    LayoutDashboard,
+    LifeBuoy,
+    LogOut,
+    LucideIcon,
+    Menu,
+    MessageSquare,
+    Moon,
+    Package,
+    Plug,
+    Settings,
+    ShieldCheck,
+    ShoppingBag,
+    Sun,
+    Ticket,
+    Users,
+    UsersRound,
+    Wallet,
+    X,
+} from 'lucide-react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
+import { Tenant } from '@/types';
 
-export default function Authenticated({
+type NavItem = {
+    label: string;
+    icon: LucideIcon;
+    routeName?: string;
+    /**
+     * For rows that point at a tab of a page rather than a page of their own —
+     * the support bot's rules and templates live under `/support-bot/{tab}`,
+     * so the row needs the tab as well as the route name to link anywhere.
+     */
+    routeParams?: string;
+    /** Which shared prop, if any, supplies this row's unread count. */
+    badge?: 'supportUnread';
+};
+
+/** A row that opens a sub-panel instead of navigating. */
+type NavDrill = {
+    label: string;
+    icon: LucideIcon;
+    hint: string;
+    panel: Exclude<PanelKey, 'main'>;
+};
+
+type NavSection = {
+    /** Omitted for the lead item — Dashboard sits above the first divider. */
+    label?: string;
+    items?: NavItem[];
+    drills?: NavDrill[];
+};
+
+type PanelKey = 'main' | 'orderbot' | 'supportbot';
+
+/**
+ * Two levels, not one.
+ *
+ * A bot is a whole product — its own number, subscription, inbox and settings —
+ * so it gets a panel of its own rather than a row among fifteen. The top level
+ * stays short enough to read at a glance; everything that belongs to a bot is
+ * one click in, behind a back button.
+ *
+ * Services, Orders and Users sit inside the order bot because that is where a
+ * reseller works on them: the catalogue is what the bot sells, the orders are
+ * what it took. The tables themselves carry no bot column — one `bot_orders`
+ * serves both — so the support panel deliberately does not repeat them.
+ *
+ * Rows that exist are links; the rest are listed but inert, because a link
+ * that goes nowhere is worse than no link.
+ */
+const MAIN: NavSection[] = [
+    {
+        label: 'Overview',
+        items: [
+            { label: 'Dashboard', icon: LayoutDashboard, routeName: 'dashboard' },
+            { label: 'Analytics', icon: BarChart3 },
+        ],
+    },
+    {
+        label: 'Services',
+        drills: [
+            {
+                label: 'Order Bot',
+                icon: Bot,
+                hint: 'Sells in chat',
+                panel: 'orderbot',
+            },
+            {
+                label: 'Support Bot',
+                icon: LifeBuoy,
+                hint: 'Answers customers',
+                panel: 'supportbot',
+            },
+        ],
+    },
+    {
+        label: 'Platform',
+        items: [
+            { label: 'Setup', icon: Settings, routeName: 'settings' },
+            { label: 'API', icon: KeyRound, routeName: 'api-access' },
+            { label: 'Billing', icon: CreditCard, routeName: 'billing' },
+            { label: 'Team', icon: UsersRound },
+        ],
+    },
+    {
+        label: 'Help',
+        items: [
+            {
+                label: 'Support Center',
+                icon: HelpCircle,
+                routeName: 'help.support',
+                badge: 'supportUnread',
+            },
+        ],
+    },
+];
+
+const ORDER_BOT: NavItem[] = [
+    { label: 'Bot setup', icon: Settings, routeName: 'order-bot' },
+    { label: 'Users', icon: Users, routeName: 'customers.index' },
+    { label: 'Services', icon: Package, routeName: 'services.index' },
+    { label: 'Orders', icon: ShoppingBag, routeName: 'orders.index' },
+    { label: 'Inbox', icon: Inbox, routeName: 'order-bot.inbox' },
+    { label: 'Providers', icon: Plug, routeName: 'order-bot.providers' },
+    { label: 'Gateways', icon: Wallet, routeName: 'order-bot.gateways' },
+    { label: 'Payments', icon: CreditCard },
+];
+
+const SUPPORT_BOT: NavItem[] = [
+    { label: 'Overview', icon: LayoutDashboard, routeName: 'support-bot', routeParams: 'overview' },
+    { label: 'Inbox', icon: Inbox, routeName: 'support-bot.inbox' },
+    { label: 'Tickets', icon: Ticket, routeName: 'support-bot.tickets' },
+    { label: 'Guarantee rules', icon: ShieldCheck, routeName: 'support-bot', routeParams: 'rules' },
+    { label: 'Templates', icon: MessageSquare, routeName: 'support-bot', routeParams: 'templates' },
+    { label: 'Settings', icon: Settings, routeName: 'support-bot', routeParams: 'settings' },
+];
+
+const PANELS: Record<Exclude<PanelKey, 'main'>, { title: string; icon: LucideIcon; items: NavItem[] }> = {
+    orderbot: { title: 'Order Bot', icon: Bot, items: ORDER_BOT },
+    supportbot: { title: 'Support Bot', icon: LifeBuoy, items: SUPPORT_BOT },
+};
+
+export default function AuthenticatedLayout({
     header,
     children,
-}: PropsWithChildren<{ header?: ReactNode }>) {
-    const user = usePage().props.auth.user;
+    /**
+     * Pages that manage their own padding — the orders table needs its header
+     * to stick to the top of the viewport, which a padded wrapper prevents.
+     */
+    bleed = false,
+}: PropsWithChildren<{ header?: ReactNode; bleed?: boolean }>) {
+    const tenant = usePage().props.auth.user;
 
-    const [showingNavigationDropdown, setShowingNavigationDropdown] =
-        useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
+
+    useFlashToasts();
 
     return (
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-            <nav className="border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 justify-between">
-                        <div className="flex">
-                            <div className="flex shrink-0 items-center">
-                                <Link href="/">
-                                    <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200" />
-                                </Link>
-                            </div>
+        <div className="min-h-dvh bg-background">
+            {/* Above the grid, not inside it: while an admin is viewing this
+                account the warning has to span the sidebar too. */}
+            <ImpersonationBanner />
 
-                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
-                                >
-                                    Dashboard
-                                </NavLink>
-                            </div>
-                        </div>
+            <div className="lg:grid lg:grid-cols-[248px_1fr]">
 
-                        <div className="hidden sm:ms-6 sm:flex sm:items-center">
-                            <div className="relative ms-3">
-                                <Dropdown>
-                                    <Dropdown.Trigger>
-                                        <span className="inline-flex rounded-md">
-                                            <button
-                                                type="button"
-                                                className="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none dark:bg-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
-                                            >
-                                                {user.name}
+                <Sidebar
+                    tenant={tenant}
+                    mobileOpen={mobileOpen}
+                    onClose={() => setMobileOpen(false)}
+                />
 
-                                                <svg
-                                                    className="-me-0.5 ms-2 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </Dropdown.Trigger>
-
-                                    <Dropdown.Content>
-                                        <Dropdown.Link
-                                            href={route('profile.edit')}
-                                        >
-                                            Profile
-                                        </Dropdown.Link>
-                                        <Dropdown.Link
-                                            href={route('logout')}
-                                            method="post"
-                                            as="button"
-                                        >
-                                            Log Out
-                                        </Dropdown.Link>
-                                    </Dropdown.Content>
-                                </Dropdown>
-                            </div>
-                        </div>
-
-                        <div className="-me-2 flex items-center sm:hidden">
-                            <button
-                                onClick={() =>
-                                    setShowingNavigationDropdown(
-                                        (previousState) => !previousState,
-                                    )
-                                }
-                                className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none dark:text-gray-500 dark:hover:bg-gray-900 dark:hover:text-gray-400 dark:focus:bg-gray-900 dark:focus:text-gray-400"
-                            >
-                                <svg
-                                    className="h-6 w-6"
-                                    stroke="currentColor"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        className={
-                                            !showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
-                                        }
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                    <path
-                                        className={
-                                            showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
-                                        }
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div
-                    className={
-                        (showingNavigationDropdown ? 'block' : 'hidden') +
-                        ' sm:hidden'
-                    }
-                >
-                    <div className="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
+                <div className="min-w-0">
+                    {/* Mobile bar — the sidebar collapses behind it. */}
+                    <div className="flex items-center gap-3 border-b border-border px-4 py-3 lg:hidden">
+                        <button
+                            type="button"
+                            onClick={() => setMobileOpen(true)}
+                            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent"
+                            aria-label="Open menu"
                         >
-                            Dashboard
-                        </ResponsiveNavLink>
+                            <Menu className="size-5" />
+                        </button>
+                        <AppLogo className="size-7" />
+                        <span className="font-heading font-extrabold">Resellers Hub</span>
                     </div>
 
-                    <div className="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600">
-                        <div className="px-4">
-                            <div className="text-base font-medium text-gray-800 dark:text-gray-200">
-                                {user.name}
-                            </div>
-                            <div className="text-sm font-medium text-gray-500">
-                                {user.email}
-                            </div>
-                        </div>
+                    {header && (
+                        <header className="border-b border-border px-4 py-5 sm:px-8">
+                            {header}
+                        </header>
+                    )}
 
-                        <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink href={route('profile.edit')}>
-                                Profile
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink
-                                method="post"
-                                href={route('logout')}
-                                as="button"
-                            >
-                                Log Out
-                            </ResponsiveNavLink>
-                        </div>
-                    </div>
+                    <main className={bleed ? '' : 'px-4 py-6 sm:px-8 sm:py-8'}>
+                        {children}
+                    </main>
                 </div>
-            </nav>
+            </div>
 
-            {header && (
-                <header className="bg-white shadow dark:bg-gray-800">
-                    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        {header}
-                    </div>
-                </header>
+            <Toaster position="bottom-right" />
+        </div>
+    );
+}
+
+function Sidebar({
+    tenant,
+    mobileOpen,
+    onClose,
+}: {
+    tenant: Tenant;
+    mobileOpen: boolean;
+    onClose: () => void;
+}) {
+    // Landing on a page that lives inside a bot opens that bot's panel: the
+    // sidebar should show where you are, not make you drill back in to it.
+    const [panel, setPanel] = useState<PanelKey>(() => currentPanel());
+
+    return (
+        <>
+            {mobileOpen && (
+                <div
+                    className="fixed inset-0 z-40 bg-foreground/20 lg:hidden"
+                    onClick={onClose}
+                    aria-hidden
+                />
             )}
 
-            <main>{children}</main>
+            <aside
+                className={[
+                    'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-sidebar transition-transform lg:sticky lg:top-0 lg:z-auto lg:h-dvh lg:w-auto lg:translate-x-0',
+                    mobileOpen ? 'translate-x-0' : '-translate-x-full',
+                ].join(' ')}
+            >
+                <div className="flex items-center justify-between gap-2 px-5 py-5">
+                    <Link href={route('dashboard')} className="flex min-w-0 items-center gap-2.5">
+                        <AppLogo className="size-8 shrink-0" />
+                        <span className="font-heading truncate font-extrabold">
+                            Resellers Hub
+                        </span>
+                    </Link>
+
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-lg p-1 text-muted-foreground lg:hidden"
+                        aria-label="Close menu"
+                    >
+                        <X className="size-5" />
+                    </button>
+                </div>
+
+                <nav className="scroll-slim flex-1 overflow-y-auto px-3 pb-3" aria-label="Main">
+                    {panel === 'main' ? (
+                        MAIN.map((section, index) => (
+                            <div
+                                key={section.label ?? 'top'}
+                                /* The rule doubles as the gap: a heading needs
+                                   room above it, the lead item does not. */
+                                className={
+                                    index === 0 ? '' : 'mt-4 border-t border-border pt-4'
+                                }
+                            >
+                                {section.label && (
+                                    <h2 className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                                        {section.label}
+                                    </h2>
+                                )}
+
+                                <ul className="space-y-0.5">
+                                    {section.items?.map((item) => (
+                                        <li key={item.label}>
+                                            <NavRow item={item} onNavigate={onClose} />
+                                        </li>
+                                    ))}
+
+                                    {section.drills?.map((drill) => (
+                                        <li key={drill.label}>
+                                            <DrillRow
+                                                drill={drill}
+                                                onOpen={() => setPanel(drill.panel)}
+                                            />
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))
+                    ) : (
+                        <SubPanel panel={panel} onBack={() => setPanel('main')} onNavigate={onClose} />
+                    )}
+                </nav>
+
+                <div className="border-t border-border p-3">
+                    <div className="px-2 py-1.5">
+                        <p className="truncate text-sm font-semibold">{tenant.business_name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{tenant.email}</p>
+                    </div>
+
+                    <div className="mt-1 space-y-0.5">
+                        <ThemeToggle />
+                        <Link
+                            href={route('profile.edit')}
+                            className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        >
+                            <Settings className="size-4" />
+                            Profile
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => router.post(route('logout'))}
+                            className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        >
+                            <LogOut className="size-4" />
+                            Log out
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </>
+    );
+}
+
+/**
+ * Which panel the current URL belongs to.
+ *
+ * Matching on the panel's own rows, not on a name prefix: the order bot owns
+ * `customers.index` and `services.index`, which share no prefix with it, and
+ * landing on one of those should still open the bot you reached it through.
+ *
+ * Read once on mount rather than on every render: after that the panel is the
+ * reseller's own choice, and recomputing it would slam them back to `main`
+ * the moment they drilled in from a page that is not inside a bot.
+ */
+function currentPanel(): PanelKey {
+    for (const [key, { items }] of Object.entries(PANELS)) {
+        const owns = items.some(
+            (item) => item.routeName && route().current(item.routeName),
+        );
+
+        if (owns) {
+            return key as Exclude<PanelKey, 'main'>;
+        }
+    }
+
+    return 'main';
+}
+
+function DrillRow({ drill, onOpen }: { drill: NavDrill; onOpen: () => void }) {
+    const Icon = drill.icon;
+
+    return (
+        <button
+            type="button"
+            onClick={onOpen}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+            <Icon className="size-4 shrink-0" />
+            <span className="min-w-0 flex-1 text-left">
+                <span className="block">{drill.label}</span>
+                <span className="block text-xs text-muted-foreground/70">{drill.hint}</span>
+            </span>
+            <ChevronRight className="size-4 shrink-0" aria-hidden />
+        </button>
+    );
+}
+
+/** One bot's pages, with the way back out kept at the top. */
+function SubPanel({
+    panel,
+    onBack,
+    onNavigate,
+}: {
+    panel: Exclude<PanelKey, 'main'>;
+    onBack: () => void;
+    onNavigate: () => void;
+}) {
+    const { title, icon: Icon, items } = PANELS[panel];
+
+    return (
+        <div>
+            <button
+                type="button"
+                onClick={onBack}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+                <ChevronLeft className="size-4 shrink-0" aria-hidden />
+                Back
+            </button>
+
+            <h2 className="mt-2 flex items-center gap-2 border-t border-border px-3 pb-1.5 pt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                <Icon className="size-3.5" aria-hidden />
+                {title}
+            </h2>
+
+            <ul className="space-y-0.5">
+                {items.map((item) => (
+                    <li key={item.label}>
+                        <NavRow item={item} onNavigate={onNavigate} />
+                    </li>
+                ))}
+            </ul>
         </div>
+    );
+}
+
+function ThemeToggle() {
+    const { isDark, toggle } = useTheme();
+
+    return (
+        <button
+            type="button"
+            onClick={toggle}
+            className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+            {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            {isDark ? 'Light mode' : 'Dark mode'}
+        </button>
+    );
+}
+
+function NavRow({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
+    const Icon = item.icon;
+    const page = usePage().props;
+
+    // Zero renders nothing at all: a badge showing "0" is a permanent mark
+    // against a row where there is nothing to see.
+    const count = item.badge ? Number(page[item.badge] ?? 0) : 0;
+
+    const classes =
+        'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors';
+
+    if (!item.routeName) {
+        return (
+            <span
+                className={`${classes} cursor-not-allowed text-muted-foreground/60`}
+                title="Not built yet"
+            >
+                <Icon className="size-4 shrink-0" />
+                <span className="flex-1">{item.label}</span>
+                <span className="text-[10px] uppercase tracking-wide">Soon</span>
+            </span>
+        );
+    }
+
+    // A tab row is only current when its own tab is showing — without the
+    // parameter check all four `support-bot` rows would highlight at once.
+    const isCurrent = item.routeParams
+        ? route().current(item.routeName, { tab: item.routeParams })
+        : route().current(item.routeName);
+
+    return (
+        <Link
+            href={item.routeParams ? route(item.routeName, item.routeParams) : route(item.routeName)}
+            onClick={onNavigate}
+            className={[
+                classes,
+                isCurrent
+                    ? 'bg-sidebar-accent font-semibold text-sidebar-accent-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+            ].join(' ')}
+            aria-current={isCurrent ? 'page' : undefined}
+        >
+            <Icon className="size-4 shrink-0" />
+            <span className="flex-1">{item.label}</span>
+
+            {count > 0 && (
+                <span
+                    className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary-foreground"
+                    aria-label={`${count} waiting`}
+                >
+                    {count > 9 ? '9+' : count}
+                </span>
+            )}
+        </Link>
     );
 }

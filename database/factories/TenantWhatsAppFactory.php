@@ -25,10 +25,13 @@ class TenantWhatsAppFactory extends Factory
             'phone_number_id' => (string) fake()->unique()->numerify('##############'),
             'display_number' => fake()->numerify('2557########'),
             'status' => 'active',
-            'bot_type' => 'both',
+            // One number, one bot. The order bot is the default because it is
+            // the one most resellers start with.
+            'bot_type' => 'order',
         ];
     }
 
+    /** Same as the default, but says so at the call site. */
     public function orderOnly(): static
     {
         return $this->state(fn () => ['bot_type' => 'order']);

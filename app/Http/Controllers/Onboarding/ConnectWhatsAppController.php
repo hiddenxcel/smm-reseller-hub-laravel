@@ -18,7 +18,7 @@ class ConnectWhatsAppController extends Controller
             'token' => ['required', 'string', 'max:500'],
             'waba_id' => ['nullable', 'string', 'max:50'],
             'display_number' => ['nullable', 'string', 'max:30'],
-            'bot_type' => ['required', Rule::in(['order', 'support', 'both'])],
+            'bot_type' => ['required', Rule::in(['order', 'support'])],
         ]);
 
         $tenant = $request->user();
@@ -41,8 +41,7 @@ class ConnectWhatsAppController extends Controller
             ],
         );
 
-        return redirect()
-            ->route('onboarding')
+        return $this->afterSave($request)
             ->with('status', 'WhatsApp number connected.');
     }
 
@@ -65,17 +64,18 @@ class ConnectWhatsAppController extends Controller
     }
 
     /**
-     * One bot per number: if another of this reseller's numbers already runs
-     * the order bot, a second cannot also claim it — inbound messages would
-     * have no single answer to "whose bot is this?".
+     * One bot per number, and one number per bot: if another of this
+     * reseller's numbers already runs the order bot, a second cannot also
+     * claim it — an inbound message would have no single answer to "whose bot
+     * is this?".
      */
     private function assertBotIsUnclaimed(string $botType, string $phoneNumberId, int $tenantId): void
     {
         $conflicting = TenantWhatsApp::withoutTenantScope()
             ->where('tenant_id', $tenantId)
             ->where('phone_number_id', '!=', $phoneNumberId)
-            ->get()
-            ->contains(fn (TenantWhatsApp $number) => $this->rolesOverlap($number->bot_type, $botType));
+            ->where('bot_type', $botType)
+            ->exists();
 
         if ($conflicting) {
             throw ValidationException::withMessages([
@@ -84,13 +84,21 @@ class ConnectWhatsAppController extends Controller
         }
     }
 
-    /** "both" covers order and support, so it clashes with either. */
-    private function rolesOverlap(string $existing, string $wanted): bool
+    /**
+     * Where to go after a setup action succeeds.
+     *
+     * The same forms serve two screens with opposite needs: the wizard must
+     * advance to the next step, while Settings must stay on the tab the
+     * reseller is working in. Submitting from Settings is the special case,
+     * so that is what gets detected; everything else advances, which keeps
+     * the wizard's behaviour identical to before Settings existed.
+     */
+    private function afterSave(Request $request): RedirectResponse
     {
-        if ($existing === 'both' || $wanted === 'both') {
-            return true;
+        if (str_contains((string) $request->headers->get('referer'), '/settings')) {
+            return back(fallback: route('settings'));
         }
 
-        return $existing === $wanted;
+        return redirect()->route('onboarding');
     }
 }

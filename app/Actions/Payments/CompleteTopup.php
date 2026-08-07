@@ -8,6 +8,7 @@ use App\Models\BotConversation;
 use App\Models\BotCustomer;
 use App\Models\BotPayment;
 use App\Services\Bots\Order\OrderState;
+use App\Services\Customers\CustomerReferrals;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -41,6 +42,11 @@ class CompleteTopup
         }
 
         $customer->credit((string) $payment->amount);
+
+        // Whoever introduced this customer earns a cut of their first top-up.
+        // Safe on every payment: it pays out at most once, guarded by the same
+        // first_deposit_done flag it sets.
+        CustomerReferrals::payFirstDepositBonus($customer, (string) $payment->amount);
 
         $this->placePendingOrder($payment, $customer);
     }

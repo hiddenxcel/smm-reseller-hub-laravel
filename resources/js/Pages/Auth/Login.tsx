@@ -1,11 +1,11 @@
-import Checkbox from '@/components/Checkbox';
 import InputError from '@/components/InputError';
-import InputLabel from '@/components/InputLabel';
-import PrimaryButton from '@/components/PrimaryButton';
-import TextInput from '@/components/TextInput';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import { CheckCircle2, Eye, EyeOff, LogIn } from 'lucide-react';
+import { FormEventHandler, useState } from 'react';
 
 export default function Login({
     status,
@@ -14,6 +14,8 @@ export default function Login({
     status?: string;
     canResetPassword: boolean;
 }) {
+    const [showPassword, setShowPassword] = useState(false);
+
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -29,82 +31,109 @@ export default function Login({
     };
 
     return (
-        <GuestLayout>
+        <GuestLayout
+            title="Welcome back"
+            description="Sign in to pick up where your shop left off."
+        >
             <Head title="Log in" />
 
             {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
-                    {status}
+                <div className="mb-6 flex items-start gap-2.5 rounded-lg bg-accent px-3.5 py-3 text-sm text-accent-foreground">
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+                    <span>{status}</span>
                 </div>
             )}
 
-            <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="email" value="Email" />
+            <form onSubmit={submit} className="space-y-5">
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
 
-                    <TextInput
+                    <Input
                         id="email"
                         type="email"
                         name="email"
                         value={data.email}
-                        className="mt-1 block w-full"
+                        className="h-10"
                         autoComplete="username"
-                        isFocused={true}
+                        autoFocus
+                        placeholder="you@yourshop.com"
+                        aria-invalid={!!errors.email}
                         onChange={(e) => setData('email', e.target.value)}
                     />
 
-                    <InputError message={errors.email} className="mt-2" />
+                    <InputError message={errors.email} />
                 </div>
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                        <Label htmlFor="password">Password</Label>
 
-                    <TextInput
-                        id="password"
-                        type="password"
-                        name="password"
-                        value={data.password}
-                        className="mt-1 block w-full"
-                        autoComplete="current-password"
-                        onChange={(e) => setData('password', e.target.value)}
-                    />
+                        {canResetPassword && (
+                            <Link
+                                href={route('password.request')}
+                                className="rounded-sm text-xs font-medium text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                            >
+                                Forgot password?
+                            </Link>
+                        )}
+                    </div>
 
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div className="mt-4 block">
-                    <label className="flex items-center">
-                        <Checkbox
-                            name="remember"
-                            checked={data.remember}
-                            onChange={(e) =>
-                                setData(
-                                    'remember',
-                                    (e.target.checked || false) as false,
-                                )
-                            }
+                    <div className="relative">
+                        <Input
+                            id="password"
+                            type={showPassword ? 'text' : 'password'}
+                            name="password"
+                            value={data.password}
+                            className="h-10 pr-10"
+                            autoComplete="current-password"
+                            placeholder="••••••••"
+                            aria-invalid={!!errors.password}
+                            onChange={(e) => setData('password', e.target.value)}
                         />
-                        <span className="ms-2 text-sm text-gray-600 dark:text-gray-400">
-                            Remember me
-                        </span>
-                    </label>
-                </div>
 
-                <div className="mt-4 flex items-center justify-end">
-                    {canResetPassword && (
-                        <Link
-                            href={route('password.request')}
-                            className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-100 dark:focus:ring-offset-gray-800"
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword((value) => !value)}
+                            className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
                         >
-                            Forgot your password?
-                        </Link>
-                    )}
+                            {showPassword ? (
+                                <EyeOff className="size-4" />
+                            ) : (
+                                <Eye className="size-4" />
+                            )}
+                        </button>
+                    </div>
 
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Log in
-                    </PrimaryButton>
+                    <InputError message={errors.password} />
                 </div>
+
+                <label className="flex w-fit items-center gap-2.5 text-sm text-muted-foreground select-none">
+                    <input
+                        type="checkbox"
+                        name="remember"
+                        checked={data.remember}
+                        onChange={(e) => setData('remember', e.target.checked)}
+                        className="size-4 rounded border-input text-primary accent-primary focus-visible:ring-3 focus-visible:ring-ring/50"
+                    />
+                    Keep me signed in
+                </label>
+
+                <Button type="submit" size="lg" className="w-full" disabled={processing}>
+                    <LogIn className="size-4" />
+                    {processing ? 'Signing in…' : 'Sign in'}
+                </Button>
             </form>
+
+            <p className="mt-8 text-center text-sm text-muted-foreground">
+                New here?{' '}
+                <Link
+                    href={route('register')}
+                    className="rounded-sm font-semibold text-primary transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                    Create a free account
+                </Link>
+            </p>
         </GuestLayout>
     );
 }

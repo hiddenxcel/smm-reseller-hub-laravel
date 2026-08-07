@@ -10,6 +10,7 @@ use App\Models\TenantWhatsApp;
 use App\Services\Bots\BotSettings;
 use App\Services\Onboarding\OnboardingProgress;
 use App\Services\Onboarding\OnboardingStep;
+use App\Services\Payments\Gateway;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
@@ -45,6 +46,44 @@ class OnboardingWizardTest extends TestCase
     private function completeWhatsAppStep(): void
     {
         TenantWhatsApp::factory()->for($this->tenant)->create();
+    }
+
+
+    // ---- where a finished step sends you ---------------------------------
+
+    /**
+     * The same forms serve the wizard and Settings, so where they return to
+     * depends on where they were submitted from. Both directions are asserted
+     * with a Referer, because posting without one takes a fallback path and
+     * hides exactly the mistake this is here to catch: a reseller who saves a
+     * panel inside the wizard and lands back on the panel form.
+     */
+    public function test_saving_from_the_wizard_advances_rather_than_returning_to_the_form(): void
+    {
+        BotService::factory()->for($this->tenant)->create(['status' => 'active']);
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->from(route('onboarding.step', 'whatsapp'))
+            ->post(route('onboarding.whatsapp.store'), [
+                'phone_number_id' => 'wizard-1',
+                'token' => 'a-token',
+                'display_number' => '+255700000009',
+                'bot_type' => 'order',
+            ])
+            ->assertRedirect(route('onboarding'));
+    }
+
+    public function test_saving_from_settings_stays_in_settings(): void
+    {
+        $this->actingAs($this->tenant, 'tenant')
+            ->from(route('settings', 'whatsapp'))
+            ->post(route('onboarding.whatsapp.store'), [
+                'phone_number_id' => 'settings-1',
+                'token' => 'a-token',
+                'display_number' => '+255700000008',
+                'bot_type' => 'order',
+            ])
+            ->assertRedirect(route('settings', 'whatsapp'));
     }
 
     // ---- where the wizard sends you --------------------------------------
@@ -129,7 +168,6 @@ class OnboardingWizardTest extends TestCase
 
         $this->actingAs($this->tenant, 'tenant')
             ->post(route('onboarding.panel.store'), [
-                'name' => 'My Panel',
                 'api_url' => 'mypanel.com',
                 'api_key' => 'secret-key',
             ])
@@ -137,11 +175,47 @@ class OnboardingWizardTest extends TestCase
 
         $this->assertDatabaseHas('tenant_panels', [
             'tenant_id' => $this->tenant->id,
-            'name' => 'My Panel',
+            // Never asked for — taken from the address.
+            'name' => 'Mypanel',
             'api_url' => 'https://mypanel.com/api/v2',
             'auth_method' => 'param',
             'status' => 'active',
         ]);
+    }
+
+    public function test_it_names_a_panel_from_its_address(): void
+    {
+        Http::fake(['*' => Http::response(['balance' => '10.00'])]);
+
+        $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.panel.store'), [
+            'api_url' => 'https://www.best-smm.co.uk/api/v2',
+            'api_key' => 'key',
+        ]);
+
+        // `www.` and the two-part suffix carry no meaning; the hyphen becomes
+        // a space so the label reads as words.
+        $this->assertDatabaseHas('tenant_panels', ['name' => 'Best Smm']);
+    }
+
+    public function test_reconnecting_a_panel_keeps_the_name_the_reseller_chose(): void
+    {
+        Http::fake(['*' => Http::response(['balance' => '10.00'])]);
+
+        $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.panel.store'), [
+            'api_url' => 'mypanel.com',
+            'api_key' => 'first-key',
+        ]);
+
+        TenantPanel::where('tenant_id', $this->tenant->id)->update(['name' => 'Renamed by hand']);
+
+        // Rotating the key must not undo the rename.
+        $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.panel.store'), [
+            'api_url' => 'mypanel.com',
+            'api_key' => 'second-key',
+        ]);
+
+        $this->assertDatabaseCount('tenant_panels', 1);
+        $this->assertDatabaseHas('tenant_panels', ['name' => 'Renamed by hand']);
     }
 
     public function test_it_appends_the_api_path_to_a_bare_domain(): void
@@ -149,7 +223,6 @@ class OnboardingWizardTest extends TestCase
         Http::fake(['*' => Http::response(['balance' => '10.00'])]);
 
         $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.panel.store'), [
-            'name' => 'Panel',
             'api_url' => 'https://panel.example.com',
             'api_key' => 'key',
         ]);
@@ -164,7 +237,6 @@ class OnboardingWizardTest extends TestCase
         Http::fake(['*' => Http::response(['balance' => '10.00'])]);
 
         $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.panel.store'), [
-            'name' => 'Panel',
             'api_url' => 'https://panel.example.com/api/v2',
             'api_key' => 'key',
         ]);
@@ -180,7 +252,6 @@ class OnboardingWizardTest extends TestCase
 
         $this->actingAs($this->tenant, 'tenant')
             ->post(route('onboarding.panel.store'), [
-                'name' => 'Panel',
                 'api_url' => 'panel.example.com',
                 'api_key' => 'wrong',
             ])
@@ -197,7 +268,6 @@ class OnboardingWizardTest extends TestCase
         $this->assertFalse($progress->isComplete(OnboardingStep::ConnectPanel));
 
         $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.panel.store'), [
-            'name' => 'Panel',
             'api_url' => 'panel.example.com',
             'api_key' => 'key',
         ]);
@@ -236,10 +306,24 @@ class OnboardingWizardTest extends TestCase
         $this->assertTrue(OnboardingProgress::for($this->tenant)->isReadyToGoLive());
     }
 
+    /**
+     * Connecting a gateway with no client behind it is not setup done — the
+     * reseller would finish the wizard unable to take a payment.
+     *
+     * The example is read out of config rather than named here: it used to say
+     * 'stripe', which stopped meaning anything the day Stripe got a client.
+     */
     public function test_a_gateway_that_is_not_wired_up_does_not_count(): void
     {
+        $unwired = collect(array_keys(Gateway::all()))
+            ->first(fn (string $code) => ! Gateway::isReady($code));
+
+        if ($unwired === null) {
+            $this->markTestSkipped('Every configured gateway is wired up.');
+        }
+
         TenantPaymentGateway::factory()->for($this->tenant)->create([
-            'gateway' => 'stripe', // selectable, but not yet driveable
+            'gateway' => $unwired,
             'status' => 'active',
         ]);
 

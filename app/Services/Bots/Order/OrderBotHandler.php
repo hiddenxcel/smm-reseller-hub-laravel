@@ -13,6 +13,10 @@ use App\Services\Bots\BotHandler;
 use App\Services\Bots\BotLang;
 use App\Services\Bots\BotMessenger;
 use App\Services\Bots\BotSettings;
+use App\Services\Customers\CustomerReferrals;
+use App\Services\Payments\Gateway;
+use App\Services\Payments\GatewayFactory;
+use App\Services\Payments\StartTopup;
 use Illuminate\Support\Arr;
 
 /**
@@ -49,6 +53,10 @@ class OrderBotHandler implements BotHandler
 
     private string $locale = BotLang::DEFAULT;
 
+    private GatewayFactory $gateways;
+
+    private StartTopup $topups;
+
     public function __construct(
         private Tenant $tenant,
         private BotMessenger $messenger,
@@ -56,6 +64,12 @@ class OrderBotHandler implements BotHandler
         $this->tenantId = (int) $tenant->id;
         $this->shop = Arr::get(BotSettings::for($this->tenantId, self::BOT), 'shop', []);
         $this->currency = $this->shop['currency'] ?? 'USD';
+
+        // Resolved rather than injected: BotHandlerFactory constructs handlers
+        // with (tenant, messenger) by contract, and both bots depend on that
+        // signature. Tests still swap these through the container.
+        $this->gateways = app(GatewayFactory::class);
+        $this->topups = app(StartTopup::class);
     }
 
     public function handle(string $from, string $text): void
@@ -83,10 +97,15 @@ class OrderBotHandler implements BotHandler
             OrderState::SelectQuantity => $this->onQuantityChosen($from, $text, $context),
             OrderState::SendLink => $this->onLinkGiven($from, $text, $context),
             OrderState::Confirm => $this->onConfirmed($from, $text, $context, $customer),
+            OrderState::ReferralCode => $this->onReferralCodeGiven($from, $text, $customer),
             OrderState::AwaitingPayment => $this->say($from, 'awaiting_payment'),
 
-            // Top-up and AI chat are wired in the next step; until then the
-            // customer is returned to the menu rather than left stuck.
+            OrderState::TopupDecision => $this->onTopupDecision($from, $text, $context, $customer),
+            OrderState::TopupAmount => $this->onTopupAmount($from, $text, $customer),
+            OrderState::TopupPhone => $this->onTopupPhone($from, $text, $context, $customer),
+
+            // AI chat is wired in the next step; until then the customer is
+            // returned to the menu rather than left stuck.
             default => $this->showMainMenu($from, $customer),
         };
     }
@@ -153,8 +172,9 @@ class OrderBotHandler implements BotHandler
             'settings' => $this->askLanguage($from),
             'group' => $this->sayAndFinish($from, 'group_info', ['url' => $this->shop['group_url'] ?? '']),
             'website' => $this->sayAndFinish($from, 'website_info', ['url' => $this->shop['website_url'] ?? '']),
+            'topup' => $this->askTopupAmount($from),
 
-            // Top-up and support arrive with the payment flow.
+            // Support arrives with the support bot.
             default => $this->say($from, 'not_understood_menu'),
         };
     }
@@ -213,14 +233,51 @@ class OrderBotHandler implements BotHandler
 
     private function showReferral(string $from, BotCustomer $customer): void
     {
-        $referred = BotCustomer::withoutTenantScope()
-            ->where('referred_by', $customer->id)
-            ->count();
-
         $this->sayAndFinish($from, 'referral_info', [
             'code' => $customer->referral_code ?: '—',
-            'count' => $referred,
+            'count' => CustomerReferrals::countFor($customer),
             'earnings' => $this->money($customer->referral_earnings),
+        ]);
+
+        // Someone who has not yet said who invited them is asked once, right
+        // after seeing their own code — the moment referrals are on their mind.
+        // Anyone already linked is left alone.
+        if ($customer->referred_by === null) {
+            $this->moveTo($from, OrderState::ReferralCode);
+            $this->say($from, 'referral_ask_code');
+        }
+    }
+
+    /**
+     * The code of whoever invited them.
+     *
+     * A wrong code keeps them here to try again rather than dropping them back
+     * to the menu — a mistyped character should not cost them the bonus.
+     */
+    private function onReferralCodeGiven(string $from, string $text, BotCustomer $customer): void
+    {
+        $text = trim($text);
+
+        if ($text === '' || mb_strtolower($text) === 'skip') {
+            $this->sayAndFinish($from, 'referral_skipped');
+
+            return;
+        }
+
+        if ($customer->referred_by !== null) {
+            $this->sayAndFinish($from, 'referral_already_linked');
+
+            return;
+        }
+
+        if (! CustomerReferrals::claim($customer, $text)) {
+            $this->say($from, 'referral_unknown_code');
+
+            return;
+        }
+
+        $this->sayAndFinish($from, 'referral_claimed', [
+            'code' => mb_strtoupper($text),
         ]);
     }
 
@@ -257,9 +314,12 @@ class OrderBotHandler implements BotHandler
 
     private function startOrder(string $from): void
     {
+        // Paused services still count towards a platform being offered: the
+        // customer should see "Instagram" and then find one option greyed out,
+        // rather than the whole platform vanishing because one panel is down.
         $platforms = BotService::withoutTenantScope()
             ->where('tenant_id', $this->tenantId)
-            ->where('status', 'active')
+            ->whereIn('status', [BotService::ACTIVE, BotService::PAUSED])
             ->distinct()
             ->orderBy('platform')
             ->pluck('platform');
@@ -371,10 +431,18 @@ class OrderBotHandler implements BotHandler
         $catalogue = [];
 
         foreach ($services->take(self::MAX_LIST_ROWS) as $service) {
+            $isPaused = $service->status === BotService::PAUSED;
+            $price = $this->money($this->pricePerUnit($service)).' '.$this->t('per_1k');
+
             $rows[] = [
                 'id' => "svc_{$service->id}",
                 'title' => mb_substr($service->name, 0, 24),
-                'description' => $this->money($this->pricePerUnit($service)).' '.$this->t('per_1k'),
+                // WhatsApp list rows cannot be disabled, so a paused service is
+                // labelled instead — better than letting a customer pick it and
+                // only then be told no.
+                'description' => $isPaused
+                    ? mb_substr($this->t('service_paused_label').' · '.$price, 0, 72)
+                    : $price,
             ];
 
             // The chosen service is snapshotted into the conversation so a
@@ -388,6 +456,7 @@ class OrderBotHandler implements BotHandler
                 'unit' => $service->unit_label,
                 'panel_id' => $service->panel_id,
                 'provider_service_id' => $service->provider_service_id,
+                'paused' => $isPaused,
             ];
         }
 
@@ -416,6 +485,15 @@ class OrderBotHandler implements BotHandler
 
         if ($service === null) {
             $this->say($from, 'pick_service_again');
+
+            return;
+        }
+
+        // Paused: listed so the customer knows it exists, but not orderable.
+        // Checked here rather than only at the list, because the snapshot can
+        // outlive the reseller pausing it mid-conversation.
+        if (($service['paused'] ?? false) === true) {
+            $this->say($from, 'service_paused');
 
             return;
         }
@@ -601,6 +679,176 @@ class OrderBotHandler implements BotHandler
         );
     }
 
+    // ---- paying ----------------------------------------------------------
+
+    /** "Add Funds" from the menu — a top-up with no order behind it. */
+    private function askTopupAmount(string $from): void
+    {
+        $this->moveTo($from, OrderState::TopupAmount);
+
+        $this->say($from, 'topup_prompt', [
+            'cur' => $this->currency,
+            'min' => $this->money((string) ($this->shop['min_topup'] ?? 1)),
+        ]);
+    }
+
+    /**
+     * "Top up & pay", or not.
+     *
+     * The shortfall is what gets collected, not the whole order — the customer
+     * already has the rest sitting in their wallet.
+     */
+    private function onTopupDecision(
+        string $from,
+        string $text,
+        array $context,
+        BotCustomer $customer,
+    ): void {
+        // Interactive replies arrive as the button's id; a customer typing
+        // instead is taken at their word either way.
+        $affirmative = ['topup_yes', 'yes', 'ndio', 'ndiyo', 'pay'];
+
+        if (! in_array(mb_strtolower(trim($text)), $affirmative, true)) {
+            $this->sayAndFinish($from, 'payment_cancelled');
+
+            return;
+        }
+
+        $amount = (string) ($context['shortfall'] ?? $context['amount'] ?? '0');
+
+        $this->collect($from, $amount, $context, $customer);
+    }
+
+    /**
+     * A standalone top-up from the menu: the customer names the amount.
+     *
+     * No order is attached, so nothing is placed when it clears — the money
+     * simply lands in the wallet.
+     */
+    private function onTopupAmount(string $from, string $text, BotCustomer $customer): void
+    {
+        $min = (string) ($this->shop['min_topup'] ?? 1);
+        $amount = trim(str_replace(',', '', $text));
+
+        if (! is_numeric($amount) || bccomp($amount, $min, 2) === -1) {
+            $this->say($from, 'topup_amount_invalid', [
+                'min' => $this->money($min),
+                'cur' => $this->currency,
+            ]);
+
+            return;
+        }
+
+        $this->collect($from, bcadd($amount, '0', 2), [], $customer);
+    }
+
+    /** Mobile money needs a number to push the prompt to. */
+    private function onTopupPhone(
+        string $from,
+        string $text,
+        array $context,
+        BotCustomer $customer,
+    ): void {
+        $phone = preg_replace('/\D/', '', $text) ?? '';
+
+        // Long enough to be a real number, short enough to be a phone. Anything
+        // finer belongs to the gateway, which knows its own country's format.
+        if (strlen($phone) < 9 || strlen($phone) > 15) {
+            $this->say($from, 'pay_phone_invalid');
+
+            return;
+        }
+
+        $this->start($from, (string) ($context['pay_amount'] ?? '0'), $context, $customer, $phone);
+    }
+
+    /**
+     * Ask for a phone first if the gateway pushes to one, otherwise go
+     * straight to the gateway.
+     */
+    private function collect(
+        string $from,
+        string $amount,
+        array $context,
+        BotCustomer $customer,
+    ): void {
+        $credentials = $this->gateways->firstUsableFor($this->tenantId);
+
+        if ($credentials === null) {
+            $this->sayAndFinish($from, 'topup_no_gateway');
+
+            return;
+        }
+
+        if (Gateway::needsPhone($credentials->gateway)) {
+            $context['pay_amount'] = $amount;
+            $this->moveTo($from, OrderState::TopupPhone, $context);
+
+            $this->say($from, 'ask_pay_phone', ['suggest' => $from]);
+
+            return;
+        }
+
+        $this->start($from, $amount, $context, $customer, '');
+    }
+
+    /**
+     * Hand off to the gateway and tell the customer what to do next.
+     *
+     * The conversation moves to AwaitingPayment either way, because that is
+     * what CompleteTopup looks for when the webhook lands — a customer whose
+     * state was cleared would have their order forgotten.
+     */
+    private function start(
+        string $from,
+        string $amount,
+        array $context,
+        BotCustomer $customer,
+        string $phone,
+    ): void {
+        $result = $this->topups->handle(
+            tenantId: $this->tenantId,
+            customer: $customer,
+            amount: $amount,
+            currency: $this->currency,
+            phone: $phone,
+        );
+
+        if ($result->noGateway) {
+            $this->sayAndFinish($from, 'topup_no_gateway');
+
+            return;
+        }
+
+        if (! $result->started) {
+            $this->sayAndFinish($from, 'payment_start_failed', [
+                'message' => $result->message ?? '',
+            ]);
+
+            return;
+        }
+
+        // Whether an order is waiting decides the wording: one says the order
+        // will be placed, the other only that the wallet will be credited.
+        $hasOrder = filled($context['service'] ?? null) && filled($context['amount'] ?? null);
+
+        $this->moveTo($from, OrderState::AwaitingPayment, $context);
+
+        if ($result->isPush()) {
+            $this->say($from, $hasOrder ? 'payment_push' : 'topup_only_push', [
+                'amount' => $this->money($amount),
+                'phone' => $phone,
+            ]);
+
+            return;
+        }
+
+        $this->say($from, $hasOrder ? 'payment_link' : 'topup_only_link', [
+            'amount' => $this->money($amount),
+            'url' => (string) $result->redirectUrl,
+        ]);
+    }
+
     /**
      * Staff alerts are not translated: they go to the reseller's own team,
      * not to a customer, and the old platform sent them in English too.
@@ -626,18 +874,33 @@ class OrderBotHandler implements BotHandler
 
     private function customer(string $phone): BotCustomer
     {
-        return BotCustomer::withoutTenantScope()->firstOrCreate(
+        $customer = BotCustomer::withoutTenantScope()->firstOrCreate(
             ['tenant_id' => $this->tenantId, 'phone' => $phone],
             ['lang' => $this->shop['lang'] ?? BotLang::DEFAULT],
         );
+
+        // Every customer needs a code of their own to share. Assigned here
+        // rather than at creation so the customers who predate referrals get
+        // one the next time they message.
+        if (blank($customer->referral_code)) {
+            CustomerReferrals::assignCode($customer);
+        }
+
+        return $customer;
     }
 
+    /**
+     * Hidden services are gone; paused ones are shown and then declined at the
+     * point of ordering. That is the difference between the two: a reseller
+     * pauses a service to say "not right now", not "pretend it never existed".
+     */
     private function servicesFor(string $platform)
     {
         return BotService::withoutTenantScope()
             ->where('tenant_id', $this->tenantId)
             ->where('platform', $platform)
-            ->where('status', 'active')
+            ->whereIn('status', [BotService::ACTIVE, BotService::PAUSED])
+            ->orderByDesc('featured')
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();

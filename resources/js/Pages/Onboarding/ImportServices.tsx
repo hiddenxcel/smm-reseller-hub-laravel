@@ -24,6 +24,7 @@ type Props = {
     panel: { id: number; name: string };
     services: PanelService[];
     catalogueError: string | null;
+    canSkip: boolean;
 };
 
 export default function ImportServices({
@@ -33,6 +34,7 @@ export default function ImportServices({
     panel,
     services,
     catalogueError,
+    canSkip,
 }: Props) {
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState<Record<string, string>>({});
@@ -102,7 +104,7 @@ export default function ImportServices({
     const chosenCount = Object.keys(selected).length;
 
     return (
-        <OnboardingLayout step={step} steps={steps} completed={completed}>
+        <OnboardingLayout step={step} steps={steps} completed={completed} canSkip={canSkip}>
             <Head title="Import your services" />
 
             <div>

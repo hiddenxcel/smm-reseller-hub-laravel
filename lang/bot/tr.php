@@ -66,6 +66,8 @@ return [
     'btn_services' => 'Hizmetler',
     'per_1k' => '/ 1k',
     'pick_service_again' => 'Lütfen listeden bir hizmet seçin. Yeniden başlamak için *hi* yazın.',
+    'service_paused_label' => 'Kullanılamıyor',
+    'service_paused' => '⏸️ Bu hizmet şu anda kullanılamıyor. Lütfen başka birini seçin veya daha sonra tekrar deneyin.',
     'how_many' => 'Kaç adet *{service}*?',
     'packages_header' => 'Miktar',
     'btn_packages' => 'Paketler',
@@ -127,6 +129,13 @@ return [
         "Şu ana kadarki davetleriniz: *{count}*\n".
         "Kazançlar: *{earnings}*\n\n".
         'Menü için *hi* yazın.',
+    'referral_ask_code' => "🎁 Bir arkadaşınız sizi davet etti mi?\n\n".
+        'Hesabınızı bağlamak için kodunu gönderin veya devam etmek için *skip* yazın.',
+    'referral_claimed' => "✅ Artık *{code}* ile bağlısınız. İlk bakiye yüklemenizde bonus kazanacaklar.\n\n".
+        'Menü için *hi* yazın.',
+    'referral_unknown_code' => '❌ Burada kimsede bu kod yok. Kontrol edip tekrar gönderin veya *skip* yazın.',
+    'referral_already_linked' => "Zaten birine bağlısınız.\n\nMenü için *hi* yazın.",
+    'referral_skipped' => "Sorun değil.\n\nMenü için *hi* yazın.",
 
     // ---- Track order ---------------------------------------------------------
     'track_none' => '📦 Henüz siparişiniz yok. *hi* yazıp *Yeni Sipariş* seçerek sipariş verin.',

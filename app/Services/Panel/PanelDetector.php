@@ -66,4 +66,34 @@ class PanelDetector
 
         return $url.'/api/v2';
     }
+
+    /**
+     * A display name derived from the address, so the reseller is not asked
+     * for one during setup.
+     *
+     * The host carries everything useful: `www.` and the TLD say nothing about
+     * which panel this is, so they come off, and what remains is title-cased.
+     * `panel.example.com` becomes "Panel Example". A name is only a label in
+     * the dashboard — the reseller can rename it later in Settings.
+     */
+    public static function nameFromUrl(string $url): string
+    {
+        $host = parse_url(self::normaliseUrl($url), PHP_URL_HOST) ?: $url;
+
+        $host = preg_replace('#^www\.#i', '', $host);
+
+        // Drop the public suffix. Two labels are removed for a host like
+        // `panel.co.uk` and one for `panel.com`, leaving the meaningful part.
+        $labels = explode('.', $host);
+
+        if (count($labels) > 2 && in_array($labels[count($labels) - 2], ['co', 'com', 'org', 'net', 'ac', 'gov'], true)) {
+            $labels = array_slice($labels, 0, -2);
+        } elseif (count($labels) > 1) {
+            $labels = array_slice($labels, 0, -1);
+        }
+
+        $name = ucwords(str_replace(['-', '_', '.'], ' ', implode(' ', $labels)));
+
+        return $name === '' ? 'My panel' : mb_substr($name, 0, 150);
+    }
 }

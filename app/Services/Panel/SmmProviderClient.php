@@ -95,6 +95,36 @@ class SmmProviderClient
         ]);
     }
 
+    /**
+     * Ask the panel to cancel an order.
+     *
+     * The API takes a comma-separated `orders` list and answers with one entry
+     * per id, so a single cancel still comes back wrapped in an array. Most
+     * panels only honour this while an order is still pending; a refusal comes
+     * back as `{"cancel": {"error": "..."}}` with a 200, which is why the
+     * per-entry error is unwrapped here rather than trusted as success.
+     */
+    public function cancel(string $orderId): PanelResponse
+    {
+        $result = $this->call(['action' => 'cancel', 'orders' => $orderId]);
+
+        if ($result->failed) {
+            return $result;
+        }
+
+        $entry = $result->data[0] ?? $result->data;
+
+        if (is_array($entry) && isset($entry['cancel']) && is_array($entry['cancel'])) {
+            $entry = $entry['cancel'];
+        }
+
+        if (is_array($entry) && isset($entry['error'])) {
+            return PanelResponse::error((string) $entry['error']);
+        }
+
+        return PanelResponse::ok(['cancel' => is_array($entry) ? ($entry['cancel'] ?? null) : $entry]);
+    }
+
     private function call(array $payload): PanelResponse
     {
         $request = Http::asForm()

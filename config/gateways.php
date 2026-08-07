@@ -83,22 +83,20 @@ return [
         ],
     ],
 
-    // ---- selectable now, wired later ----
-
     'flutterwave' => [
         'label' => 'Flutterwave (Cards / Mobile)',
         'type' => 'card',
-        'ready' => false,
+        'ready' => true,
         'fields' => [
             ['name' => 'api_key', 'label' => 'Secret key', 'store' => 'api_key'],
-            ['name' => 'webhook_secret', 'label' => 'Webhook hash', 'store' => 'webhook_secret'],
+            ['name' => 'webhook_secret', 'label' => 'Secret hash', 'store' => 'webhook_secret'],
         ],
     ],
 
     'stripe' => [
         'label' => 'Stripe (Cards)',
         'type' => 'card',
-        'ready' => false,
+        'ready' => true,
         'fields' => [
             ['name' => 'api_key', 'label' => 'Secret key', 'store' => 'api_key'],
             ['name' => 'webhook_secret', 'label' => 'Webhook signing secret', 'store' => 'webhook_secret'],
@@ -108,22 +106,35 @@ return [
     'paypal' => [
         'label' => 'PayPal',
         'type' => 'card',
-        'ready' => false,
+        'ready' => true,
+        // Three values, not two: PayPal verifies a webhook by posting it back
+        // along with the id of the webhook subscription that sent it, which is
+        // neither of the credentials used to call the API.
         'fields' => [
             ['name' => 'api_key', 'label' => 'Client ID', 'store' => 'api_key'],
             ['name' => 'webhook_secret', 'label' => 'Secret', 'store' => 'webhook_secret'],
+            ['name' => 'extra', 'label' => 'Webhook ID', 'store' => 'extra'],
         ],
     ],
 
     'pesapal' => [
         'label' => 'Pesapal (East Africa)',
         'type' => 'card',
-        'ready' => false,
+        'ready' => true,
+        // Its IPN arrives, but carries no payment status — Pesapal withholds
+        // it deliberately. Distinct from `verify`, which means there is no
+        // webhook at all and the payer quotes a reference themselves.
+        'confirm_by_api' => true,
+        // The IPN id is issued once, when the notification URL is registered,
+        // and every order has to quote it.
         'fields' => [
             ['name' => 'api_key', 'label' => 'Consumer key', 'store' => 'api_key'],
             ['name' => 'webhook_secret', 'label' => 'Consumer secret', 'store' => 'webhook_secret'],
+            ['name' => 'extra', 'label' => 'IPN ID', 'store' => 'extra'],
         ],
     ],
+
+    // ---- selectable now, wired later ----
 
     'zenopay' => [
         'label' => 'ZenoPay (Mobile Money)',

@@ -201,10 +201,10 @@ class OrderBotFlowTest extends TestCase
         $this->assertSame(['IG Likes'], $names);
     }
 
-    public function test_inactive_services_are_not_offered(): void
+    public function test_hidden_services_are_not_offered(): void
     {
         $this->service(['name' => 'Live One']);
-        $this->service(['name' => 'Retired One'])->update(['status' => 'inactive']);
+        $this->service(['name' => 'Retired One'])->update(['status' => BotService::HIDDEN]);
 
         $this->send('hi');
         $this->send('main:new_order');
@@ -212,6 +212,34 @@ class OrderBotFlowTest extends TestCase
 
         $names = array_column($this->context()['services'], 'name');
         $this->assertSame(['Live One'], $names);
+    }
+
+    /**
+     * Paused is not hidden: the customer still sees the service, so they know
+     * it exists, and is told no only if they pick it. A panel having a bad day
+     * should not make a reseller's catalogue appear to shrink.
+     */
+    public function test_a_paused_service_is_listed_but_cannot_be_ordered(): void
+    {
+        $this->service(['name' => 'Live One']);
+        $paused = $this->service(['name' => 'Paused One']);
+        $paused->update(['status' => BotService::PAUSED]);
+
+        $this->send('hi');
+        $this->send('main:new_order');
+        $this->send('plat_Instagram');
+
+        $names = array_column($this->context()['services'], 'name');
+        $this->assertContains('Paused One', $names);
+
+        $this->send("svc_{$paused->id}");
+
+        $this->assertStringContainsString(
+            'unavailable',
+            mb_strtolower((string) $this->messenger->lastBody()),
+        );
+        // Still on the service step, not moved on to quantity.
+        $this->assertSame(OrderState::SelectService->value, $this->state());
     }
 
     public function test_a_store_with_no_services_says_so(): void

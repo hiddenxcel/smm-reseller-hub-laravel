@@ -33,6 +33,15 @@ class Gateway
         return (bool) Arr::get(self::all(), "{$code}.verify", false);
     }
 
+    /**
+     * Its webhook arrives but says nothing about the outcome, so the result is
+     * fetched from the gateway's API instead of read off the notification.
+     */
+    public static function confirmsByApi(string $code): bool
+    {
+        return (bool) Arr::get(self::all(), "{$code}.confirm_by_api", false);
+    }
+
     /** Mobile money pushes a prompt to a handset, so we must ask for a number. */
     public static function needsPhone(string $code): bool
     {

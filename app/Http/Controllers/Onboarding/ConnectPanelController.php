@@ -16,7 +16,6 @@ class ConnectPanelController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:150'],
             'api_url' => ['required', 'string', 'max:255'],
             'api_key' => ['required', 'string', 'max:255'],
         ]);
@@ -33,27 +32,49 @@ class ConnectPanelController extends Controller
 
         $tenant = $request->user();
 
-        TenantPanel::updateOrCreate(
-            [
-                'tenant_id' => $tenant->id,
-                'api_url' => $detection->apiUrl,
-            ],
-            [
-                'name' => $validated['name'],
-                'panel_type' => $detection->panelType(),
-                'api_key_enc' => $validated['api_key'],
-                'api_version' => 'v2',
-                'auth_method' => $detection->authMethod,
-                'last_checked_at' => now(),
-                'last_balance' => $detection->balance,
-                'balance_currency' => $detection->currency,
-                'services_count' => $detection->servicesCount,
-                'status' => 'active',
-            ],
-        );
+        $panel = TenantPanel::firstOrNew([
+            'tenant_id' => $tenant->id,
+            'api_url' => $detection->apiUrl,
+        ]);
 
-        return redirect()
-            ->route('onboarding')
+        // Named from the address rather than asked for. Only on the way in:
+        // reconnecting an existing panel to rotate its key must not overwrite
+        // a name the reseller has since chosen in Settings.
+        if (! $panel->exists) {
+            $panel->name = PanelDetector::nameFromUrl($validated['api_url']);
+        }
+
+        $panel->fill([
+            'panel_type' => $detection->panelType(),
+            'api_key_enc' => $validated['api_key'],
+            'api_version' => 'v2',
+            'auth_method' => $detection->authMethod,
+            'last_checked_at' => now(),
+            'last_balance' => $detection->balance,
+            'balance_currency' => $detection->currency,
+            'services_count' => $detection->servicesCount,
+            'status' => 'active',
+        ])->save();
+
+        return $this->afterSave($request)
             ->with('status', 'Panel connected.');
+    }
+
+    /**
+     * Where to go after a setup action succeeds.
+     *
+     * The same forms serve two screens with opposite needs: the wizard must
+     * advance to the next step, while Settings must stay on the tab the
+     * reseller is working in. Submitting from Settings is the special case,
+     * so that is what gets detected; everything else advances, which keeps
+     * the wizard's behaviour identical to before Settings existed.
+     */
+    private function afterSave(Request $request): RedirectResponse
+    {
+        if (str_contains((string) $request->headers->get('referer'), '/settings')) {
+            return back(fallback: route('settings'));
+        }
+
+        return redirect()->route('onboarding');
     }
 }

@@ -3,11 +3,16 @@
 namespace App\Http\Controllers\Onboarding;
 
 use App\Http\Controllers\Controller;
+use App\Models\NumberRental;
+use App\Models\PlatformNumber;
 use App\Models\TenantPanel;
+use App\Models\TenantPaymentGateway;
 use App\Models\TenantWhatsApp;
 use App\Services\Onboarding\OnboardingProgress;
 use App\Services\Onboarding\OnboardingStep;
+use App\Services\Onboarding\TestBotStatus;
 use App\Services\Panel\ServiceCatalogue;
+use App\Services\Payments\Gateway;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -51,6 +56,10 @@ class OnboardingController extends Controller
             'steps' => $progress->toArray(),
             'completed' => $progress->completedCount(),
             'readyToGoLive' => $progress->isReadyToGoLive(),
+            // Whether this step can be put off, so the page does not have to
+            // restate the rule. Test is the exception: putting it off is what
+            // staying in sandbox means, and it has its own wording for that.
+            'canSkip' => ! $progress->isComplete($current),
         ];
 
         return match ($current) {
@@ -71,17 +80,111 @@ class OnboardingController extends Controller
                         'phone_number_id' => $number->phone_number_id,
                         'display_number' => $number->display_number,
                         'bot_type' => $number->bot_type,
+                        'source' => $number->source,
                     ]),
+                // Renting skips the whole Meta setup, which is where most
+                // resellers stall — so it is offered alongside, not buried.
+                'rentable' => $this->rentableNumbers(),
+                'rentals' => $this->activeRentals($request),
             ]),
 
-            // Steps without a screen yet say so plainly, rather than showing a
-            // form that quietly does nothing.
-            default => Inertia::render('Onboarding/ComingSoonStep', [
+            OnboardingStep::SetupPayments => Inertia::render('Onboarding/SetupPayments', [
                 ...$shared,
-                'title' => $current->title(),
-                'description' => $current->description(),
+                'gateways' => $this->gatewayOptions(),
+                'connected' => $this->connectedGateways($request),
+            ]),
+
+            OnboardingStep::TestBot => Inertia::render('Onboarding/TestBot', [
+                ...$shared,
+                ...TestBotStatus::for($request->user()->id)->toArray(),
+                'botNumbers' => TenantWhatsApp::where('tenant_id', $request->user()->id)
+                    ->get()
+                    ->map(fn (TenantWhatsApp $number) => [
+                        'id' => $number->id,
+                        'display_number' => $number->display_number,
+                        'phone_number_id' => $number->phone_number_id,
+                    ]),
             ]),
         };
+    }
+
+    /**
+     * Numbers the platform has spare. The token is never included — the
+     * reseller drives a rented number without ever holding the credential
+     * that controls it.
+     *
+     * @return array<int, array>
+     */
+    private function rentableNumbers(): array
+    {
+        return PlatformNumber::where('status', 'available')
+            ->orderBy('country')
+            ->orderBy('display_number')
+            ->get()
+            ->map(fn (PlatformNumber $number) => [
+                'id' => $number->id,
+                'display_number' => $number->display_number,
+                'country' => $number->country,
+                'country_code' => $number->country_code,
+                'currency' => $number->currency,
+                'price' => (float) $number->monthly_cost,
+            ])
+            ->all();
+    }
+
+    /** @return array<int, array> */
+    private function activeRentals(Request $request): array
+    {
+        return NumberRental::where('tenant_id', $request->user()->id)
+            ->where('status', 'active')
+            ->with('platformNumber')
+            ->get()
+            ->map(fn (NumberRental $rental) => [
+                'id' => $rental->id,
+                'display_number' => $rental->platformNumber?->display_number,
+                'country' => $rental->platformNumber?->country,
+                'startedAt' => $rental->starts_at?->toIso8601String(),
+            ])
+            ->all();
+    }
+
+    /**
+     * The gateway list as the form needs it: which credentials to ask for, and
+     * whether choosing this one actually lets a customer pay yet.
+     *
+     * @return array<int, array>
+     */
+    private function gatewayOptions(): array
+    {
+        return array_values(array_map(fn (string $code) => [
+            'code' => $code,
+            'label' => Gateway::label($code),
+            'type' => config("gateways.{$code}.type"),
+            'ready' => Gateway::isReady($code),
+            'fields' => array_map(fn (array $field) => [
+                'name' => $field['name'],
+                'label' => $field['label'],
+            ], config("gateways.{$code}.fields", [])),
+        ], array_keys(Gateway::all())));
+    }
+
+    /**
+     * Credentials are never sent back to the browser — only the fact that a
+     * gateway is connected, so the form can say "leave blank to keep".
+     *
+     * @return array<int, array>
+     */
+    private function connectedGateways(Request $request): array
+    {
+        return TenantPaymentGateway::where('tenant_id', $request->user()->id)
+            ->where('status', 'active')
+            ->get()
+            ->map(fn (TenantPaymentGateway $row) => [
+                'code' => $row->gateway,
+                'label' => Gateway::label($row->gateway),
+                'ready' => Gateway::isReady($row->gateway),
+            ])
+            ->all();
     }
 
     /**

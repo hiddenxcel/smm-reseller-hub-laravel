@@ -32,11 +32,17 @@ class SuperadminSeeder extends Seeder
             return;
         }
 
+        // The first admin is the owner: the console has to start with someone
+        // who can create the others.
         Superadmin::create([
             'username' => $username,
+            'name' => env('SUPERADMIN_NAME') ?: $username,
+            'email' => env('SUPERADMIN_EMAIL'),
             'password_hash' => Hash::make($password),
+            'role' => 'owner',
+            'status' => 'active',
         ]);
 
-        $this->command->info("Super-admin '{$username}' created.");
+        $this->command->info("Super-admin '{$username}' created as owner.");
     }
 }
