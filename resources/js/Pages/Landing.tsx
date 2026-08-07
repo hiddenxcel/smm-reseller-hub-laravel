@@ -17,6 +17,7 @@ import {
     BadgeCheck,
     Bot,
     CheckCircle2,
+    Clock,
     Coins,
     Headset,
     Link2,
@@ -27,6 +28,8 @@ import {
     ShieldCheck,
     Sparkles,
     Wallet,
+    X,
+    Zap,
 } from 'lucide-react';
 
 type PlanSummary = {
@@ -63,10 +66,30 @@ type Props = {
  * more persuasive than any number we could claim.
  */
 const TRUST = [
-    { value: '24/7', label: 'Your shop never closes', against: 'vs. only while you are awake' },
-    { value: '~5 min', label: 'From signup to selling', against: 'vs. building a bot yourself' },
-    { value: 'Instant', label: 'Orders reach your panel', against: 'vs. copy and paste, one by one' },
-    { value: '$0', label: 'To start — no card', against: 'vs. paying to find out' },
+    {
+        icon: Clock,
+        value: '24/7',
+        label: 'Your shop never closes',
+        against: 'only while you are awake',
+    },
+    {
+        icon: Rocket,
+        value: '~5 min',
+        label: 'From signup to selling',
+        against: 'building a bot yourself',
+    },
+    {
+        icon: Zap,
+        value: 'Instant',
+        label: 'Orders reach your panel',
+        against: 'copy and paste, one by one',
+    },
+    {
+        icon: Wallet,
+        value: '$0',
+        label: 'To start — no card',
+        against: 'paying to find out',
+    },
 ];
 
 const WHY = [
@@ -281,21 +304,36 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                 </Section>
 
                 {/* ---- trust bar ---- */}
-                <Section muted className="py-10 sm:py-12">
-                    {/* Plain divs rather than dl/dt/dd: the reveal wrapper sits
-                        between the list and its terms, which the description-list
-                        markup does not allow. The content is a set of claims, not
-                        term/definition pairs, so nothing is lost. */}
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-9 text-center sm:grid-cols-4">
+                <Section muted tight>
+                    {/* Cards rather than text floating in a band. As four
+                        centred columns the claims had nothing holding them and
+                        the padding ran to twice the height of the content, so
+                        the whole strip read as a gap between two sections. */}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         {TRUST.map((item, index) => (
-                            <Reveal key={item.label} delay={index * 80}>
-                                <p className="font-heading text-3xl font-extrabold text-primary">
-                                    {item.value}
-                                </p>
-                                <p className="mt-1 text-sm font-medium">{item.label}</p>
-                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                    {item.against}
-                                </p>
+                            <Reveal key={item.label} delay={index * 80} className="h-full">
+                                <div className="flex h-full flex-col rounded-2xl border border-border/70 bg-card p-5 transition-colors duration-300 hover:border-primary/40">
+                                    <span className="mb-3 flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                        <item.icon className="size-4" />
+                                    </span>
+
+                                    <p className="font-heading text-2xl leading-none font-extrabold text-primary">
+                                        {item.value}
+                                    </p>
+
+                                    <p className="mt-1.5 text-sm font-semibold">{item.label}</p>
+
+                                    {/* The alternative, struck through: naming
+                                        what this replaces is the persuasive
+                                        half, and the line makes it read as
+                                        crossed off rather than as a footnote. */}
+                                    <p className="mt-auto flex items-center gap-1.5 pt-3 text-xs text-muted-foreground">
+                                        <X className="size-3 shrink-0 text-destructive/60" aria-hidden />
+                                        <span className="line-through decoration-destructive/50">
+                                            {item.against}
+                                        </span>
+                                    </p>
+                                </div>
                             </Reveal>
                         ))}
                     </div>

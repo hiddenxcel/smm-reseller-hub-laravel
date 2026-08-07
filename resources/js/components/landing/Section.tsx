@@ -5,15 +5,22 @@ type SectionProps = PropsWithChildren<{
     id?: string;
     /** Tints the band so adjacent sections separate without a hard rule. */
     muted?: boolean;
+    /**
+     * Half the usual padding, for a strip that supports the section above it
+     * rather than making an argument of its own. At full height those read as
+     * a gap between two sections instead of as content.
+     */
+    tight?: boolean;
     className?: string;
 }>;
 
-export function Section({ id, muted, className = '', children }: SectionProps) {
+export function Section({ id, muted, tight, className = '', children }: SectionProps) {
     return (
         <section
             id={id}
             className={[
-                'px-4 py-16 sm:py-20',
+                'px-4',
+                tight ? 'py-8 sm:py-10' : 'py-16 sm:py-20',
                 muted ? 'bg-muted/40' : '',
                 className,
             ].join(' ')}
