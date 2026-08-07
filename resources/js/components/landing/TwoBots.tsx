@@ -1,6 +1,6 @@
-import { Card, CardContent } from '@/components/ui/card';
 import {
     Bot,
+    Check,
     Clock,
     Headset,
     MessageSquare,
@@ -10,97 +10,124 @@ import {
     UserRound,
     Wallet,
 } from 'lucide-react';
+import ChatPreview from './ChatPreview';
 import Reveal from './Reveal';
 
 /**
- * The two bots, side by side.
+ * The two bots, alternating sides.
  *
- * They were only visible in the price list before, which meant a reseller met
- * them as two line items rather than as two jobs — and could not tell whether
- * they needed one, the other or both. Selling them separately is the whole
- * pricing model, so the difference has to be legible before the prices are.
+ * Side-by-side cards made them look like two halves of one thing and gave
+ * each half a column's width to explain itself. Alternating gives each bot a
+ * full row, and the switch of side stops the second row reading as a repeat
+ * of the first.
  *
- * Every capability listed is one the bot actually has: the order flow is
- * OrderBotHandler's, and the support menu is SupportAction's eight cases.
+ * Each is shown answering rather than described: every capability listed is
+ * one the bot has — the order flow is OrderBotHandler's, and the support list
+ * is SupportAction's own cases.
  */
 
-const ORDER = [
-    { icon: ShoppingCart, text: 'Browse services and place an order' },
-    { icon: Wallet, text: 'Charge the wallet, no chasing payment' },
-    { icon: Bot, text: 'Send it to your panel automatically' },
-    { icon: Clock, text: 'Answer at 2am without waking you' },
-];
-
-const SUPPORT = [
-    { icon: RefreshCw, text: 'Refills, against your guarantee rules' },
-    { icon: PackageSearch, text: 'Order status, read from the panel' },
-    { icon: MessageSquare, text: 'Cancel, speed up, partial complaints' },
-    { icon: UserRound, text: 'Hand over to you when it should' },
+const BOTS = [
+    {
+        key: 'order',
+        icon: Bot,
+        eyebrow: 'The Order Bot',
+        title: 'It sells while you sleep',
+        body: 'The customer browses your services, sends the link and confirms. The order is on your panel before you have read the message.',
+        points: [
+            { icon: ShoppingCart, text: 'Browse services and place an order' },
+            { icon: Wallet, text: 'Charge the wallet, no chasing payment' },
+            { icon: Bot, text: 'Send it to your panel automatically' },
+            { icon: Clock, text: 'Answer at 2am without waking you' },
+        ],
+        chat: {
+            title: 'YourPanel · Order Bot',
+            lines: [
+                { from: 'customer' as const, text: '500 Instagram followers' },
+                {
+                    from: 'bot' as const,
+                    text: '🧾 *Confirm*\nInstagram Followers\nQuantity: 500\n*Total: $1.00*',
+                },
+                { from: 'customer' as const, text: '✅ Confirm' },
+                {
+                    from: 'bot' as const,
+                    text: '✅ Order *#48220* placed!\n\nCharged: $1.00\nNew balance: $9.00',
+                },
+            ],
+        },
+    },
+    {
+        key: 'support',
+        icon: Headset,
+        eyebrow: 'The Support Bot',
+        title: 'It answers what comes after',
+        body: 'Most of your messages are not new orders — they are "where is it" and "it dropped". This handles those without you opening the panel.',
+        points: [
+            { icon: RefreshCw, text: 'Refills, against your guarantee rules' },
+            { icon: PackageSearch, text: 'Order status, read from the panel' },
+            { icon: MessageSquare, text: 'Cancel, speed up, partial complaints' },
+            { icon: UserRound, text: 'Hand over to you when it should' },
+        ],
+        chat: {
+            title: 'YourPanel · Support',
+            lines: [
+                { from: 'customer' as const, text: 'my followers dropped' },
+                {
+                    from: 'bot' as const,
+                    text: '🔢 Send the *Order ID* and I will check your refill guarantee.',
+                },
+                { from: 'customer' as const, text: '#48220' },
+                {
+                    from: 'bot' as const,
+                    text: '♻️ Refill for *#48220* submitted!\nGuarantee: 30 days ✅',
+                },
+            ],
+        },
+    },
 ];
 
 export default function TwoBots() {
     return (
-        <div className="grid gap-6 lg:grid-cols-2">
-            <Reveal>
-                <Card className="soft h-full border-transparent">
-                    <CardContent className="pt-6">
-                        <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                            <Bot className="size-5" />
-                        </span>
+        <div className="space-y-16 lg:space-y-24">
+            {BOTS.map((bot, index) => {
+                // The second row leads with the chat on desktop, so the eye
+                // crosses the page rather than running down one edge.
+                const chatFirst = index % 2 === 1;
 
-                        <p className="text-xs font-semibold tracking-wide text-primary uppercase">
-                            Order Bot
-                        </p>
-                        <h3 className="font-heading mt-1 mb-2 text-xl font-bold">
-                            It sells while you sleep
-                        </h3>
-                        <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
-                            The customer picks a service, sends the link and confirms.
-                            The order is on your panel before you have read the message.
-                        </p>
+                return (
+                    <div
+                        key={bot.key}
+                        className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16"
+                    >
+                        <Reveal className={chatFirst ? 'lg:order-2' : ''}>
+                            <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-primary">
+                                <bot.icon className="size-4" />
+                                {bot.eyebrow}
+                            </p>
 
-                        <ul className="space-y-2.5">
-                            {ORDER.map((row) => (
-                                <li key={row.text} className="flex items-start gap-2.5 text-sm">
-                                    <row.icon className="mt-0.5 size-4 shrink-0 text-primary" />
-                                    <span>{row.text}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </CardContent>
-                </Card>
-            </Reveal>
+                            <h3 className="font-heading text-2xl font-extrabold text-balance sm:text-3xl">
+                                {bot.title}
+                            </h3>
 
-            <Reveal delay={120}>
-                <Card className="soft h-full border-transparent">
-                    <CardContent className="pt-6">
-                        <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-                            <Headset className="size-5" />
-                        </span>
+                            <p className="mt-4 text-pretty text-muted-foreground">{bot.body}</p>
 
-                        <p className="text-xs font-semibold tracking-wide text-primary uppercase">
-                            Support Bot
-                        </p>
-                        <h3 className="font-heading mt-1 mb-2 text-xl font-bold">
-                            It answers what comes after
-                        </h3>
-                        <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
-                            Most of your messages are not new orders — they are
-                            "where is it" and "it dropped". This handles those without
-                            you opening the panel.
-                        </p>
+                            <ul className="mt-6 space-y-3">
+                                {bot.points.map((point) => (
+                                    <li key={point.text} className="flex items-start gap-3">
+                                        <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                                            <Check className="size-3 text-primary" />
+                                        </span>
+                                        <span className="text-sm">{point.text}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </Reveal>
 
-                        <ul className="space-y-2.5">
-                            {SUPPORT.map((row) => (
-                                <li key={row.text} className="flex items-start gap-2.5 text-sm">
-                                    <row.icon className="mt-0.5 size-4 shrink-0 text-primary" />
-                                    <span>{row.text}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </CardContent>
-                </Card>
-            </Reveal>
+                        <Reveal delay={120} className={chatFirst ? 'lg:order-1' : ''}>
+                            <ChatPreview title={bot.chat.title} lines={bot.chat.lines} />
+                        </Reveal>
+                    </div>
+                );
+            })}
         </div>
     );
 }
