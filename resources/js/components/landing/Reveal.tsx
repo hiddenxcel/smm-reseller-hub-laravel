@@ -1,25 +1,66 @@
 import { PropsWithChildren, useEffect, useRef, useState } from 'react';
 
 /**
- * Fades its children up as they scroll into view.
+ * Reveals its children as they scroll into view.
  *
- * Built on IntersectionObserver rather than a scroll listener so the browser
- * decides when to tell us, and on a CSS transition rather than an animation
- * library — the whole thing is a few lines and costs no bundle.
+ * Two mechanisms, chosen at runtime:
  *
- * Honours prefers-reduced-motion by rendering the finished state immediately.
- * Motion sickness is a real condition, and a page that ignores the setting is
- * unusable for the people who set it.
+ *   - Where `animation-timeline: view()` is supported (Chromium today), the
+ *     browser drives it off the scroll position. The motion tracks the wheel,
+ *     so scrolling back up rewinds it, and nothing runs on the main thread.
+ *
+ *   - Everywhere else, an IntersectionObserver flips a class once. Same end
+ *     state, no scrubbing.
+ *
+ * The support test runs once per mount rather than at module load: server-side
+ * rendering has no CSS object, and reading it at import time would throw
+ * before the page ever reached a browser.
+ *
+ * Honours prefers-reduced-motion in both paths — the CSS via a media query,
+ * the JS by rendering the finished state immediately.
  */
 export default function Reveal({
     children,
     delay = 0,
+    /**
+     * Position in a row, staggering the group so it arrives as a sequence.
+     *
+     * Takes the loop's own index and clamps it here rather than at every call
+     * site: only four stagger classes exist, and a fifth card should join the
+     * last wave rather than each caller remembering to cap it.
+     */
+    index,
+    /**
+     * Settle sooner, for something read as a single unit.
+     *
+     * A card is taken in whole rather than line by line, so it wants to be
+     * still by the time it is properly on screen. The default range runs
+     * longer, which on a tall card leaves the bottom rising while the top is
+     * already being read.
+     */
+    card = false,
     className = '',
-}: PropsWithChildren<{ delay?: number; className?: string }>) {
+}: PropsWithChildren<{
+    delay?: number;
+    index?: number;
+    card?: boolean;
+    className?: string;
+}>) {
+    const step = index === undefined ? 0 : Math.min(index + 1, 4);
     const ref = useRef<HTMLDivElement>(null);
+    const [scrollDriven, setScrollDriven] = useState(false);
     const [shown, setShown] = useState(false);
 
     useEffect(() => {
+        const supported =
+            typeof CSS !== 'undefined' && CSS.supports?.('animation-timeline: view()');
+
+        if (supported) {
+            setScrollDriven(true);
+
+            return;
+        }
+
         const node = ref.current;
 
         if (! node) {
@@ -41,8 +82,6 @@ export default function Reveal({
                     observer.disconnect();
                 }
             },
-            // Fires a little before the element arrives, so the motion has
-            // finished by the time it is properly in view.
             { rootMargin: '0px 0px -80px 0px', threshold: 0.1 },
         );
 
@@ -51,12 +90,30 @@ export default function Reveal({
         return () => observer.disconnect();
     }, []);
 
+    if (scrollDriven) {
+        return (
+            <div
+                ref={ref}
+                className={[
+                    'reveal-scroll',
+                    step > 1 ? `reveal-scroll-${step}` : '',
+                    card ? 'reveal-card' : '',
+                    className,
+                ]
+                    .filter(Boolean)
+                    .join(' ')}
+            >
+                {children}
+            </div>
+        );
+    }
+
     return (
         <div
             ref={ref}
             className={[
-                'transition-all duration-700 ease-out motion-reduce:transition-none',
-                shown ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0',
+                'transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none',
+                shown ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0',
                 className,
             ].join(' ')}
             style={shown && delay ? undefined : { transitionDelay: `${delay}ms` }}

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminSessionController;
 use App\Http\Controllers\Admin\AdminUsersController;
 use App\Http\Controllers\Admin\AnnouncementsController;
+use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\BotsController;
 use App\Http\Controllers\Admin\CatalogueController;
 use App\Http\Controllers\Admin\ImpersonationController;
@@ -116,6 +117,16 @@ Route::middleware(['auth:superadmin', 'admin'])->group(function () {
     Route::post('announcements/{announcement}/{action}', [AnnouncementsController::class, 'act'])
         ->whereIn('action', ['publish', 'unpublish', 'delete'])
         ->name('announcements.act');
+
+    // The public blog. Same shape as announcements: writing is separate from
+    // publishing, because publishing puts the text on a URL other people link
+    // to.
+    Route::get('blog', [BlogController::class, 'index'])->name('blog.index');
+    Route::post('blog', [BlogController::class, 'store'])->name('blog.store');
+    Route::patch('blog/{post}', [BlogController::class, 'update'])->name('blog.update');
+    Route::post('blog/{post}/{action}', [BlogController::class, 'act'])
+        ->whereIn('action', ['publish', 'unpublish', 'delete'])
+        ->name('blog.act');
 
     // Tickets are read-only here: replying would put the platform's words into
     // a reseller's WhatsApp thread under their business name.

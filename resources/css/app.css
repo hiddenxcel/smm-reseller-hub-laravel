@@ -180,6 +180,68 @@
 }
 
 @layer utilities {
+  /*
+    Scroll-driven reveals.
+
+    `animation-timeline: view()` ties the animation to where the element sits
+    in the viewport rather than to the clock, so the motion tracks the scroll
+    wheel instead of firing once and finishing on its own. It is the same
+    effect the JS observer produced, minus the observer.
+
+    Only Chromium ships this today. The @supports gate means Safari and
+    Firefox get nothing here and keep the JS path in Reveal.tsx — which is why
+    that component stays, rather than being replaced.
+
+    The range ends at `cover 38%`: finishing before the element is halfway up
+    means a reader never watches it arrive, which is the difference between
+    motion that decorates and motion that delays.
+  */
+  @supports (animation-timeline: view()) {
+    .reveal-scroll {
+      animation: reveal-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 8% cover 38%;
+    }
+
+    /* For a row of cards: each starts a little later than the one before, so
+       the group arrives as a sequence rather than a block. */
+    .reveal-scroll-2 { animation-range: entry 12% cover 42%; }
+    .reveal-scroll-3 { animation-range: entry 16% cover 46%; }
+    .reveal-scroll-4 { animation-range: entry 20% cover 50%; }
+
+    /* A tighter window for cards.
+       A card is read as a unit — the eye lands on it whole — so it wants to
+       be settled by the time it is properly on screen. The default range runs
+       to `cover 38%`, which on a tall card means the bottom is still rising
+       while the top is being read. */
+    .reveal-card { animation-range: entry 10% cover 30%; }
+    .reveal-card.reveal-scroll-2 { animation-range: entry 13% cover 33%; }
+    .reveal-card.reveal-scroll-3 { animation-range: entry 16% cover 36%; }
+    .reveal-card.reveal-scroll-4 { animation-range: entry 19% cover 39%; }
+
+    /* A slow drift for anything large enough that a rise would read as a
+       jump — section art, the phone demo. */
+    .reveal-drift {
+      animation: reveal-drift linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 55%;
+    }
+  }
+
+  /* Motion sickness is a real condition, and a page that ignores the setting
+     is unusable for the people who set it. */
+  @media (prefers-reduced-motion: reduce) {
+    .reveal-scroll,
+    .reveal-scroll-2,
+    .reveal-scroll-3,
+    .reveal-scroll-4,
+    .reveal-drift {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+
   /* Opt in where depth helps — hero cards, stat tiles — not everywhere. */
   .soft {
     box-shadow: var(--shadow-soft);
@@ -223,5 +285,34 @@
   /* Kills the little square where the two bars meet. */
   .scroll-slim::-webkit-scrollbar-corner {
     background: transparent;
+  }
+}
+
+/*
+  Keyframes for the scroll-driven reveals above.
+
+  Outside @layer so they are never dropped: an unused-looking @keyframes in a
+  layer can be pruned, and these are only referenced from inside an @supports
+  block that a build step does not evaluate.
+*/
+@keyframes reveal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes reveal-drift {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }

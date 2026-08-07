@@ -74,9 +74,12 @@ export default function PricingTable({
                         ].join(' ')}
                     >
                         Yearly
+                        {/* 10px was below the point where small text stays
+                            readable on a phone, and this is the number the
+                            switch exists to advertise. */}
                         <span
                             className={[
-                                'rounded-full px-1.5 py-0.5 text-[10px] font-bold',
+                                'rounded-full px-1.5 py-0.5 text-xs font-bold',
                                 yearly ? 'bg-white/20' : 'bg-primary/10 text-primary',
                             ].join(' ')}
                         >
@@ -97,7 +100,7 @@ export default function PricingTable({
                     const perMonth = yearly ? plan.yearly / 12 : plan.monthly;
 
                     return (
-                        <Reveal key={key} delay={index * 80} className="h-full">
+                        <Reveal key={key} delay={index * 80} index={index} card className="h-full">
                             <div
                                 className={[
                                     'relative flex h-full flex-col rounded-2xl p-6 transition-transform duration-300 hover:-translate-y-1',

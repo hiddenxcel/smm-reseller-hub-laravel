@@ -1,11 +1,14 @@
 import ComparisonTable from '@/components/landing/ComparisonTable';
+import Faq from '@/components/landing/Faq';
 import FeatureGrid from '@/components/landing/FeatureGrid';
+import MoneyFlow from '@/components/landing/MoneyFlow';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import LandingNav from '@/components/landing/LandingNav';
 import PanelCompatibility from '@/components/landing/PanelCompatibility';
 import PaymentRail from '@/components/landing/PaymentRail';
 import PhoneDemo from '@/components/landing/PhoneDemo';
 import PricingTable from '@/components/landing/PricingTable';
+import PublicFooter from '@/components/landing/PublicFooter';
 import Reveal from '@/components/landing/Reveal';
 import TwoBots from '@/components/landing/TwoBots';
 import TryOnWhatsApp from '@/components/landing/TryOnWhatsApp';
@@ -142,6 +145,22 @@ const FAQS = [
         q: 'Can I try it before paying?',
         a: 'Yes. Every service starts in sandbox: set it all up, and test the bot against your own number before you go live.',
     },
+    {
+        q: 'What if I do not have a Meta Business account?',
+        a: 'Rent a number from us and start today. It runs on the same official Cloud API, and you can move to your own number whenever your Meta account comes through.',
+    },
+    {
+        q: 'Can I sell from more than one panel?',
+        a: 'Yes. Connect as many as you run, and the same bot sells from all of them — each service keeps the panel it came from.',
+    },
+    {
+        q: 'What language does the bot speak?',
+        a: 'English, French, Kiswahili, Turkish or Hindi, chosen per customer rather than per shop — so one bot can serve people who do not share a language.',
+    },
+    {
+        q: 'Can I build my own thing on top?',
+        a: 'Yes. Every shop gets API keys and logs, so you can place orders and read status from your own site or software instead of WhatsApp.',
+    },
 ];
 
 export default function Landing({ plans, gateways, demoNumber }: Props) {
@@ -155,7 +174,9 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
 
             <main>
                 {/* ---- hero ---- */}
-                <Section className="relative overflow-hidden pt-8 pb-10 sm:pt-10">
+                {/* The nav floats rather than occupying a row, so the hero
+                    starts under it instead of after it. */}
+                <Section className="relative overflow-hidden pt-14 pb-10 sm:pt-16">
                     {/* Two soft washes behind the fold. Enough to stop the
                         canvas reading as flat white, far short of the neon
                         gradients that make a payments product look like a
@@ -173,13 +194,18 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                         band of empty canvas under the shorter column, which is
                         what made the fold read as unfinished. */}
                     <div className="grid items-start gap-10 lg:grid-cols-2 lg:gap-12">
-                        <div className="lg:pt-6">
+                        {/* Centred on a phone, left-aligned once there are two
+                            columns. Ragged left-aligned text in a narrow single
+                            column reads as though it has been pushed aside,
+                            because there is nothing beside it to explain the
+                            asymmetry. */}
+                        <div className="text-center lg:pt-6 lg:text-left">
                             {/* The two fears a reseller arrives with — losing
                                 the number, and paying to find out. Given the
                                 brand colour and a border so they read as
                                 assurances rather than decoration. */}
                             <Reveal>
-                                <div className="mb-5 flex flex-wrap gap-2">
+                                <div className="mb-5 flex flex-wrap justify-center gap-2 lg:justify-start">
                                     <span className="flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
                                         <ShieldCheck className="size-4" />
                                         Official Meta Cloud API
@@ -216,14 +242,14 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                                 The mechanism is the section below; this line
                                 has to earn the scroll. */}
                             <Reveal delay={160}>
-                                <p className="mt-5 max-w-lg text-lg text-pretty text-muted-foreground">
+                                <p className="mx-auto mt-5 max-w-lg text-lg text-pretty text-muted-foreground lg:mx-0">
                                     Sell followers, likes and views around the clock — paid by
                                     mobile money or crypto, without you lifting a finger.
                                 </p>
                             </Reveal>
 
                             <Reveal delay={240}>
-                                <div className="mt-8 flex flex-wrap gap-3">
+                                <div className="mt-8 flex flex-wrap justify-center gap-3 lg:justify-start">
                                     <Button size="lg" asChild>
                                         <Link href={route('register')}>
                                             <Rocket className="size-4" />
@@ -244,7 +270,7 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                                 {/* The three objections that stop a signup,
                                     answered on one line under the button where
                                     they are read as part of the decision. */}
-                                <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+                                <p className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground lg:justify-start">
                                     {[
                                         'Free to start',
                                         'No card required',
@@ -270,7 +296,11 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                                         Your bot handles
                                     </p>
 
-                                    <div className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+                                    {/* The block is centred but its items stay
+                                        left-aligned: a checklist with a ragged
+                                        left edge is harder to scan than one
+                                        sitting slightly off-centre. */}
+                                    <div className="mx-auto mt-3 grid w-fit gap-x-6 gap-y-2 text-left sm:grid-cols-2 lg:mx-0">
                                         {[
                                             'Orders, start to finish',
                                             'Wallet top-ups',
@@ -304,7 +334,13 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                         the whole strip read as a gap between two sections. */}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         {TRUST.map((item, index) => (
-                            <Reveal key={item.label} delay={index * 80} className="h-full">
+                            <Reveal
+                                key={item.label}
+                                delay={index * 80}
+                                index={index}
+                                card
+                                className="h-full"
+                            >
                                 <div className="flex h-full flex-col rounded-2xl border border-border/70 bg-card p-5 transition-colors duration-300 hover:border-primary/40">
                                     <span className="mb-3 flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                                         <item.icon className="size-4" />
@@ -342,7 +378,7 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
 
                     <div className="grid gap-6 md:grid-cols-3">
                         {WHY.map((item, index) => (
-                            <Reveal key={item.title} delay={index * 100}>
+                            <Reveal key={item.title} delay={index * 100} index={index}>
                                 <Card className="soft h-full border-transparent transition-transform duration-300 hover:-translate-y-1">
                                     <CardContent className="pt-6">
                                         <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
@@ -376,7 +412,7 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                 </Section>
 
                 {/* ---- services / pricing ---- */}
-                <Section id="services">
+                <Section id="pricing">
                     <SectionHeading
                         eyebrow="Pricing"
                         title="Pay for what you use"
@@ -408,7 +444,7 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                     <ol className="grid gap-6 md:grid-cols-4">
                         {STEPS.map((step, index) => (
                             <li key={step.title} className="relative">
-                                <Reveal delay={index * 110}>
+                                <Reveal delay={index * 110} index={index}>
                                     <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                                         <step.icon className="size-5" />
                                     </span>
@@ -429,8 +465,8 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                 <Section id="panels" muted>
                     <SectionHeading
                         eyebrow="Your panel"
-                        title="It works with the panel you already have"
-                        subtitle="No migration, no second panel to run. This sits on top of the one you use now."
+                        title="It sits on top of the panel you already run"
+                        subtitle="No migration, no second panel, no engineering. Your panel keeps doing its job — this puts it on WhatsApp."
                     />
 
                     <Reveal>
@@ -445,9 +481,7 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                         title="Everything the shop needs to run itself"
                     />
 
-                    <Reveal>
-                        <FeatureGrid />
-                    </Reveal>
+                    <FeatureGrid />
                 </Section>
 
                 {/* ---- comparison ---- */}
@@ -462,34 +496,15 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                     </Reveal>
                 </Section>
 
-                {/* ---- wallet explainer ---- */}
-                <Section>
-                    <div className="grid items-center gap-10 lg:grid-cols-2">
-                        <div>
-                            <SectionHeading title="Your customers pay you, not us" />
-                            <p className="-mt-6 text-pretty text-muted-foreground">
-                                Each customer has a wallet in your shop. They top it up with mobile
-                                money or crypto through your own gateway accounts. When the balance
-                                covers an order, it goes straight to your panel — no waiting, no
-                                manual checking, and the money never passes through us.
-                            </p>
-                        </div>
+                {/* ---- where the money goes ---- */}
+                <Section id="money">
+                    <SectionHeading
+                        eyebrow="Your money"
+                        title="Your customers pay you, not us"
+                        subtitle="Each customer holds a wallet in your shop, topped up through your own gateway accounts."
+                    />
 
-                        <Card className="soft border-transparent">
-                            <CardContent className="space-y-4 pt-6">
-                                {[
-                                    { icon: Wallet, text: 'Balance covers it → order placed instantly' },
-                                    { icon: Coins, text: 'Short? → top up → order places itself' },
-                                    { icon: CheckCircle2, text: 'Confirmed by the gateway, not by you' },
-                                ].map((row) => (
-                                    <p key={row.text} className="flex items-start gap-3 text-sm">
-                                        <row.icon className="mt-0.5 size-4 shrink-0 text-primary" />
-                                        <span>{row.text}</span>
-                                    </p>
-                                ))}
-                            </CardContent>
-                        </Card>
-                    </div>
+                    <MoneyFlow />
 
                     <div className="mt-14">
                         <PaymentRail gateways={gateways} />
@@ -498,22 +513,13 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
 
                 {/* ---- faq ---- */}
                 <Section id="faq" muted>
-                    <SectionHeading eyebrow="FAQ" title="Questions worth asking" />
+                    <SectionHeading
+                        eyebrow="FAQ"
+                        title="Questions worth asking"
+                        subtitle="The ones resellers actually ask before signing up."
+                    />
 
-                    <div className="mx-auto max-w-3xl space-y-4">
-                        {FAQS.map((faq, index) => (
-                            <Reveal key={faq.q} delay={index * 70}>
-                                <Card className="border-border/60">
-                                    <CardContent className="pt-6">
-                                        <h3 className="font-heading mb-2 font-bold">{faq.q}</h3>
-                                        <p className="text-sm leading-relaxed text-muted-foreground">
-                                            {faq.a}
-                                        </p>
-                                    </CardContent>
-                                </Card>
-                            </Reveal>
-                        ))}
-                    </div>
+                    <Faq items={FAQS} />
                 </Section>
 
                 {/* ---- closing cta ---- */}
@@ -574,12 +580,9 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                 </Section>
             </main>
 
-            <footer className="border-t border-border/60 px-4 py-10">
-                <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 text-sm text-muted-foreground sm:flex-row">
-                    <p>© {new Date().getFullYear()} Resellers Hub</p>
-                    <p>Built for SMM resellers · Mwanza, Tanzania</p>
-                </div>
-            </footer>
+            {/* cta off: the section directly above is already the closing
+                offer, and asking twice in a row reads as nagging. */}
+            <PublicFooter demoNumber={demoNumber} cta={false} />
 
             <TryOnWhatsApp number={demoNumber} />
         </>

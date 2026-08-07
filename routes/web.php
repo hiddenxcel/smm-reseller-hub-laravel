@@ -24,10 +24,43 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SupportBotController;
 use App\Http\Controllers\SupportBotInboxController;
 use App\Http\Controllers\SupportBotTicketsController;
+use App\Http\Controllers\Site\BlogController;
+use App\Http\Controllers\Site\ContactController;
+use App\Http\Controllers\Site\PublicPageController;
 use App\Http\Controllers\SupportCenterController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', LandingController::class)->name('home');
+
+/*
+|--------------------------------------------------------------------------
+| Public pages
+|--------------------------------------------------------------------------
+|
+| Readable without an account, and indexable. These paths end up in search
+| results and in other people's links, so they are effectively permanent.
+|
+*/
+
+Route::get('/features', [PublicPageController::class, 'features'])->name('features');
+
+// Not /services: that path is the reseller's own service catalogue inside the
+// dashboard, and a public route of the same name shadows it for anyone signed
+// in. The dashboard route is the one people have bookmarked.
+Route::get('/what-we-do', [PublicPageController::class, 'services'])->name('what-we-do');
+
+Route::get('/pricing', [PublicPageController::class, 'pricing'])->name('pricing');
+Route::get('/api-docs', [PublicPageController::class, 'apiDocs'])->name('api-docs');
+Route::get('/contact', [PublicPageController::class, 'contact'])->name('contact');
+
+// Throttled: the form sends mail, so an unthrottled endpoint is a way to
+// bill us for someone else's spam run.
+Route::post('/contact', [ContactController::class, 'store'])
+    ->middleware('throttle:5,10')
+    ->name('contact.store');
+
+Route::get('/blog', [BlogController::class, 'index'])->name('blog');
+Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
 
 Route::get('/dashboard', DashboardController::class)
     ->middleware('auth')

@@ -19,15 +19,19 @@
 
              Inline and blocking on purpose: doing this from React means the
              page renders light for a frame and then snaps to dark, which is
-             worse than a few bytes here. Falls back to the OS preference until
-             the reseller picks a side. --}}
+             worse than a few bytes here.
+
+             Light until the reseller chooses otherwise, rather than following
+             the OS. Most phones now default to dark, so deferring to that
+             setting meant most first-time visitors met a dark marketing site —
+             and the brand, the screenshots and the phone demo were all built
+             against the light canvas. A reseller who prefers dark still gets
+             it the moment they pick it; the choice is remembered. --}}
         <script>
             (function () {
                 try {
                     var stored = localStorage.getItem('theme');
-                    var dark = stored
-                        ? stored === 'dark'
-                        : window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    var dark = stored === 'dark';
                     document.documentElement.classList.toggle('dark', dark);
                     document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
                 } catch (e) {

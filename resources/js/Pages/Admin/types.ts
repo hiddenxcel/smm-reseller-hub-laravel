@@ -448,6 +448,22 @@ export type AnnouncementRow = {
     createdAt: string | null;
 };
 
+// ---- blog ----------------------------------------------------------------
+
+export type BlogPostState = 'draft' | 'scheduled' | 'published';
+
+export type BlogPostRow = {
+    id: number;
+    slug: string;
+    title: string;
+    excerpt: string;
+    body: string;
+    author: string | null;
+    state: BlogPostState;
+    publishedAt: string | null;
+    createdAt: string | null;
+};
+
 // ---- tickets -------------------------------------------------------------
 
 export type TicketRow = {

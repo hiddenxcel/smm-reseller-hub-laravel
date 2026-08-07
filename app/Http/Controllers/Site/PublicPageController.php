@@ -1,0 +1,94 @@
+<?php
+
+namespace App\Http\Controllers\Site;
+
+use App\Http\Controllers\Controller;
+use App\Models\Plan;
+use App\Services\Payments\Gateway;
+use Illuminate\Support\Arr;
+use Inertia\Inertia;
+use Inertia\Response;
+
+/**
+ * The marketing pages that are not the landing page.
+ *
+ * They share a controller because they share their data: every one of them
+ * wants the plan list, the demo number, or both, and splitting that across
+ * five controllers would mean five places to update when a plan is added.
+ */
+class PublicPageController extends Controller
+{
+    public function features(): Response
+    {
+        return Inertia::render('Public/Features', [
+            'plans' => $this->plans(),
+            'demoNumber' => config('services.demo_whatsapp_number'),
+        ]);
+    }
+
+    public function services(): Response
+    {
+        return Inertia::render('Public/Services', [
+            'plans' => $this->plans(),
+            'demoNumber' => config('services.demo_whatsapp_number'),
+        ]);
+    }
+
+    public function pricing(): Response
+    {
+        return Inertia::render('Public/Pricing', [
+            // Every service here, unlike the landing page's three: someone on
+            // the pricing page has come to compare, so hiding two of them
+            // would be hiding the answer they came for.
+            'plans' => $this->plans(),
+            'gateways' => $this->gateways(),
+            'demoNumber' => config('services.demo_whatsapp_number'),
+        ]);
+    }
+
+    public function apiDocs(): Response
+    {
+        return Inertia::render('Public/ApiDocs', [
+            'baseUrl' => rtrim(config('app.url'), '/').'/api/v2',
+            'demoNumber' => config('services.demo_whatsapp_number'),
+        ]);
+    }
+
+    public function contact(): Response
+    {
+        return Inertia::render('Public/Contact', [
+            'demoNumber' => config('services.demo_whatsapp_number'),
+        ]);
+    }
+
+    /** @return array<string, array> */
+    private function plans(): array
+    {
+        return Plan::where('status', 'active')
+            ->orderBy('sort_order')
+            ->get()
+            ->keyBy(fn (Plan $plan) => $plan->service_key->value)
+            ->map(fn (Plan $plan) => [
+                'name' => $plan->name,
+                'description' => $plan->description,
+                'monthly' => (float) $plan->price_monthly,
+                'yearly' => (float) $plan->price_yearly,
+                'currency' => $plan->currency,
+            ])
+            ->all();
+    }
+
+    /** @return array<int, array> */
+    private function gateways(): array
+    {
+        return collect(Gateway::all())
+            ->filter(fn (array $gateway) => Arr::get($gateway, 'ready', false))
+            ->map(fn (array $gateway, string $code) => [
+                'code' => $code,
+                'label' => Arr::get($gateway, 'label', $code),
+                'type' => Arr::get($gateway, 'type', 'card'),
+            ])
+            ->values()
+            ->all();
+    }
+}
