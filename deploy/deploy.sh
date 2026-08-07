@@ -1,132 +1,129 @@
 #!/bin/bash
 #
-# Release the uploaded build. Run on the VPS as the app user, by CI.
+# Release whatever CI just built. Runs on the VPS as root, called over SSH.
 #
-# Releases are directories and `current` is a symlink, so going live is one
-# atomic swap and going back is the same swap in reverse. A deploy that fails
-# its health check puts the previous release back rather than leaving the site
-# down.
+# The app lives under Hestia's web root, so this updates in place rather than
+# swapping symlinked releases: Hestia owns public_html and pointing it
+# somewhere new on every deploy would fight the panel. What that costs is a
+# few seconds where the code is new and the caches are not, which is why
+# maintenance mode goes up first.
 #
-# Lives at ~/smm-reseller-hub/deploy.sh on the server.
+# A failed migration or a failed health check rolls the code back to the
+# commit that was live before.
+#
+# Lives at /root/deploy.sh.
 
-set -euo pipefail
+set -uo pipefail
 
-APP_DIR="$HOME/smm-reseller-hub"
-RELEASES="$APP_DIR/releases"
-SHARED="$APP_DIR/shared"
-CURRENT="$APP_DIR/current"
-TARBALL="$APP_DIR/release.tar.gz"
+APP=/home/user/web/smmresellershub.com/private/app
 PHP=/usr/bin/php8.3
-KEEP=5
+WORKER_INI=/etc/php/8.3/cli/queue-worker/php.ini
+BRANCH="${BRANCH:-onboarding-payments-and-test-bot}"
 
-STAMP=$(date +%Y%m%d-%H%M%S)
-NEW="$RELEASES/$STAMP"
-
-say() { printf '\n\033[1;32m==> %s\033[0m\n' "$1"; }
+say()  { printf '\n\033[1;32m==> %s\033[0m\n' "$1"; }
 fail() { printf '\n\033[1;31m!! %s\033[0m\n' "$1" >&2; }
 
-# What `current` pointed at when we started — the thing to go back to.
-PREVIOUS=""
-if [ -L "$CURRENT" ]; then
-    PREVIOUS=$(readlink -f "$CURRENT")
-fi
+cd "$APP" || { fail "No app at $APP"; exit 1; }
+
+# What is live right now — the thing to go back to.
+PREVIOUS=$(sudo -u user git rev-parse HEAD)
+say "Currently live: $(sudo -u user git log --oneline -1)"
 
 rollback() {
-    fail "Deploy failed"
-
-    if [ -n "$PREVIOUS" ] && [ -d "$PREVIOUS" ]; then
-        say "Rolling back to $(basename "$PREVIOUS")"
-        ln -sfn "$PREVIOUS" "$CURRENT"
-        $PHP "$CURRENT/artisan" config:cache >/dev/null 2>&1 || true
-        sudo systemctl restart php8.3-fpm smmhub-queue || true
-        fail "Site restored to the previous release."
-    else
-        fail "No previous release to fall back to — the site may be down."
-    fi
-
-    rm -rf "$NEW"
+    fail "Deploy failed — rolling back to $PREVIOUS"
+    sudo -u user git reset --hard --quiet "$PREVIOUS"
+    sudo -u user composer install --no-dev --no-interaction --prefer-dist \
+        --no-progress --optimize-autoloader --quiet 2>&1 | tail -2
+    sudo -u user $PHP artisan config:cache >/dev/null 2>&1
+    sudo -u user $PHP artisan route:cache  >/dev/null 2>&1
+    sudo -u user $PHP artisan view:cache   >/dev/null 2>&1
+    sudo -u user $PHP artisan up           >/dev/null 2>&1
+    systemctl restart smmhub-queue 2>/dev/null
+    fail "Rolled back. The site is on the previous commit."
     exit 1
 }
 
-trap rollback ERR
+# ---------------------------------------------------------------------------
+say "Putting the site into maintenance mode"
+
+# --secret lets you check the new code yourself while everyone else waits.
+sudo -u user $PHP artisan down --render=errors::503 --secret=deploying 2>/dev/null \
+    || sudo -u user $PHP artisan down 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
-say "Unpacking $STAMP"
+say "Fetching $BRANCH"
 
-[ -f "$TARBALL" ] || { fail "No release.tar.gz found"; exit 1; }
-
-mkdir -p "$NEW"
-tar -xzf "$TARBALL" -C "$NEW"
-rm -f "$TARBALL"
+sudo -u user git fetch --quiet origin "$BRANCH" || rollback
+sudo -u user git reset --hard --quiet "origin/$BRANCH" || rollback
+echo "now at: $(sudo -u user git log --oneline -1)"
 
 # ---------------------------------------------------------------------------
-say "Linking shared state"
+say "Installing PHP dependencies"
 
-# .env and storage/ outlive any single release: the key, the uploads and the
-# logs must not reset every time we deploy.
-[ -f "$SHARED/.env" ] || { fail "No shared/.env on the server — create it first"; exit 1; }
+sudo -u user composer install --no-dev --no-interaction --prefer-dist \
+    --no-progress --optimize-autoloader 2>&1 | tail -3 || rollback
 
-ln -sfn "$SHARED/.env" "$NEW/.env"
+# ---------------------------------------------------------------------------
+say "Unpacking the assets CI built"
 
-rm -rf "$NEW/storage"
-ln -sfn "$SHARED/storage" "$NEW/storage"
-
-# Laravel expects these whether or not the tarball carried them.
-mkdir -p "$SHARED/storage"/{app/public,framework/{cache/data,sessions,testing,views},logs}
+# public/build is gitignored, so it arrives as a tarball rather than in the
+# checkout. Without this the page loads with no styling at all.
+if [ -f /tmp/build.tar.gz ]; then
+    sudo -u user rm -rf public/build
+    sudo -u user tar -xzf /tmp/build.tar.gz -C public
+    rm -f /tmp/build.tar.gz
+    echo "assets in place: $(find public/build -type f | wc -l) files"
+else
+    fail "No build.tar.gz — the site would serve unstyled pages"
+    rollback
+fi
 
 # ---------------------------------------------------------------------------
 say "Migrating"
 
-# --force because production has no TTY to confirm at. Migrations run before
-# the swap: a failure here rolls back without users ever seeing the release.
-$PHP "$NEW/artisan" migrate --force
+sudo -u user $PHP artisan migrate --force 2>&1 | tail -6 || rollback
 
 # ---------------------------------------------------------------------------
-say "Caching config, routes and views"
+say "Rebuilding caches"
 
-$PHP "$NEW/artisan" config:cache
-$PHP "$NEW/artisan" route:cache
-$PHP "$NEW/artisan" view:cache
+sudo -u user $PHP artisan config:cache 2>&1 | tail -1 || rollback
+sudo -u user $PHP artisan route:cache  2>&1 | tail -1 || rollback
+sudo -u user $PHP artisan view:cache   2>&1 | tail -1 || rollback
+sudo -u user $PHP artisan storage:link >/dev/null 2>&1 || true
 
-# public/storage → storage/app/public, for anything user-uploaded.
-$PHP "$NEW/artisan" storage:link >/dev/null 2>&1 || true
-
-# ---------------------------------------------------------------------------
-say "Going live"
-
-ln -sfn "$NEW" "$CURRENT"
-
-# opcache still holds the old paths until php-fpm restarts.
-sudo systemctl restart php8.3-fpm
-
-# The worker must pick up the new code, and it holds the old release's files
-# open until it does.
-sudo systemctl restart smmhub-queue
+sudo -u user chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
-say "Checking the site answers"
+say "Restarting the worker"
 
-# Straight at the socket, so a DNS or TLS problem is not mistaken for a broken
-# release. Give php-fpm a moment to come back first.
+# It holds the old code in memory until it is restarted.
+systemctl restart smmhub-queue
 sleep 3
-
-CODE=$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: smmresellershub.com' http://127.0.0.1/ || echo 000)
-
-if [ "$CODE" != "200" ] && [ "$CODE" != "302" ]; then
-    fail "Health check returned $CODE"
-    false  # trips the ERR trap
-fi
-
-echo "Health check: $CODE"
+systemctl is-active --quiet smmhub-queue \
+    || { fail "Queue worker did not come back"; rollback; }
+echo "queue: active"
 
 # ---------------------------------------------------------------------------
-trap - ERR
+say "Bringing the site back"
 
-say "Pruning old releases"
+sudo -u user $PHP artisan up 2>&1 | tail -1
 
-# Keep a few to roll back through; delete the rest.
-cd "$RELEASES"
-ls -1dt */ 2>/dev/null | tail -n +$((KEEP + 1)) | xargs -r rm -rf
+# ---------------------------------------------------------------------------
+say "Health check"
 
-say "Deployed $STAMP"
-ls -1dt "$RELEASES"/*/ | head -n "$KEEP" | sed 's#.*/\([^/]*\)/#  \1#'
+sleep 2
+CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+    -H 'Host: smmresellershub.com' http://186.240.153.29/ || echo 000)
+
+if [ "$CODE" != "200" ] && [ "$CODE" != "302" ] && [ "$CODE" != "301" ]; then
+    fail "Site answered $CODE"
+    rollback
+fi
+echo "site: $CODE"
+
+# The other site shares this box; a deploy that breaks it is still a failure.
+OTHER=$(curl -s -o /dev/null -w '%{http_code}' \
+    -H 'Host: latestsafari.com' http://186.240.153.29/ || echo 000)
+echo "latestsafari: $OTHER"
+
+say "Deployed $(sudo -u user git log --oneline -1)"
