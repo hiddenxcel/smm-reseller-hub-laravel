@@ -7,6 +7,7 @@ import PaymentRail from '@/components/landing/PaymentRail';
 import PhoneDemo from '@/components/landing/PhoneDemo';
 import ProblemSolution from '@/components/landing/ProblemSolution';
 import Reveal from '@/components/landing/Reveal';
+import TwoBots from '@/components/landing/TwoBots';
 import TryOnWhatsApp from '@/components/landing/TryOnWhatsApp';
 import { Section, SectionHeading } from '@/components/landing/Section';
 import { Button } from '@/components/ui/button';
@@ -329,8 +330,22 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                     </div>
                 </Section>
 
+                {/* ---- the two bots ---- */}
+                {/* Ahead of the price list on purpose: selling them separately
+                    is the pricing model, so a reseller has to be able to tell
+                    the two jobs apart before the two prices mean anything. */}
+                <Section id="bots" muted>
+                    <SectionHeading
+                        eyebrow="Two bots, two jobs"
+                        title="One sells. One handles what comes after."
+                        subtitle="Take either on its own, or both. Most shops start with the order bot and add support once the questions pile up."
+                    />
+
+                    <TwoBots />
+                </Section>
+
                 {/* ---- services / pricing ---- */}
-                <Section id="services" muted>
+                <Section id="services">
                     <SectionHeading
                         eyebrow="Pricing"
                         title="Pay for what you use"
@@ -380,7 +395,7 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                 </Section>
 
                 {/* ---- interactive demo ---- */}
-                <Section id="demo">
+                <Section id="demo" muted>
                     <SectionHeading
                         eyebrow="Try it"
                         title="Press a button. Watch it work."
@@ -391,7 +406,7 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                 </Section>
 
                 {/* ---- how it works ---- */}
-                <Section id="how" muted>
+                <Section id="how">
                     <SectionHeading
                         eyebrow="How it works"
                         title="Live in about five minutes"
@@ -419,7 +434,7 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                 </Section>
 
                 {/* ---- panel compatibility ---- */}
-                <Section id="panels">
+                <Section id="panels" muted>
                     <SectionHeading
                         eyebrow="Your panel"
                         title="It works with the panel you already have"

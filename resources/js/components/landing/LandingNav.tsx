@@ -5,11 +5,11 @@ import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
 const LINKS = [
+    { href: '#bots', label: 'The bots' },
     { href: '#demo', label: 'Try it' },
     // "Will it work with my panel?" is the first thing a reseller asks, so it
     // gets a place in the nav rather than only a section halfway down.
     { href: '#panels', label: 'Your panel' },
-    { href: '#features', label: 'Features' },
     { href: '#services', label: 'Pricing' },
     { href: '#faq', label: 'FAQ' },
 ];
