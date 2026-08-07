@@ -23,6 +23,10 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
+        <!-- Pinned so the suite does not inherit whichever driver .env happens
+             to name. Without it CI picked up sqlite from .env.example and 150
+             tests failed against a database file that was never there. -->
+        <env name="DB_CONNECTION" value="pgsql"/>
         <env name="DB_DATABASE" value="testing"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
