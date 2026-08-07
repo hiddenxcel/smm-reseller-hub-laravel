@@ -2,9 +2,10 @@ import ComparisonTable from '@/components/landing/ComparisonTable';
 import FeatureGrid from '@/components/landing/FeatureGrid';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import LandingNav from '@/components/landing/LandingNav';
+import PaymentRail from '@/components/landing/PaymentRail';
 import PhoneDemo from '@/components/landing/PhoneDemo';
+import TryOnWhatsApp from '@/components/landing/TryOnWhatsApp';
 import { Section, SectionHeading } from '@/components/landing/Section';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Head, Link } from '@inertiajs/react';
@@ -31,8 +32,16 @@ type PlanSummary = {
     currency: string;
 };
 
+type GatewaySummary = {
+    code: string;
+    label: string;
+    type: string;
+};
+
 type Props = {
     plans: Record<string, PlanSummary>;
+    gateways: GatewaySummary[];
+    demoNumber: string | null;
 };
 
 /**
@@ -104,7 +113,7 @@ const FAQS = [
     },
 ];
 
-export default function Landing({ plans }: Props) {
+export default function Landing({ plans, gateways, demoNumber }: Props) {
     const planList = Object.entries(plans);
 
     return (
@@ -118,15 +127,19 @@ export default function Landing({ plans }: Props) {
                 <Section className="pt-12 pb-8 sm:pt-16">
                     <div className="grid items-center gap-12 lg:grid-cols-2">
                         <div>
+                            {/* The two fears a reseller arrives with — losing
+                                the number, and paying to find out. Given the
+                                brand colour and a border so they read as
+                                assurances rather than decoration. */}
                             <div className="mb-5 flex flex-wrap gap-2">
-                                <Badge variant="secondary" className="gap-1.5">
-                                    <ShieldCheck className="size-3.5" />
+                                <span className="flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                                    <ShieldCheck className="size-4" />
                                     Official Meta Cloud API
-                                </Badge>
-                                <Badge variant="secondary" className="gap-1.5">
-                                    <Coins className="size-3.5" />
-                                    Crypto &amp; mobile money
-                                </Badge>
+                                </span>
+                                <span className="flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                                    <Coins className="size-4" />
+                                    Mobile money &amp; crypto
+                                </span>
                             </div>
 
                             <h1 className="font-heading text-4xl leading-[1.1] font-extrabold tracking-tight text-balance sm:text-5xl">
@@ -134,9 +147,12 @@ export default function Landing({ plans }: Props) {
                                 <span className="text-primary">SMM panel</span>
                             </h1>
 
+                            {/* Says what the reseller gets, not how it works.
+                                The mechanism is the section below; this line
+                                has to earn the scroll. */}
                             <p className="mt-5 max-w-lg text-lg text-pretty text-muted-foreground">
-                                Your customers order, pay and get support on WhatsApp — automatically,
-                                around the clock, under your own brand.
+                                Sell followers, likes and views around the clock — paid by
+                                mobile money or crypto, without you lifting a finger.
                             </p>
 
                             <div className="mt-8 flex flex-wrap gap-3">
@@ -333,6 +349,10 @@ export default function Landing({ plans }: Props) {
                             </CardContent>
                         </Card>
                     </div>
+
+                    <div className="mt-14">
+                        <PaymentRail gateways={gateways} />
+                    </div>
                 </Section>
 
                 {/* ---- faq ---- */}
@@ -376,6 +396,8 @@ export default function Landing({ plans }: Props) {
                     <p>Built for SMM resellers · Mwanza, Tanzania</p>
                 </div>
             </footer>
+
+            <TryOnWhatsApp number={demoNumber} />
         </>
     );
 }

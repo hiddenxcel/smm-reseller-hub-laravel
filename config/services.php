@@ -94,4 +94,20 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Demo number
+    |--------------------------------------------------------------------------
+    |
+    | A WhatsApp number a visitor can message to meet the bot before signing
+    | up. The landing page's floating button hides itself when this is unset,
+    | because a chat nobody answers reads as a broken product rather than a
+    | missing demo.
+    |
+    | Digits only, with country code: 255700000000
+    |
+    */
+
+    'demo_whatsapp_number' => env('DEMO_WHATSAPP_NUMBER'),
+
 ];
