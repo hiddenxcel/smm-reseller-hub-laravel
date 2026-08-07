@@ -25,6 +25,12 @@ class TenantAi extends Model
         'tenant_id',
         'deepseek_api_key_enc',
         'status',
+        // Written by recordAnswer(), which goes through the query builder —
+        // but left assignable so a correction or a backfill is not silently
+        // dropped by mass-assignment protection.
+        'answers_today',
+        'answers_total',
+        'counting_day',
     ];
 
     protected $hidden = [

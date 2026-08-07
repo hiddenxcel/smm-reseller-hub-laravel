@@ -42,6 +42,14 @@ return [
     'menu_website_title' => '🌐 Website',
     'menu_website_desc' => 'More online',
 
+    // ---- AI support ----------------------------------------------------------
+    // Only reached when the reseller holds the AI Chat add-on and has stored a
+    // key; without it the support option says so rather than doing nothing.
+    'ai_chat_open' => "🤖 Ask me anything about our services or prices.\nSend *menu* when you're ready to order.",
+    'ai_chat_empty' => 'Please type your question, or send *menu* to go back.',
+    'ai_chat_failed' => "⚠️ Sorry, I couldn't answer that right now.",
+    'support_unavailable' => '🎧 For help, message us here and our team will reply.',
+
     // ---- Settings / language -------------------------------------------------
     'settings_choose_language' => '🌐 *Choose your language:*',
     'settings_press_language' => 'Please tap one of the language buttons.',
@@ -67,7 +75,7 @@ return [
     'per_1k' => '/ 1k',
     'pick_service_again' => 'Please pick a service from the list. Send *hi* to start over.',
     'service_paused_label' => 'Unavailable',
-    'service_paused' => "⏸️ That one is unavailable right now. Please pick another, or try again later.",
+    'service_paused' => '⏸️ That one is unavailable right now. Please pick another, or try again later.',
     'how_many' => 'How many *{service}*?',
     'packages_header' => 'Quantity',
     'btn_packages' => 'Packages',
@@ -140,10 +148,10 @@ return [
         "Earnings: *{earnings}*\n\n".
         'Send *hi* for the menu.',
     'referral_ask_code' => "🎁 Were you invited by a friend?\n\n".
-        "Send their code to link your account, or send *skip* to carry on.",
+        'Send their code to link your account, or send *skip* to carry on.',
     'referral_claimed' => "✅ You are now linked to *{code}*. They will earn a bonus on your first top-up.\n\n".
         'Send *hi* for the menu.',
-    'referral_unknown_code' => "❌ No one here has that code. Check it and send it again, or send *skip*.",
+    'referral_unknown_code' => '❌ No one here has that code. Check it and send it again, or send *skip*.',
     'referral_already_linked' => "You are already linked to someone.\n\nSend *hi* for the menu.",
     'referral_skipped' => "No problem.\n\nSend *hi* for the menu.",
 

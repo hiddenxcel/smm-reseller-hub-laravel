@@ -40,8 +40,8 @@ class AiAnswers
      *
      * @param  array<string, mixed>  $shop  the reseller's bot shop settings
      * @param  array<int, array{role: string, content: string}>  $history
-     *                          earlier turns, so a follow-up like "and for TikTok?"
-     *                          is understood
+     *                                                                     earlier turns, so a follow-up like "and for TikTok?"
+     *                                                                     is understood
      * @return string|null null when AI is unavailable, or when DeepSeek failed —
      *                     the caller says something a customer can act on
      */

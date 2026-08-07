@@ -39,6 +39,12 @@ return [
     'menu_website_title' => '🌐 Site web',
     'menu_website_desc' => 'Plus en ligne',
 
+    // ---- AI support ----------------------------------------------------------
+    'ai_chat_open' => "🤖 Posez-moi vos questions sur nos services ou nos prix.\nEnvoyez *menu* quand vous êtes prêt à commander.",
+    'ai_chat_empty' => 'Veuillez écrire votre question, ou envoyez *menu* pour revenir.',
+    'ai_chat_failed' => "⚠️ Désolé, je n'ai pas pu répondre à cela pour le moment.",
+    'support_unavailable' => '🎧 Pour toute aide, écrivez-nous ici et notre équipe vous répondra.',
+
     // ---- Settings / language -------------------------------------------------
     'settings_choose_language' => '🌐 *Choisissez votre langue :*',
     'settings_press_language' => 'Veuillez appuyer sur l\'un des boutons de langue.',
@@ -64,7 +70,7 @@ return [
     'per_1k' => '/ 1k',
     'pick_service_again' => 'Veuillez choisir un service dans la liste. Envoyez *hi* pour recommencer.',
     'service_paused_label' => 'Indisponible',
-    'service_paused' => "⏸️ Celui-ci est indisponible pour le moment. Choisissez-en un autre, ou réessayez plus tard.",
+    'service_paused' => '⏸️ Celui-ci est indisponible pour le moment. Choisissez-en un autre, ou réessayez plus tard.',
     'how_many' => 'Combien de *{service}* ?',
     'packages_header' => 'Quantité',
     'btn_packages' => 'Forfaits',

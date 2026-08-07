@@ -39,6 +39,12 @@ return [
     'menu_website_title' => '🌐 Tovuti',
     'menu_website_desc' => 'Huduma zaidi mtandaoni',
 
+    // ---- AI support ----------------------------------------------------------
+    'ai_chat_open' => "🤖 Niulize chochote kuhusu huduma zetu au bei.\nTuma *menu* ukiwa tayari kuagiza.",
+    'ai_chat_empty' => 'Tafadhali andika swali lako, au tuma *menu* kurudi.',
+    'ai_chat_failed' => '⚠️ Samahani, sikuweza kujibu hilo kwa sasa.',
+    'support_unavailable' => '🎧 Kwa msaada, tutumie ujumbe hapa na timu yetu itakujibu.',
+
     // ---- Settings / language -------------------------------------------------
     'settings_choose_language' => '🌐 *Chagua lugha yako:*',
     'settings_press_language' => 'Tafadhali bonyeza mojawapo ya vitufe vya lugha.',

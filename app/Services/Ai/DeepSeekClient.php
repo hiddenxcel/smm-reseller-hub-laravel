@@ -43,7 +43,7 @@ class DeepSeekClient
      *
      * @param  string  $system  who the assistant is and what it may say
      * @param  array<int, array{role: string, content: string}>  $history
-     *                          earlier turns, oldest first, for follow-up questions
+     *                                                                     earlier turns, oldest first, for follow-up questions
      * @return string|null null on any failure — unreachable, refused, or empty
      */
     public function ask(string $system, string $question, array $history = []): ?string

@@ -42,6 +42,12 @@ return [
     'menu_website_title' => '🌐 Web Sitesi',
     'menu_website_desc' => 'Çevrimiçi daha fazlası',
 
+    // ---- AI support ----------------------------------------------------------
+    'ai_chat_open' => "🤖 Hizmetlerimiz veya fiyatlarımız hakkında bana her şeyi sorabilirsiniz.\nSipariş vermeye hazır olduğunuzda *menu* yazın.",
+    'ai_chat_empty' => 'Lütfen sorunuzu yazın veya geri dönmek için *menu* gönderin.',
+    'ai_chat_failed' => '⚠️ Üzgünüm, şu anda buna cevap veremedim.',
+    'support_unavailable' => '🎧 Yardım için bize buradan yazın, ekibimiz size dönecektir.',
+
     // ---- Settings / language -------------------------------------------------
     'settings_choose_language' => '🌐 *Dilinizi seçin:*',
     'settings_press_language' => 'Lütfen dil düğmelerinden birine dokunun.',

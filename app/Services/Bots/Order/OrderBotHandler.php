@@ -10,6 +10,7 @@ use App\Models\BotOrder;
 use App\Models\BotService;
 use App\Models\Tenant;
 use App\Models\TenantPaymentGateway;
+use App\Services\Ai\AiAnswers;
 use App\Services\Bots\BotHandler;
 use App\Services\Bots\BotLang;
 use App\Services\Bots\BotMessenger;
@@ -46,6 +47,13 @@ class OrderBotHandler implements BotHandler
 
     /** Anything here drops the customer back to the menu, wherever they were. */
     private const RESET_WORDS = ['hi', 'hello', 'menu', 'start', 'habari', 'mambo', '#'];
+
+    /**
+     * Question-and-answer pairs carried into the next AI question. Enough for
+     * a follow-up to make sense, few enough that a long conversation does not
+     * re-bill the reseller for its opening on every turn.
+     */
+    private const AI_HISTORY_TURNS = 4;
 
     private int $tenantId;
 
@@ -107,8 +115,8 @@ class OrderBotHandler implements BotHandler
             OrderState::SelectGateway => $this->onGatewayChosen($from, $text, $context, $customer),
             OrderState::TopupPhone => $this->onTopupPhone($from, $text, $context, $customer),
 
-            // AI chat is wired in the next step; until then the customer is
-            // returned to the menu rather than left stuck.
+            OrderState::AiChat => $this->onAiQuestion($from, $text, $context, $customer),
+
             default => $this->showMainMenu($from, $customer),
         };
     }
@@ -176,10 +184,83 @@ class OrderBotHandler implements BotHandler
             'group' => $this->sayAndFinish($from, 'group_info', ['url' => $this->shop['group_url'] ?? '']),
             'website' => $this->sayAndFinish($from, 'website_info', ['url' => $this->shop['website_url'] ?? '']),
             'topup' => $this->askTopupAmount($from),
+            'support' => $this->startAiChat($from),
 
-            // Support arrives with the support bot.
             default => $this->say($from, 'not_understood_menu'),
         };
+    }
+
+    // ---- AI support ------------------------------------------------------
+
+    /**
+     * The support option, answered by AI when the reseller has the add-on.
+     *
+     * Without it the customer is told to reach the shop directly rather than
+     * being left on an option that does nothing — which is what this was
+     * before the AI port.
+     */
+    private function startAiChat(string $from): void
+    {
+        if (! app(AiAnswers::class)->isAvailable($this->tenantId)) {
+            $this->sayAndFinish($from, 'support_unavailable');
+
+            return;
+        }
+
+        $this->moveTo($from, OrderState::AiChat, ['history' => []]);
+
+        $this->say($from, 'ai_chat_open');
+    }
+
+    /**
+     * A question for the assistant.
+     *
+     * Reset words are caught in handle() before this runs, so *hi* or *menu*
+     * always gets the customer out — they are never held in a conversation
+     * with the AI.
+     */
+    private function onAiQuestion(
+        string $from,
+        string $text,
+        array $context,
+        BotCustomer $customer,
+    ): void {
+        if ($text === '') {
+            $this->say($from, 'ai_chat_empty');
+
+            return;
+        }
+
+        $history = is_array($context['history'] ?? null) ? $context['history'] : [];
+
+        $answer = app(AiAnswers::class)->answer(
+            tenant: $this->tenant,
+            question: $text,
+            shop: $this->shop,
+            history: $history,
+        );
+
+        // DeepSeek was unreachable or refused the key, or the add-on lapsed
+        // mid-conversation. The customer is returned to the menu, which is
+        // somewhere they can still buy from.
+        if ($answer === null) {
+            $this->say($from, 'ai_chat_failed');
+            $this->showMainMenu($from, $customer);
+
+            return;
+        }
+
+        $this->messenger->sendText($from, $answer, 'AI_CHAT_ANSWER');
+
+        $history[] = ['role' => 'user', 'content' => $text];
+        $history[] = ['role' => 'assistant', 'content' => $answer];
+
+        // Capped: the whole history is re-sent with every question, so an
+        // unbounded one bills the reseller for the same opening exchange over
+        // and over.
+        $this->moveTo($from, OrderState::AiChat, [
+            'history' => array_slice($history, -self::AI_HISTORY_TURNS * 2),
+        ]);
     }
 
     // ---- settings --------------------------------------------------------
