@@ -1,4 +1,5 @@
 import { PropsWithChildren } from 'react';
+import Reveal from './Reveal';
 
 type SectionProps = PropsWithChildren<{
     id?: string;
@@ -31,8 +32,10 @@ export function SectionHeading({
     title: string;
     subtitle?: string;
 }) {
+    // Every heading reveals on scroll, so no caller has to remember to wrap
+    // one — and none of them can drift out of step with the rest.
     return (
-        <div className="mx-auto mb-12 max-w-2xl text-center">
+        <Reveal className="mx-auto mb-12 max-w-2xl text-center">
             {eyebrow && (
                 <p className="mb-3 text-sm font-semibold tracking-wide text-primary uppercase">
                     {eyebrow}
@@ -44,6 +47,6 @@ export function SectionHeading({
             {subtitle && (
                 <p className="mt-4 text-lg text-pretty text-muted-foreground">{subtitle}</p>
             )}
-        </div>
+        </Reveal>
     );
 }

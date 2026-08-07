@@ -5,6 +5,8 @@ import LandingNav from '@/components/landing/LandingNav';
 import PanelCompatibility from '@/components/landing/PanelCompatibility';
 import PaymentRail from '@/components/landing/PaymentRail';
 import PhoneDemo from '@/components/landing/PhoneDemo';
+import ProblemSolution from '@/components/landing/ProblemSolution';
+import Reveal from '@/components/landing/Reveal';
 import TryOnWhatsApp from '@/components/landing/TryOnWhatsApp';
 import { Section, SectionHeading } from '@/components/landing/Section';
 import { Button } from '@/components/ui/button';
@@ -129,80 +131,114 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
 
             <main>
                 {/* ---- hero ---- */}
-                <Section className="pt-12 pb-8 sm:pt-16">
+                <Section className="relative overflow-hidden pt-12 pb-8 sm:pt-16">
+                    {/* Two soft washes behind the fold. Enough to stop the
+                        canvas reading as flat white, far short of the neon
+                        gradients that make a payments product look like a
+                        pump-and-dump. */}
+                    <div
+                        aria-hidden
+                        className="pointer-events-none absolute -top-40 -right-32 -z-10 size-[32rem] rounded-full bg-primary/10 blur-3xl"
+                    />
+                    <div
+                        aria-hidden
+                        className="pointer-events-none absolute -bottom-52 -left-40 -z-10 size-[28rem] rounded-full bg-accent-500/10 blur-3xl"
+                    />
+
                     <div className="grid items-center gap-12 lg:grid-cols-2">
                         <div>
                             {/* The two fears a reseller arrives with — losing
                                 the number, and paying to find out. Given the
                                 brand colour and a border so they read as
                                 assurances rather than decoration. */}
-                            <div className="mb-5 flex flex-wrap gap-2">
-                                <span className="flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
-                                    <ShieldCheck className="size-4" />
-                                    Official Meta Cloud API
-                                </span>
-                                <span className="flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
-                                    <Coins className="size-4" />
-                                    Mobile money &amp; crypto
-                                </span>
-                            </div>
+                            <Reveal>
+                                <div className="mb-5 flex flex-wrap gap-2">
+                                    <span className="flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                                        <ShieldCheck className="size-4" />
+                                        Official Meta Cloud API
+                                    </span>
+                                    <span className="flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                                        <Coins className="size-4" />
+                                        Mobile money &amp; crypto
+                                    </span>
+                                </div>
+                            </Reveal>
 
-                            <h1 className="font-heading text-4xl leading-[1.1] font-extrabold tracking-tight text-balance sm:text-5xl">
-                                WhatsApp bots for your{' '}
-                                <span className="text-primary">SMM panel</span>
-                            </h1>
+                            <Reveal delay={80}>
+                                <h1 className="font-heading text-4xl leading-[1.1] font-extrabold tracking-tight text-balance sm:text-5xl">
+                                    WhatsApp bots for your{' '}
+                                    <span className="text-primary">SMM panel</span>
+                                </h1>
+                            </Reveal>
 
                             {/* Says what the reseller gets, not how it works.
                                 The mechanism is the section below; this line
                                 has to earn the scroll. */}
-                            <p className="mt-5 max-w-lg text-lg text-pretty text-muted-foreground">
-                                Sell followers, likes and views around the clock — paid by
-                                mobile money or crypto, without you lifting a finger.
-                            </p>
+                            <Reveal delay={160}>
+                                <p className="mt-5 max-w-lg text-lg text-pretty text-muted-foreground">
+                                    Sell followers, likes and views around the clock — paid by
+                                    mobile money or crypto, without you lifting a finger.
+                                </p>
+                            </Reveal>
 
-                            <div className="mt-8 flex flex-wrap gap-3">
-                                <Button size="lg" asChild>
-                                    <Link href={route('register')}>
-                                        <Rocket className="size-4" />
-                                        Start free
-                                    </Link>
-                                </Button>
-                                {/* Points at the demo rather than the price
-                                    list: someone who is not sure yet wants to
-                                    see it work, not to find out what it costs. */}
-                                <Button size="lg" variant="outline" asChild>
-                                    <a href="#demo">
-                                        <PlayCircle className="size-4" />
-                                        See it work
-                                    </a>
-                                </Button>
-                            </div>
+                            <Reveal delay={240}>
+                                <div className="mt-8 flex flex-wrap gap-3">
+                                    <Button size="lg" asChild>
+                                        <Link href={route('register')}>
+                                            <Rocket className="size-4" />
+                                            Start free
+                                        </Link>
+                                    </Button>
+                                    {/* Points at the demo rather than the price
+                                        list: someone who is not sure yet wants to
+                                        see it work, not to find out what it costs. */}
+                                    <Button size="lg" variant="outline" asChild>
+                                        <a href="#demo">
+                                            <PlayCircle className="size-4" />
+                                            See it work
+                                        </a>
+                                    </Button>
+                                </div>
 
-                            <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-                                <CheckCircle2 className="size-4 text-primary" />
-                                Free to start · No card required
-                            </p>
+                                <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                                    <CheckCircle2 className="size-4 text-primary" />
+                                    Free to start · No card required
+                                </p>
+                            </Reveal>
                         </div>
 
-                        <PhoneDemo />
+                        <Reveal delay={200}>
+                            <PhoneDemo />
+                        </Reveal>
                     </div>
+                </Section>
+
+                {/* ---- the ban objection ---- */}
+                <Section className="pt-0 pb-14 sm:pb-16">
+                    <Reveal>
+                        <ProblemSolution />
+                    </Reveal>
                 </Section>
 
                 {/* ---- trust bar ---- */}
                 <Section muted className="py-10 sm:py-12">
-                    <dl className="grid grid-cols-2 gap-x-8 gap-y-9 text-center sm:grid-cols-4">
-                        {TRUST.map((item) => (
-                            <div key={item.label}>
-                                <dt className="font-heading text-3xl font-extrabold text-primary">
+                    {/* Plain divs rather than dl/dt/dd: the reveal wrapper sits
+                        between the list and its terms, which the description-list
+                        markup does not allow. The content is a set of claims, not
+                        term/definition pairs, so nothing is lost. */}
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-9 text-center sm:grid-cols-4">
+                        {TRUST.map((item, index) => (
+                            <Reveal key={item.label} delay={index * 80}>
+                                <p className="font-heading text-3xl font-extrabold text-primary">
                                     {item.value}
-                                </dt>
-                                <dd className="mt-1 text-sm font-medium">{item.label}</dd>
-                                <dd className="mt-0.5 text-xs text-muted-foreground">
+                                </p>
+                                <p className="mt-1 text-sm font-medium">{item.label}</p>
+                                <p className="mt-0.5 text-xs text-muted-foreground">
                                     {item.against}
-                                </dd>
-                            </div>
+                                </p>
+                            </Reveal>
                         ))}
-                    </dl>
+                    </div>
                 </Section>
 
                 {/* ---- why us ---- */}
@@ -214,18 +250,22 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                     />
 
                     <div className="grid gap-6 md:grid-cols-3">
-                        {WHY.map((item) => (
-                            <Card key={item.title} className="soft border-transparent">
-                                <CardContent className="pt-6">
-                                    <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-                                        <item.icon className="size-5" />
-                                    </span>
-                                    <h3 className="font-heading mb-2 text-lg font-bold">{item.title}</h3>
-                                    <p className="text-sm leading-relaxed text-muted-foreground">
-                                        {item.body}
-                                    </p>
-                                </CardContent>
-                            </Card>
+                        {WHY.map((item, index) => (
+                            <Reveal key={item.title} delay={index * 100}>
+                                <Card className="soft h-full border-transparent transition-transform duration-300 hover:-translate-y-1">
+                                    <CardContent className="pt-6">
+                                        <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                                            <item.icon className="size-5" />
+                                        </span>
+                                        <h3 className="font-heading mb-2 text-lg font-bold">
+                                            {item.title}
+                                        </h3>
+                                        <p className="text-sm leading-relaxed text-muted-foreground">
+                                            {item.body}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            </Reveal>
                         ))}
                     </div>
                 </Section>
@@ -239,11 +279,12 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                     />
 
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {planList.map(([key, plan]) => {
+                        {planList.map(([key, plan], index) => {
                             const Icon = SERVICE_ICONS[key] ?? Bot;
 
                             return (
-                                <Card key={key} className="soft flex flex-col border-transparent">
+                                <Reveal key={key} delay={index * 90} className="h-full">
+                                <Card className="soft flex h-full flex-col border-transparent transition-transform duration-300 hover:-translate-y-1">
                                     <CardContent className="flex flex-1 flex-col pt-6">
                                         <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
                                             <Icon className="size-5" />
@@ -273,6 +314,7 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                                         </Button>
                                     </CardContent>
                                 </Card>
+                                </Reveal>
                             );
                         })}
                     </div>
@@ -300,16 +342,18 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                     <ol className="grid gap-6 md:grid-cols-4">
                         {STEPS.map((step, index) => (
                             <li key={step.title} className="relative">
-                                <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                                    <step.icon className="size-5" />
-                                </span>
-                                <p className="mb-1 text-xs font-semibold text-primary">
-                                    Step {index + 1}
-                                </p>
-                                <h3 className="font-heading mb-1 font-bold">{step.title}</h3>
-                                <p className="text-sm leading-relaxed text-muted-foreground">
-                                    {step.body}
-                                </p>
+                                <Reveal delay={index * 110}>
+                                    <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                                        <step.icon className="size-5" />
+                                    </span>
+                                    <p className="mb-1 text-xs font-semibold text-primary">
+                                        Step {index + 1}
+                                    </p>
+                                    <h3 className="font-heading mb-1 font-bold">{step.title}</h3>
+                                    <p className="text-sm leading-relaxed text-muted-foreground">
+                                        {step.body}
+                                    </p>
+                                </Reveal>
                             </li>
                         ))}
                     </ol>
@@ -323,7 +367,9 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                         subtitle="No migration, no second panel to run. This sits on top of the one you use now."
                     />
 
-                    <PanelCompatibility />
+                    <Reveal>
+                        <PanelCompatibility />
+                    </Reveal>
                 </Section>
 
                 {/* ---- features ---- */}
@@ -333,7 +379,9 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                         title="Everything the shop needs to run itself"
                     />
 
-                    <FeatureGrid />
+                    <Reveal>
+                        <FeatureGrid />
+                    </Reveal>
                 </Section>
 
                 {/* ---- comparison ---- */}
@@ -343,7 +391,9 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                         title="What changes on day one"
                     />
 
-                    <ComparisonTable />
+                    <Reveal>
+                        <ComparisonTable />
+                    </Reveal>
                 </Section>
 
                 {/* ---- wallet explainer ---- */}
@@ -385,33 +435,76 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                     <SectionHeading eyebrow="FAQ" title="Questions worth asking" />
 
                     <div className="mx-auto max-w-3xl space-y-4">
-                        {FAQS.map((faq) => (
-                            <Card key={faq.q} className="border-border/60">
-                                <CardContent className="pt-6">
-                                    <h3 className="font-heading mb-2 font-bold">{faq.q}</h3>
-                                    <p className="text-sm leading-relaxed text-muted-foreground">
-                                        {faq.a}
-                                    </p>
-                                </CardContent>
-                            </Card>
+                        {FAQS.map((faq, index) => (
+                            <Reveal key={faq.q} delay={index * 70}>
+                                <Card className="border-border/60">
+                                    <CardContent className="pt-6">
+                                        <h3 className="font-heading mb-2 font-bold">{faq.q}</h3>
+                                        <p className="text-sm leading-relaxed text-muted-foreground">
+                                            {faq.a}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            </Reveal>
                         ))}
                     </div>
                 </Section>
 
                 {/* ---- closing cta ---- */}
-                <Section className="text-center">
-                    <h2 className="font-heading text-3xl font-extrabold text-balance sm:text-4xl">
-                        Put your panel on WhatsApp today
-                    </h2>
-                    <p className="mx-auto mt-4 max-w-xl text-pretty text-muted-foreground">
-                        Free to start, and every service runs in sandbox until you decide to go live.
-                    </p>
-                    <Button size="lg" className="mt-8" asChild>
-                        <Link href={route('register')}>
-                            <Rocket className="size-4" />
-                            Create your account
-                        </Link>
-                    </Button>
+                <Section>
+                    <Reveal>
+                        {/* Filled with the brand green rather than left on the
+                            page background: this is the last thing a reader
+                            passes, and it should read as an invitation rather
+                            than as another paragraph. */}
+                        <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-14 text-center text-primary-foreground sm:px-12">
+                            <div
+                                aria-hidden
+                                className="pointer-events-none absolute -top-24 -right-20 size-80 rounded-full bg-white/10 blur-3xl"
+                            />
+                            <div
+                                aria-hidden
+                                className="pointer-events-none absolute -bottom-28 -left-20 size-80 rounded-full bg-black/10 blur-3xl"
+                            />
+
+                            <div className="relative">
+                                <h2 className="font-heading text-3xl font-extrabold text-balance sm:text-4xl">
+                                    Put your panel on WhatsApp today
+                                </h2>
+
+                                <p className="mx-auto mt-4 max-w-xl text-pretty text-primary-foreground/85">
+                                    Free to start, and every service runs in sandbox until you
+                                    decide to go live.
+                                </p>
+
+                                <div className="mt-8 flex flex-wrap justify-center gap-3">
+                                    <Button size="lg" variant="secondary" asChild>
+                                        <Link href={route('register')}>
+                                            <Rocket className="size-4" />
+                                            Create your account
+                                        </Link>
+                                    </Button>
+
+                                    <Button
+                                        size="lg"
+                                        variant="outline"
+                                        className="border-white/30 bg-transparent text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
+                                        asChild
+                                    >
+                                        <a href="#demo">
+                                            <PlayCircle className="size-4" />
+                                            Try it first
+                                        </a>
+                                    </Button>
+                                </div>
+
+                                <p className="mt-5 flex items-center justify-center gap-2 text-sm text-primary-foreground/80">
+                                    <CheckCircle2 className="size-4" />
+                                    No card required · Cancel any time
+                                </p>
+                            </div>
+                        </div>
+                    </Reveal>
                 </Section>
             </main>
 
