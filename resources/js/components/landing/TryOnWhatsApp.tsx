@@ -18,11 +18,16 @@ export default function TryOnWhatsApp({ number }: { number?: string | null }) {
     const [dismissed, setDismissed] = useState(false);
     const [shown, setShown] = useState(false);
 
-    // Held back briefly so it arrives after the hero rather than on top of it.
+    // Held back until the reader has left the first screen. On a phone the
+    // hero and the phone demo fill the viewport, and a button floating over
+    // them covers the very thing it is inviting people to look at.
     useEffect(() => {
-        const timer = window.setTimeout(() => setShown(true), 1800);
+        const check = () => setShown(window.scrollY > window.innerHeight * 0.6);
 
-        return () => window.clearTimeout(timer);
+        check();
+        window.addEventListener('scroll', check, { passive: true });
+
+        return () => window.removeEventListener('scroll', check);
     }, []);
 
     if (dismissed) {
