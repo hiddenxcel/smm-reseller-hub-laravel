@@ -3,6 +3,7 @@
 namespace App\Services\Billing;
 
 use App\Models\PlatformGatewayCredential;
+use App\Services\Payments\BinancePayClient;
 use App\Services\Payments\CryptomusClient;
 use App\Services\Payments\HeleketClient;
 use App\Services\Payments\NowPaymentsClient;
@@ -51,6 +52,11 @@ class PlatformGateways
             'nowpayments' => filled(Arr::get($keys, 'api_key')),
             'cryptomus', 'heleket' => filled(Arr::get($keys, 'api_key'))
                 && filled(Arr::get($keys, 'merchant_id')),
+            // Both halves are needed before it is offered: the secret is not
+            // merely for webhooks here, it signs the order request too, so a
+            // key on its own cannot even reach the checkout.
+            'binance' => filled(Arr::get($keys, 'api_key'))
+                && filled(Arr::get($keys, 'webhook_secret')),
             default => false,
         };
     }
@@ -195,6 +201,10 @@ class PlatformGateways
             'heleket' => new HeleketClient(
                 (string) Arr::get($keys, 'api_key'),
                 (string) Arr::get($keys, 'merchant_id'),
+            ),
+            'binance' => new BinancePayClient(
+                (string) Arr::get($keys, 'api_key'),
+                (string) Arr::get($keys, 'webhook_secret'),
             ),
             default => null,
         };

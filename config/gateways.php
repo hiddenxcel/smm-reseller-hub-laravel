@@ -50,15 +50,20 @@ return [
     ],
 
     'binance' => [
-        'label' => 'Binance (USDT — Internal Transfer)',
+        'label' => 'Binance Pay (USDT / Crypto)',
         'type' => 'crypto',
         'ready' => true,
-        // No webhook: the customer sends USDT to the reseller's Binance ID and
-        // reports the order ID, which is verified against the Spot API.
-        'verify' => true,
+        // Binance Pay is a merchant API with a real webhook, so this is an
+        // ordinary signed-notification gateway. It was once configured as
+        // `verify` — the customer quoting an order id from an internal
+        // transfer — but no code was ever written for that, and the client
+        // that does exist is the merchant one.
+        //
+        // The credentials come from Binance Merchant → Developers, not from
+        // the Spot API keys used for trading; those cannot open an order.
         'fields' => [
-            ['name' => 'api_key', 'label' => 'Binance Spot API key (read)', 'store' => 'api_key'],
-            ['name' => 'webhook_secret', 'label' => 'Binance Spot API secret', 'store' => 'webhook_secret'],
+            ['name' => 'api_key', 'label' => 'Merchant API key', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Merchant API secret', 'store' => 'webhook_secret'],
         ],
     ],
 

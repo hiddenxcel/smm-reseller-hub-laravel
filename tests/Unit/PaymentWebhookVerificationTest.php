@@ -3,6 +3,8 @@
 namespace Tests\Unit;
 
 use App\Services\Payments\BinancePayClient;
+use App\Services\Payments\CryptomusClient;
+use App\Services\Payments\HeleketClient;
 use App\Services\Payments\NowPaymentsClient;
 use App\Services\Payments\SnippeClient;
 use Tests\TestCase;
@@ -128,13 +130,115 @@ class PaymentWebhookVerificationTest extends TestCase
         $this->assertFalse($client->verifyWebhook('not json at all', ['signature' => 'x']));
     }
 
+    /**
+     * The lifecycle is waiting → confirming → confirmed → sending → finished,
+     * and only the last means the money is ours. `confirmed` reads like an
+     * ending but is the blockchain confirming the customer's transfer, before
+     * NOWPayments has forwarded it — a payment can be confirmed and still fail.
+     */
     public function test_nowpayments_paid_statuses(): void
     {
         $this->assertTrue(NowPaymentsClient::isPaidStatus('finished'));
-        $this->assertTrue(NowPaymentsClient::isPaidStatus('confirmed'));
+
+        $this->assertFalse(NowPaymentsClient::isPaidStatus('confirmed'));
+        $this->assertFalse(NowPaymentsClient::isPaidStatus('sending'));
+        $this->assertFalse(NowPaymentsClient::isPaidStatus('confirming'));
         $this->assertFalse(NowPaymentsClient::isPaidStatus('waiting'));
         $this->assertFalse(NowPaymentsClient::isPaidStatus('partially_paid'));
+        $this->assertFalse(NowPaymentsClient::isPaidStatus('failed'));
         $this->assertFalse(NowPaymentsClient::isPaidStatus(null));
+    }
+
+    // ---- Cryptomus / Heleket: md5(base64(json) + key), slashes escaped ----
+
+    /**
+     * The bug this pins: Cryptomus signs with PHP's json_encode defaults, so
+     * "https://x" is signed as "https:\/\/x". Verifying with
+     * JSON_UNESCAPED_SLASHES rejected every genuine callback, because every
+     * callback carries url_callback.
+     */
+    public function test_cryptomus_accepts_a_callback_whose_body_contains_urls(): void
+    {
+        $key = 'payment-api-key';
+
+        $data = [
+            'type' => 'payment',
+            'uuid' => 'abc-123',
+            'order_id' => 'SUB-TEST',
+            'status' => 'paid',
+            'url_callback' => 'https://hub.test/webhooks/billing/cryptomus',
+        ];
+
+        // Signed the way the provider does it: slashes escaped.
+        $data['sign'] = md5(base64_encode(json_encode(
+            array_diff_key($data, ['sign' => null]),
+            JSON_UNESCAPED_UNICODE,
+        )).$key);
+
+        $client = new CryptomusClient($key, 'merchant-uuid');
+
+        $this->assertTrue($client->verifyWebhook(json_encode($data), []));
+    }
+
+    public function test_cryptomus_rejects_a_tampered_amount(): void
+    {
+        $key = 'payment-api-key';
+
+        $original = ['order_id' => 'SUB-TEST', 'status' => 'paid', 'amount' => '1.00'];
+        $sign = md5(base64_encode(json_encode($original, JSON_UNESCAPED_UNICODE)).$key);
+
+        $client = new CryptomusClient($key, 'merchant-uuid');
+
+        $this->assertFalse($client->verifyWebhook(
+            json_encode(['order_id' => 'SUB-TEST', 'status' => 'paid', 'amount' => '9999.00', 'sign' => $sign]),
+            [],
+        ));
+    }
+
+    public function test_cryptomus_rejects_when_no_key_is_configured(): void
+    {
+        $client = new CryptomusClient('', 'merchant-uuid');
+
+        $this->assertFalse($client->verifyWebhook('{"status":"paid","sign":"x"}', []));
+    }
+
+    /**
+     * `wrong_amount` means they underpaid. Crediting it would sell an order
+     * for whatever the payer chose to send.
+     */
+    public function test_cryptomus_paid_statuses(): void
+    {
+        $this->assertTrue(CryptomusClient::isPaidStatus('paid'));
+        $this->assertTrue(CryptomusClient::isPaidStatus('paid_over'));
+
+        $this->assertFalse(CryptomusClient::isPaidStatus('wrong_amount'));
+        $this->assertFalse(CryptomusClient::isPaidStatus('confirm_check'));
+        $this->assertFalse(CryptomusClient::isPaidStatus('cancel'));
+        $this->assertFalse(CryptomusClient::isPaidStatus('fail'));
+        $this->assertFalse(CryptomusClient::isPaidStatus('refund_paid'));
+        // Never a status Cryptomus sends; it was accepted by mistake.
+        $this->assertFalse(CryptomusClient::isPaidStatus('finished'));
+        $this->assertFalse(CryptomusClient::isPaidStatus(null));
+    }
+
+    /** Heleket runs the same API, so it must behave identically. */
+    public function test_heleket_shares_cryptomus_verification(): void
+    {
+        $key = 'heleket-key';
+
+        $data = [
+            'order_id' => 'SUB-TEST',
+            'status' => 'paid',
+            'url_callback' => 'https://hub.test/webhooks/billing/heleket',
+        ];
+        $data['sign'] = md5(base64_encode(json_encode(
+            array_diff_key($data, ['sign' => null]),
+            JSON_UNESCAPED_UNICODE,
+        )).$key);
+
+        $this->assertTrue(
+            (new HeleketClient($key, 'merchant-uuid'))->verifyWebhook(json_encode($data), []),
+        );
     }
 
     // ---- Binance Pay: uppercase HMAC-SHA512 over ts\nnonce\nbody\n -------

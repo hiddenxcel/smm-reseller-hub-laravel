@@ -49,10 +49,6 @@ return [
     | `charge_currency` is what the gateway is actually charged in, when that
     | differs from the price. Snippe is Tanzanian mobile money and settles in
     | TZS; the payment row stays in USD so accounting has one currency.
-    |
-    | Binance is deliberately absent: it has no webhook, so it needs the payer
-    | to report an order ID and a screen to verify it on. It can be added back
-    | once that flow is built.
     */
     /*
     | `fields` describes what the settings screen asks for and where to find
@@ -97,6 +93,18 @@ return [
             'fields' => [
                 ['name' => 'api_key', 'label' => 'API key', 'store' => 'api_key', 'required' => true],
                 ['name' => 'webhook_secret', 'label' => 'IPN secret', 'store' => 'webhook_secret', 'required' => true],
+            ],
+        ],
+        'binance' => [
+            'label' => 'Crypto (Binance Pay)',
+            'type' => 'crypto',
+            // USDT is what Binance Pay settles a crypto order in, and the
+            // prices are already in USD, so the two line up 1:1.
+            'charge_currency' => 'USDT',
+            'help' => 'From Binance Merchant → Developers, not your Spot API keys — trading keys cannot open a Binance Pay order. Both values sign every request and every webhook.',
+            'fields' => [
+                ['name' => 'api_key', 'label' => 'Merchant API key', 'store' => 'api_key', 'required' => true],
+                ['name' => 'webhook_secret', 'label' => 'Merchant API secret', 'store' => 'webhook_secret', 'required' => true],
             ],
         ],
     ],

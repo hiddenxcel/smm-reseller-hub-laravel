@@ -6,6 +6,7 @@ use App\Enums\ServiceKey;
 use App\Models\PlatformNumber;
 use App\Models\Subscription;
 use App\Models\SubscriptionPayment;
+use App\Models\Tenant;
 use App\Services\Billing\Checkout;
 use App\Services\Billing\PlatformGateways;
 use App\Services\Billing\Pricing;
@@ -217,7 +218,7 @@ class BillingController extends Controller
             return back()->with('error', $exception->getMessage());
         }
 
-        return $this->sendToGateway($payment, $data['phone'] ?? null);
+        return $this->sendToGateway($payment, $request->user(), $data['phone'] ?? null);
     }
 
     /**
@@ -227,8 +228,11 @@ class BillingController extends Controller
      * credit, so it is abandoned rather than left hanging — otherwise a
      * reseller whose checkout broke quietly loses the credit it held.
      */
-    private function sendToGateway(SubscriptionPayment $payment, ?string $phone): RedirectResponse
-    {
+    private function sendToGateway(
+        SubscriptionPayment $payment,
+        Tenant $tenant,
+        ?string $phone,
+    ): RedirectResponse {
         $client = PlatformGateways::make($payment->gateway);
 
         if ($client === null) {
@@ -249,6 +253,10 @@ class BillingController extends Controller
             currency: PlatformGateways::chargeCurrency($payment->gateway),
             webhookUrl: route('webhooks.billing', $payment->gateway),
             phone: (string) ($phone ?? ''),
+            // Unlike a chat customer, a reseller has both — and Snippe
+            // refuses an order that carries neither.
+            customerName: (string) $tenant->business_name,
+            customerEmail: (string) $tenant->email,
         ));
 
         if (! $initiation->started) {

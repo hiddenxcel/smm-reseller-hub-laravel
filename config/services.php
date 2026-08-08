@@ -84,6 +84,14 @@ return [
             'merchant_id' => env('BILLING_HELEKET_MERCHANT_ID'),
         ],
 
+        'binance' => [
+            // Binance Merchant → Developers. The secret signs the outgoing
+            // order request as well as verifying the webhook, so unlike the
+            // others it is not optional.
+            'api_key' => env('BILLING_BINANCE_API_KEY'),
+            'webhook_secret' => env('BILLING_BINANCE_API_SECRET'),
+        ],
+
         'snippe' => [
             'api_key' => env('BILLING_SNIPPE_API_KEY'),
             'webhook_secret' => env('BILLING_SNIPPE_WEBHOOK_SECRET'),

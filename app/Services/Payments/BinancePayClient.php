@@ -72,7 +72,11 @@ class BinancePayClient implements PaymentGateway, WebhookVerifier
     }
 
     /**
-     * @param  array{signature?: string, timestamp?: string, nonce?: string}  $headers
+     * Binance sends its own BinancePay-* headers, which reach us lowercased by
+     * Symfony. The bare names are accepted too because the signature is the
+     * same either way and the unit tests address them that way.
+     *
+     * @param  array{binancepay-signature?: string, binancepay-timestamp?: string, binancepay-nonce?: string, signature?: string, timestamp?: string, nonce?: string}  $headers
      */
     public function verifyWebhook(string $body, array $headers): bool
     {
@@ -82,9 +86,9 @@ class BinancePayClient implements PaymentGateway, WebhookVerifier
             return false;
         }
 
-        $signature = $headers['signature'] ?? '';
-        $timestamp = $headers['timestamp'] ?? '';
-        $nonce = $headers['nonce'] ?? '';
+        $signature = $headers['binancepay-signature'] ?? $headers['signature'] ?? '';
+        $timestamp = $headers['binancepay-timestamp'] ?? $headers['timestamp'] ?? '';
+        $nonce = $headers['binancepay-nonce'] ?? $headers['nonce'] ?? '';
 
         if ($signature === '' || $timestamp === '' || $nonce === '') {
             return false;

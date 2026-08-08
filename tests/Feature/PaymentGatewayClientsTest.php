@@ -8,6 +8,7 @@ use App\Services\Payments\PayPalClient;
 use App\Services\Payments\PaystackClient;
 use App\Services\Payments\PesapalClient;
 use App\Services\Payments\RazorpayClient;
+use App\Services\Payments\SnippeClient;
 use App\Services\Payments\StripeClient;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -593,6 +594,91 @@ class PaymentGatewayClientsTest extends TestCase
             ->checkStatus('tu_test123');
 
         $this->assertSame('paid', $status);
+    }
+
+    // ---- Snippe ----------------------------------------------------------
+
+    /**
+     * Snippe refuses an order whose customer has a blank lastname or email —
+     * it answers "customer.lastname is required; customer.email is required"
+     * and takes nothing. Both were once sent empty, which meant mobile money
+     * failed for every reseller while the crypto gateways worked, so the
+     * fault looked like bad credentials rather than a malformed request.
+     */
+    public function test_snippe_never_sends_a_blank_lastname_or_email(): void
+    {
+        Http::fake([
+            'api.snippe.sh/*' => Http::response([
+                'status' => 'success',
+                'data' => ['reference' => 'snp_1'],
+            ]),
+        ]);
+
+        (new SnippeClient('api-key', 'secret'))->initiate($this->request());
+
+        Http::assertSent(function ($request) {
+            $customer = $request->data()['customer'];
+
+            $this->assertNotSame('', $customer['lastname']);
+            $this->assertNotSame('', $customer['email']);
+
+            return true;
+        });
+    }
+
+    /** A two-word name splits; the surname is not invented from nothing. */
+    public function test_snippe_splits_a_full_name(): void
+    {
+        Http::fake(['api.snippe.sh/*' => Http::response(['status' => 'success', 'data' => ['reference' => 'snp_2']])]);
+
+        (new SnippeClient('api-key', 'secret'))->initiate(new PaymentRequest(
+            reference: 'tu_split',
+            amount: '2600',
+            currency: 'TZS',
+            webhookUrl: 'https://hub.test/webhooks/billing/snippe',
+            phone: '255700000001',
+            customerName: 'Kuza Panels',
+            customerEmail: 'owner@kuza.test',
+        ));
+
+        Http::assertSent(function ($request) {
+            $customer = $request->data()['customer'];
+
+            $this->assertSame('Kuza', $customer['firstname']);
+            $this->assertSame('Panels', $customer['lastname']);
+            $this->assertSame('owner@kuza.test', $customer['email']);
+
+            return true;
+        });
+    }
+
+    /**
+     * A chat customer has one name and no address at all, and Snippe still
+     * has to be given something that parses.
+     */
+    public function test_snippe_fills_in_what_a_one_word_customer_lacks(): void
+    {
+        Http::fake(['api.snippe.sh/*' => Http::response(['status' => 'success', 'data' => ['reference' => 'snp_3']])]);
+
+        (new SnippeClient('api-key', 'secret'))->initiate(new PaymentRequest(
+            reference: 'tu_oneword',
+            amount: '2600',
+            currency: 'TZS',
+            webhookUrl: 'https://hub.test/webhooks/payment/snippe',
+            phone: '255700000001',
+            customerName: 'Asha',
+        ));
+
+        Http::assertSent(function ($request) {
+            $customer = $request->data()['customer'];
+
+            $this->assertSame('Asha', $customer['firstname']);
+            $this->assertSame('.', $customer['lastname']);
+            // Unique per payment, and in a domain that cannot receive mail.
+            $this->assertSame('tu_oneword@no-reply.invalid', $customer['email']);
+
+            return true;
+        });
     }
 
     /** @return array<string, string> */
