@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { Check, Lock, X } from 'lucide-react';
+import { useState } from 'react';
 import { GatewayStatus, PlatformSettings } from '../types';
 
 type Props = {
@@ -166,43 +167,24 @@ export default function Settings({ settings, gateways }: Props) {
                         <h2 className="font-heading font-bold">Payment gateways</h2>
                         <p className="mt-1 text-sm text-muted-foreground">
                             The platform's own merchant accounts — what resellers pay
-                            us through. Credentials live in the server environment,
-                            not the database: a key in the database is a key in every
-                            backup and behind a session cookie rather than behind
-                            server access. Changing one is a deploy.
+                            us through. Not the gateways a reseller connects for their
+                            own customers; those live in each reseller's dashboard.
+                        </p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            Keys are encrypted before they are stored and are never
+                            sent back to this screen — only the last four characters.
+                            A value set in the server environment always wins, so a
+                            gateway marked <span className="font-medium">env</span>
+                            {' '}cannot be changed from here.
                         </p>
                     </div>
                 </div>
 
-                <ul className="mt-4 space-y-2">
+                <div className="mt-4 space-y-3">
                     {gateways.map((gateway) => (
-                        <li
-                            key={gateway.code}
-                            className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm"
-                        >
-                            <div className="min-w-0">
-                                <span className="block truncate font-medium">
-                                    {gateway.label}
-                                </span>
-                                <span className="block font-mono text-xs text-muted-foreground">
-                                    {gateway.code} · {gateway.type}
-                                </span>
-                            </div>
-
-                            {gateway.configured ? (
-                                <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#006300] dark:text-[#0ca30c]">
-                                    <Check className="size-3.5" />
-                                    Configured
-                                </span>
-                            ) : (
-                                <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground">
-                                    <X className="size-3.5" />
-                                    No keys
-                                </span>
-                            )}
-                        </li>
+                        <GatewayCard key={gateway.code} gateway={gateway} />
                     ))}
-                </ul>
+                </div>
             </section>
         </AdminLayout>
     );
@@ -210,6 +192,144 @@ export default function Settings({ settings, gateways }: Props) {
 
 const inputClass =
     'w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary';
+
+/**
+ * One gateway, with its credentials editable.
+ *
+ * Values are write-only: the server never sends them back, so the inputs
+ * start empty and a blank field means "leave what is stored" rather than
+ * "clear it". Without that, editing a webhook secret would mean re-typing an
+ * API key nobody can read.
+ */
+function GatewayCard({ gateway }: { gateway: GatewayStatus }) {
+    const [open, setOpen] = useState(false);
+
+    const { data, setData, post, processing, errors, reset } = useForm({
+        api_key: '',
+        webhook_secret: '',
+        extra: '',
+        enabled: true,
+    });
+
+    // An environment value always wins, so offering a form here would let an
+    // owner save something that silently has no effect.
+    const locked = gateway.source === 'env';
+
+    const submit = (event: React.FormEvent) => {
+        event.preventDefault();
+
+        post(route('admin.settings.gateway.save', gateway.code), {
+            preserveScroll: true,
+            onSuccess: () => {
+                reset();
+                setOpen(false);
+            },
+        });
+    };
+
+    return (
+        <div className="rounded-lg border border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
+                <div className="min-w-0">
+                    <span className="block truncate text-sm font-medium">
+                        {gateway.label}
+                    </span>
+                    <span className="block font-mono text-xs text-muted-foreground">
+                        {gateway.code} · {gateway.type}
+                        {gateway.hint && ` · key ${gateway.hint}`}
+                    </span>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-3">
+                    {gateway.configured ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-[#006300] dark:text-[#0ca30c]">
+                            <Check className="size-3.5" />
+                            {gateway.source === 'env' ? 'From env' : 'Live'}
+                        </span>
+                    ) : gateway.source === 'stored-disabled' ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                            Stored, switched off
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                            <X className="size-3.5" />
+                            No keys
+                        </span>
+                    )}
+
+                    {! locked && (
+                        <button
+                            type="button"
+                            onClick={() => setOpen((value) => ! value)}
+                            className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-accent"
+                        >
+                            {open ? 'Cancel' : gateway.configured ? 'Replace keys' : 'Add keys'}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {locked && (
+                <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+                    Set in the server environment, which takes precedence. Remove it
+                    from .env to manage this gateway here.
+                </p>
+            )}
+
+            {open && ! locked && (
+                <form onSubmit={submit} className="space-y-3 border-t border-border p-3">
+                    {gateway.help && (
+                        <p className="text-xs text-muted-foreground">{gateway.help}</p>
+                    )}
+
+                    {gateway.fields.map((field) => (
+                        <div key={field.name}>
+                            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                                {field.label}
+                            </label>
+                            <input
+                                type="password"
+                                autoComplete="new-password"
+                                value={data[field.name as 'api_key' | 'webhook_secret' | 'extra']}
+                                onChange={(e) =>
+                                    setData(
+                                        field.name as 'api_key' | 'webhook_secret' | 'extra',
+                                        e.target.value,
+                                    )
+                                }
+                                placeholder={gateway.configured ? 'Leave blank to keep' : ''}
+                                className={inputClass}
+                            />
+                            {errors[field.name as keyof typeof errors] && (
+                                <p className="mt-1 text-xs text-destructive">
+                                    {errors[field.name as keyof typeof errors]}
+                                </p>
+                            )}
+                        </div>
+                    ))}
+
+                    <label className="flex items-center gap-2 text-xs">
+                        <input
+                            type="checkbox"
+                            checked={data.enabled}
+                            onChange={(e) => setData('enabled', e.target.checked)}
+                            className="size-3.5 accent-primary"
+                        />
+                        Offer this to resellers at checkout
+                    </label>
+
+                    <button
+                        type="submit"
+                        disabled={processing}
+                        className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                    >
+                        {processing ? 'Saving…' : 'Save'}
+                    </button>
+                </form>
+            )}
+        </div>
+    );
+}
 
 function Field({
     label,

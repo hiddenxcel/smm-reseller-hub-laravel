@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\ActivityLog;
 use App\Models\BlockedIp;
+use App\Models\PlatformGatewayCredential;
 use App\Models\PlatformSetting;
 use App\Services\Admin\AdminAudit;
 use App\Services\Admin\AuditFilters;
@@ -35,15 +36,20 @@ class SystemController extends AdminController
 
         return Inertia::render('Admin/System/Settings', [
             'settings' => PlatformSetting::values(),
-            // Gateway credentials live in .env, not the database — see the
-            // platform_settings migration. Reported as configured or not, never
-            // shown and never editable from a browser session.
+            // Credentials themselves never leave the server — only whether a
+            // gateway has them, where they came from, and the last four
+            // characters so an owner can tell which key is in place without
+            // the key being recoverable from a screenshot or a cached page.
             'gateways' => collect(config('billing.gateways', []))
                 ->map(fn (array $gateway, string $code) => [
                     'code' => $code,
                     'label' => $gateway['label'],
                     'type' => $gateway['type'],
                     'configured' => PlatformGateways::isConfigured($code),
+                    'source' => PlatformGateways::source($code),
+                    'hint' => PlatformGateways::hint($code),
+                    'fields' => $gateway['fields'] ?? [],
+                    'help' => $gateway['help'] ?? null,
                 ])
                 ->values()
                 ->all(),
@@ -88,6 +94,63 @@ class SystemController extends AdminController
         ]);
 
         return back()->with('success', 'Settings saved.');
+    }
+
+    /**
+     * Store the platform's own merchant credentials.
+     *
+     * Owner-only, like every other route on this controller: these keys move
+     * the money resellers pay us, and an admin who could set them could
+     * redirect that money to an account of their own.
+     *
+     * The values are never read back out — a blank field on the form means
+     * "leave what is there", not "clear it", so an owner editing the webhook
+     * secret does not have to re-type the API key from memory.
+     */
+    public function saveGateway(Request $request, string $gateway): RedirectResponse
+    {
+        $this->authoriseOwner();
+
+        if (! PlatformGateways::exists($gateway)) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'api_key' => ['nullable', 'string', 'max:255'],
+            'webhook_secret' => ['nullable', 'string', 'max:255'],
+            'extra' => ['nullable', 'string', 'max:255'],
+            'enabled' => ['required', 'boolean'],
+        ]);
+
+        $row = PlatformGatewayCredential::firstOrNew(['gateway' => $gateway]);
+
+        foreach (['api_key' => 'api_key_enc', 'webhook_secret' => 'webhook_secret_enc', 'extra' => 'extra_enc'] as $field => $column) {
+            if (filled($validated[$field] ?? null)) {
+                $row->{$column} = $validated[$field];
+            }
+        }
+
+        $row->enabled = $validated['enabled'];
+        $row->superadmin_id = $this->admin()->id;
+        $row->save();
+
+        // The values themselves are never audited — an audit log readable by
+        // support staff would undo the point of encrypting them.
+        AdminAudit::record('billing.gateway.update', [
+            'gateway' => $gateway,
+            'enabled' => $row->enabled,
+            'fields_changed' => collect(['api_key', 'webhook_secret', 'extra'])
+                ->filter(fn (string $field) => filled($validated[$field] ?? null))
+                ->values()
+                ->all(),
+        ]);
+
+        return back()->with(
+            'success',
+            PlatformGateways::isConfigured($gateway)
+                ? "{$gateway} saved — resellers can pay with it."
+                : "{$gateway} saved, but it still needs more before it will work.",
+        );
     }
 
     // ---- security --------------------------------------------------------
