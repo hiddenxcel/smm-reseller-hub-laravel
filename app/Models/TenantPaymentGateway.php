@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 /**
  * A reseller's OWN gateway credentials — their customers pay them through it.
@@ -50,7 +51,7 @@ class TenantPaymentGateway extends Model
      */
     public function makeDefault(): void
     {
-        \Illuminate\Support\Facades\DB::transaction(function () {
+        DB::transaction(function () {
             static::withoutTenantScope()
                 ->where('tenant_id', $this->tenant_id)
                 ->whereKeyNot($this->getKey())

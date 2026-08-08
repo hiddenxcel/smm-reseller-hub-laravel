@@ -21,13 +21,13 @@ use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\SupportBotController;
-use App\Http\Controllers\SupportBotInboxController;
-use App\Http\Controllers\SupportBotTicketsController;
 use App\Http\Controllers\Site\BlogController;
 use App\Http\Controllers\Site\ContactController;
 use App\Http\Controllers\Site\PublicPageController;
 use App\Http\Controllers\Site\SitemapController;
+use App\Http\Controllers\SupportBotController;
+use App\Http\Controllers\SupportBotInboxController;
+use App\Http\Controllers\SupportBotTicketsController;
 use App\Http\Controllers\SupportCenterController;
 use Illuminate\Support\Facades\Route;
 

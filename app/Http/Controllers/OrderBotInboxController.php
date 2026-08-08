@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BotCustomer;
 use App\Models\BotMessage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -142,6 +143,6 @@ class OrderBotInboxController extends Controller
 
         return $value instanceof \DateTimeInterface
             ? $value->format(\DATE_ATOM)
-            : (string) \Illuminate\Support\Carbon::parse($value)->toIso8601String();
+            : (string) Carbon::parse($value)->toIso8601String();
     }
 }

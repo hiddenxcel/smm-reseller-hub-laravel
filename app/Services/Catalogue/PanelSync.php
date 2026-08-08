@@ -3,6 +3,7 @@
 namespace App\Services\Catalogue;
 
 use App\Models\BotService;
+use App\Models\PricingRule;
 use App\Models\ServicePriceHistory;
 use App\Models\Tenant;
 use App\Models\TenantPanel;
@@ -167,7 +168,7 @@ class PanelSync
     /**
      * The price a rule would produce for a cost that has not been saved yet.
      *
-     * @param  Collection<int, \App\Models\PricingRule>  $rules
+     * @param  Collection<int, PricingRule>  $rules
      */
     private function priceForNewCost(
         BotService $service,

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -58,7 +59,7 @@ class PlatformGatewayCredential extends Model
      * Cached because this is read on every checkout and the set changes only
      * when an owner edits it. Forgotten on every write.
      *
-     * @return \Illuminate\Support\Collection<string, self>
+     * @return Collection<string, self>
      */
     public static function all($columns = ['*'])
     {
