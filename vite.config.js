@@ -28,6 +28,25 @@ export default defineConfig({
     },
 
     /*
+     * Bundle the SSR entry's dependencies into it rather than importing them
+     * at runtime.
+     *
+     * Vite leaves anything from node_modules as a bare import by default,
+     * which assumes the process runs where those packages are installed. The
+     * renderer does not: only bootstrap/ssr travels to the VPS, and that box
+     * has no node_modules at all — the assets are built in CI precisely
+     * because a 1-CPU box cannot spare the memory. Left as imports, the
+     * service dies on startup with "Cannot find package 'react'".
+     *
+     * `noExternal: true` is the whole dependency tree rather than a list of
+     * names, so a package added later is bundled too instead of failing the
+     * same way months from now.
+     */
+    ssr: {
+        noExternal: true,
+    },
+
+    /*
      * The dev server runs on the Windows host while the app runs in a
      * container, so it has to listen on every interface rather than only on
      * loopback — bound to localhost it would be invisible to the browser
