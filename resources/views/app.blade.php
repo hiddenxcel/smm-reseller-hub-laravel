@@ -35,6 +35,15 @@
             <title inertia>{{ config('app.name', 'Laravel') }}</title>
         @endunless
 
+        {{-- Proof to Google that this domain is ours, for Search Console.
+
+             Outside the SSR guard above and carrying no `inertia` key on
+             purpose: it has to be in every page Google fetches, and a page
+             that replaced it would silently un-verify the property. It is a
+             public token — it proves access to the site, and is worthless to
+             anyone who does not have it. --}}
+        <meta name="google-site-verification" content="8BfcxYZwfOkmqn5S9WeTYq0BnLJOoItyqTzwHU060gU">
+
         {{-- Icons. All generated from one source by `make_icons.py`, so the tab
              icon, the phone home screen and the in-app mark stay in step. --}}
         <link rel="icon" href="/favicon.ico" sizes="any">

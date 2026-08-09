@@ -267,6 +267,26 @@ class SeoTest extends TestCase
         );
     }
 
+    /**
+     * Search Console verification, which is quiet when it breaks.
+     *
+     * Losing the tag un-verifies the property: no index coverage, no queries
+     * report, and no notice — the site carries on serving perfectly while the
+     * one place that would tell us about a crawl problem goes dark. Asserted
+     * on more than one path because it has to survive on every page, not only
+     * the home page Google happens to check first.
+     */
+    public function test_every_page_carries_the_search_console_tag(): void
+    {
+        foreach (['/', '/pricing', '/blog'] as $path) {
+            $this->assertMatchesRegularExpression(
+                '#<meta[^>]+name="google-site-verification"[^>]+content="[^"]+"#',
+                $this->get($path)->getContent(),
+                "{$path} should carry the verification tag",
+            );
+        }
+    }
+
     // ---- robots ----------------------------------------------------------
 
     public function test_robots_points_at_the_sitemap_and_hides_the_console(): void
