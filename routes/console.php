@@ -32,3 +32,21 @@ Schedule::command('panels:check')
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+/*
+| The public demo, put back the way visitors expect to find it.
+|
+| Registered only when an account is actually configured: this command
+| deletes a tenant, and a schedule that exists on every install is one
+| DEMO_EMAIL typo away from doing that to a real one.
+|
+| The account is read-only to begin with (LockDemoAccount), so this is
+| clearing leftovers rather than undoing damage.
+*/
+if (config('demo.email')) {
+    Schedule::command('demo:reset --force')
+        ->everyMinute()
+        ->when(fn () => now()->minute % max(1, (int) config('demo.reset_minutes')) === 0)
+        ->withoutOverlapping()
+        ->runInBackground();
+}

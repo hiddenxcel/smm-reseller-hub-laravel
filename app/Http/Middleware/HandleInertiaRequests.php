@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Announcement;
 use App\Models\SupportTicket;
 use App\Services\Admin\Impersonation;
+use App\Services\Demo\DemoAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Middleware;
@@ -56,6 +57,10 @@ class HandleInertiaRequests extends Middleware
             // banner is a single truthy check rather than a comparison of two
             // sessions on every page.
             'impersonation' => fn () => $this->impersonation($request),
+            // Set only when the signed-in account is the public demo, so the
+            // banner is one truthy check rather than an email comparison in
+            // the component.
+            'demo' => fn () => $this->demo($request),
             // Platform notices. A closure, so the query only runs on a response
             // that actually renders a reseller page.
             'announcements' => fn () => $this->announcements($request),
@@ -145,6 +150,28 @@ class HandleInertiaRequests extends Middleware
         }
 
         return SupportTicket::query()->where('status', 'pending')->count();
+    }
+
+    /**
+     * The demo banner's contents, or null on any ordinary account.
+     *
+     * `resetMinutes` is shown so a visitor knows the account is rebuilt rather
+     * than wondering why yesterday's poking around has vanished — and so the
+     * numbers on screen are understood as a fixture, not as somebody's real
+     * business.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function demo(Request $request): ?array
+    {
+        if (! DemoAccount::is($request->user())) {
+            return null;
+        }
+
+        return [
+            'readOnly' => true,
+            'resetMinutes' => (int) config('demo.reset_minutes'),
+        ];
     }
 
     /**

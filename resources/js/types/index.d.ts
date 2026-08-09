@@ -31,6 +31,16 @@ export interface Impersonation {
     readOnly: boolean;
 }
 
+/**
+ * Set only when the signed-in account is the public demo. Present or absent —
+ * the banner is a truthy check, not an email comparison in the component.
+ */
+export interface Demo {
+    readOnly: boolean;
+    /** How often the account is rebuilt, so the banner can say so. */
+    resetMinutes: number;
+}
+
 /** A platform notice shown to every reseller on their dashboard. */
 export interface Announcement {
     id: number;
@@ -59,6 +69,8 @@ export type PageProps<
         admin: Admin | null;
     };
     impersonation: Impersonation | null;
+    /** Set only on the public demo account — see LockDemoAccount. */
+    demo: Demo | null;
     announcements: Announcement[];
     /** Support tickets whose last word was ours — the sidebar badge. */
     supportUnread: number;
