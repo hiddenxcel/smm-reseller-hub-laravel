@@ -118,4 +118,17 @@ return [
 
     'demo_whatsapp_number' => env('DEMO_WHATSAPP_NUMBER'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Cloudflare Web Analytics
+    |--------------------------------------------------------------------------
+    |
+    | The site token from the Cloudflare dashboard. Blank switches the beacon
+    | off entirely, which is what keeps local and staging traffic out of the
+    | numbers. It is a public token — it appears in the page source by design.
+    |
+    */
+
+    'cloudflare_analytics_token' => env('CLOUDFLARE_ANALYTICS_TOKEN'),
+
 ];

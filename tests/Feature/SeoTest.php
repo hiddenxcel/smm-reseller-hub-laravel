@@ -287,6 +287,32 @@ class SeoTest extends TestCase
         }
     }
 
+    /**
+     * The analytics beacon appears only when it is configured.
+     *
+     * Both directions matter. Without a token the script must not be there at
+     * all, or a developer's page loads and the test suite's own requests land
+     * in the production numbers. With one it must be, because the failure is
+     * silent — the site works perfectly while nothing is being recorded.
+     */
+    public function test_the_analytics_beacon_follows_its_token(): void
+    {
+        config(['services.cloudflare_analytics_token' => null]);
+
+        $this->assertStringNotContainsString(
+            'cloudflareinsights',
+            $this->get('/')->getContent(),
+            'an unconfigured site should not report anything',
+        );
+
+        config(['services.cloudflare_analytics_token' => 'test-token-123']);
+
+        $body = $this->get('/')->getContent();
+
+        $this->assertStringContainsString('cloudflareinsights', $body);
+        $this->assertStringContainsString('test-token-123', $body);
+    }
+
     // ---- robots ----------------------------------------------------------
 
     public function test_robots_points_at_the_sitemap_and_hides_the_console(): void
