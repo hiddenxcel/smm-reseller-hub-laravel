@@ -115,6 +115,69 @@ class SettingsPageTest extends TestCase
         $this->assertStringNotContainsString('super-secret-key', $response->getContent());
     }
 
+    // ---- when to warn about a panel running out of funds -----------------
+
+    public function test_a_reseller_can_set_when_a_panel_is_warned_about(): void
+    {
+        $panel = TenantPanel::factory()->for($this->tenant)->create();
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->patch(route('settings.panels.update', $panel->id), [
+                'low_balance_threshold' => '250.00',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('250.00', $panel->fresh()->low_balance_threshold);
+    }
+
+    /**
+     * Clearing the field restores the default rather than switching the
+     * warning off — the opt-out this deliberately does not offer.
+     */
+    public function test_clearing_the_threshold_restores_the_default(): void
+    {
+        $panel = TenantPanel::factory()->for($this->tenant)->create([
+            'low_balance_threshold' => '250.00',
+        ]);
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->patch(route('settings.panels.update', $panel->id), [
+                'low_balance_threshold' => '',
+            ])
+            ->assertRedirect();
+
+        $this->assertNull($panel->fresh()->low_balance_threshold);
+        $this->assertSame(
+            TenantPanel::DEFAULT_LOW_BALANCE,
+            $panel->fresh()->lowBalanceThreshold(),
+        );
+    }
+
+    /** A threshold of nothing can never be crossed, which is a silent opt-out. */
+    public function test_a_threshold_of_zero_is_refused(): void
+    {
+        $panel = TenantPanel::factory()->for($this->tenant)->create();
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->patch(route('settings.panels.update', $panel->id), [
+                'low_balance_threshold' => '0',
+            ])
+            ->assertSessionHasErrors('low_balance_threshold');
+    }
+
+    public function test_a_reseller_cannot_set_a_threshold_on_someone_elses_panel(): void
+    {
+        $panel = TenantPanel::factory()->create(['low_balance_threshold' => null]);
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->patch(route('settings.panels.update', $panel->id), [
+                'low_balance_threshold' => '250.00',
+            ])
+            ->assertNotFound();
+
+        $this->assertNull($panel->fresh()->low_balance_threshold);
+    }
+
     public function test_it_does_not_show_another_tenants_panel(): void
     {
         TenantPanel::factory()->create(['name' => 'Someone Elses']);

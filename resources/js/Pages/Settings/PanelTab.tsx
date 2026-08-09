@@ -49,37 +49,103 @@ function PanelItem({ panel }: { panel: PanelRow }) {
     const isActive = panel.status === 'active';
 
     return (
-        <li className="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
-            <div className="min-w-0">
-                <p className="font-medium">{panel.name}</p>
-                <p className="font-data truncate text-xs text-muted-foreground">
-                    {panel.api_url}
-                </p>
+        <li className="py-3 first:pt-0 last:pb-0">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="font-medium">{panel.name}</p>
+                    <p className="font-data truncate text-xs text-muted-foreground">
+                        {panel.api_url}
+                    </p>
 
-                <p className="mt-1 text-xs text-muted-foreground">
-                    {panel.servicesCount !== null && (
-                        <>{panel.servicesCount} services in its catalogue</>
-                    )}
-                    {panel.balance !== null && (
-                        <>
-                            {panel.servicesCount !== null && ' · '}
-                            balance {panel.currency ?? ''} {panel.balance}
-                        </>
-                    )}
-                </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        {panel.servicesCount !== null && (
+                            <>{panel.servicesCount} services in its catalogue</>
+                        )}
+                        {panel.balance !== null && (
+                            <>
+                                {panel.servicesCount !== null && ' · '}
+                                balance {panel.currency ?? ''} {panel.balance}
+                            </>
+                        )}
+                    </p>
+                </div>
+
+                <span
+                    className={[
+                        'rounded-full px-2.5 py-1 text-xs font-medium',
+                        isActive
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-muted text-muted-foreground',
+                    ].join(' ')}
+                >
+                    {isActive ? 'Active' : panel.status}
+                </span>
             </div>
 
-            <span
-                className={[
-                    'rounded-full px-2.5 py-1 text-xs font-medium',
-                    isActive
-                        ? 'bg-primary/10 text-primary'
-                        : 'bg-muted text-muted-foreground',
-                ].join(' ')}
-            >
-                {isActive ? 'Active' : panel.status}
-            </span>
+            <LowBalanceField panel={panel} />
         </li>
+    );
+}
+
+/**
+ * When to warn that this panel is running out of money.
+ *
+ * Per panel rather than one figure for the account: the same reseller can run
+ * a main panel carrying the volume and a small one topped up for a single
+ * service, and a threshold that suits one is noise on the other.
+ *
+ * An empty field is not "never warn" — it restores the default, and the
+ * placeholder says so. Turning the warning off is a different decision, and
+ * one this form deliberately does not offer.
+ */
+function LowBalanceField({ panel }: { panel: PanelRow }) {
+    const { data, setData, patch, processing, errors, isDirty } = useForm({
+        low_balance_threshold: panel.lowBalanceThreshold ?? '',
+    });
+
+    const submit: FormEventHandler = (event) => {
+        event.preventDefault();
+        patch(route('settings.panels.update', panel.id), { preserveScroll: true });
+    };
+
+    return (
+        <form onSubmit={submit} className="mt-2.5">
+            <div className="flex flex-wrap items-end gap-2">
+                <div>
+                    <Label htmlFor={`threshold-${panel.id}`} className="text-xs">
+                        Warn me below
+                    </Label>
+                    <Input
+                        id={`threshold-${panel.id}`}
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        inputMode="decimal"
+                        value={data.low_balance_threshold}
+                        onChange={(event) =>
+                            setData('low_balance_threshold', event.target.value)
+                        }
+                        placeholder={String(panel.defaultLowBalance)}
+                        className="mt-1 h-8 w-32"
+                    />
+                </div>
+
+                {isDirty && (
+                    <Button type="submit" size="sm" variant="outline" disabled={processing}>
+                        {processing && <Loader2 className="size-3.5 animate-spin" />}
+                        Save
+                    </Button>
+                )}
+            </div>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+                {panel.lowOnFunds
+                    ? 'This panel is below its threshold now — top it up with your provider.'
+                    : `Leave empty to use the default of ${panel.defaultLowBalance}.`}
+            </p>
+
+            <FieldError message={errors.low_balance_threshold} />
+        </form>
     );
 }
 

@@ -12,6 +12,7 @@ use App\Services\Onboarding\OnboardingProgress;
 use App\Services\Onboarding\OnboardingStep;
 use App\Services\Panel\ServiceCatalogue;
 use App\Services\Payments\Gateway;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -94,6 +95,33 @@ class SettingsController extends Controller
      * Keys are never sent back to the browser — only whether one is stored,
      * so the form can say "leave blank to keep".
      */
+    /**
+     * Change when a panel is considered to be running low on funds.
+     *
+     * Clearing the field restores the default rather than switching the
+     * warning off — see TenantPanel::lowBalanceThreshold(). A reseller who
+     * wants no warning at all is asking for something this does not offer, and
+     * quietly granting it through an empty input would be the wrong way to
+     * find that out.
+     */
+    public function updatePanel(Request $request, TenantPanel $panel): RedirectResponse
+    {
+        abort_unless((int) $panel->tenant_id === (int) $request->user()->id, 404);
+
+        $validated = $request->validate([
+            // Nullable is "use the default". Zero is excluded because a
+            // threshold of nothing can never be crossed, which is the silent
+            // opt-out this deliberately does not offer.
+            'low_balance_threshold' => ['nullable', 'numeric', 'gt:0', 'max:9999999999'],
+        ]);
+
+        $panel->update([
+            'low_balance_threshold' => $validated['low_balance_threshold'] ?? null,
+        ]);
+
+        return back()->with('success', "Updated when we warn you about {$panel->name}.");
+    }
+
     private function panelPayload(int $tenantId): array
     {
         return [
@@ -110,6 +138,11 @@ class SettingsController extends Controller
                     'currency' => $panel->balance_currency,
                     'servicesCount' => $panel->services_count,
                     'lastCheckedAt' => $panel->last_checked_at?->toIso8601String(),
+                    // Null when unset, so the field can show the default as a
+                    // placeholder rather than as a value the reseller chose.
+                    'lowBalanceThreshold' => $panel->low_balance_threshold,
+                    'defaultLowBalance' => TenantPanel::DEFAULT_LOW_BALANCE,
+                    'lowOnFunds' => $panel->isLowOnFunds(),
                 ])
                 ->all(),
         ];

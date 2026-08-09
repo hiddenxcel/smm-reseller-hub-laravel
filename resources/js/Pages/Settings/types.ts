@@ -8,6 +8,9 @@ export type PanelRow = {
     currency: string | null;
     servicesCount: number | null;
     lastCheckedAt: string | null;
+    lowBalanceThreshold: number | string | null;
+    defaultLowBalance: number;
+    lowOnFunds: boolean;
 };
 
 export type CatalogueService = {

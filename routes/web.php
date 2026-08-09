@@ -189,6 +189,12 @@ Route::middleware('auth')->group(function () {
         ->whereIn('tab', ['panel', 'services', 'whatsapp', 'payments'])
         ->name('settings');
 
+    // When to warn that a panel is running out of money. Lives here rather
+    // than with the wizard's panel form: it is a preference about an existing
+    // panel, not part of connecting one.
+    Route::patch('/settings/panels/{panel}', [SettingsController::class, 'updatePanel'])
+        ->name('settings.panels.update');
+
     // API access. This screen is where a reseller hands out keys to their own
     // customers; the API those keys open is in routes/api.php and is not part
     // of the web group at all. Literal segments before `{apiKey}`, as
