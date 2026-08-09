@@ -63,18 +63,55 @@
             // Built here rather than inline in the script tag: Blade's @json
             // directive cannot parse a nested array written across lines, and
             // fails the whole view — every page, not just this tag.
+            //
+            // Two things rather than one, in a @graph: the software being sold,
+            // and the company selling it. They are linked by @id, so a crawler
+            // reads one organisation with a product rather than two unrelated
+            // records that happen to share a domain.
             $seoSchema = json_encode([
                 '@context' => 'https://schema.org',
-                '@type' => 'SoftwareApplication',
-                'name' => config('app.name'),
-                'applicationCategory' => 'BusinessApplication',
-                'operatingSystem' => 'Web',
-                'description' => $seoDescription,
-                'url' => config('app.url'),
-                'offers' => [
-                    '@type' => 'Offer',
-                    'price' => '17.00',
-                    'priceCurrency' => 'USD',
+                '@graph' => [
+                    [
+                        '@type' => 'Organization',
+                        '@id' => config('app.url').'/#organization',
+                        'name' => config('app.name'),
+                        'url' => config('app.url'),
+                        'logo' => $seoImage,
+                        'description' => $seoDescription,
+                        'email' => config('mail.contact_address', 'info@smmresellershub.com'),
+                        // Where the customers are, not where a server is. This
+                        // is the honest answer to "who is this for", and the
+                        // three markets have different payment rails behind
+                        // them — see the blog.
+                        'areaServed' => ['KE', 'TZ', 'UG', 'NG', 'GH', 'ZA', 'IN', 'PK'],
+                    ],
+                    [
+                        '@type' => 'SoftwareApplication',
+                        'name' => config('app.name'),
+                        'applicationCategory' => 'BusinessApplication',
+                        'operatingSystem' => 'Web',
+                        'description' => $seoDescription,
+                        'url' => config('app.url'),
+                        'publisher' => ['@id' => config('app.url').'/#organization'],
+                        // The cheapest service, read from the plans rather than
+                        // typed here: "from $17" above a $5 service is the kind
+                        // of mismatch that gets a rich result dropped, and a
+                        // hand-written number goes stale the first time pricing
+                        // changes. Cached, so this is not a query per request.
+                        'offers' => [
+                            '@type' => 'Offer',
+                            'price' => number_format(
+                                (float) cache()->remember(
+                                    'seo:cheapest-plan',
+                                    now()->addHour(),
+                                    fn () => \App\Models\Plan::where('status', 'active')->min('price_monthly') ?? 5.00,
+                                ),
+                                2, '.', ''
+                            ),
+                            'priceCurrency' => 'USD',
+                            'availability' => 'https://schema.org/InStock',
+                        ],
+                    ],
                 ],
             ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         @endphp
