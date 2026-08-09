@@ -163,6 +163,26 @@ const FAQS = [
     },
 ];
 
+/**
+ * The FAQ, restated for search engines.
+ *
+ * Built from the same FAQS array the page renders, rather than written out a
+ * second time: Google drops the rich result when the marked-up answer is not
+ * the answer on the page, and two hand-kept copies drift the first time one is
+ * edited.
+ */
+function faqSchema() {
+    return JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: FAQS.map(({ q, a }) => ({
+            '@type': 'Question',
+            name: q,
+            acceptedAnswer: { '@type': 'Answer', text: a },
+        })),
+    });
+}
+
 export default function Landing({ plans, gateways, demoNumber }: Props) {
     const planList = Object.entries(plans);
     const { ziggy } = usePage().props;
@@ -213,6 +233,13 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                     content={`${ziggy.url}/logo.png`}
                     head-key="twitter:image"
                 />
+                {/* The eight questions below, in the form Google reads. Keyed
+                    so it replaces rather than joins the site-wide schema in
+                    app.blade.php — two ld+json blocks describing different
+                    things is how a page ends up with neither. */}
+                <script type="application/ld+json" head-key="faq-schema">
+                    {faqSchema()}
+                </script>
             </Head>
 
             <LandingNav />

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\BlogPost;
+use App\Models\Plan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Ssr\Gateway;
 use Inertia\Ssr\Response;
@@ -220,7 +221,50 @@ class SeoTest extends TestCase
         $decoded = json_decode(trim($matches[1]), true);
 
         $this->assertSame(JSON_ERROR_NONE, json_last_error(), 'JSON-LD must parse');
-        $this->assertSame('SoftwareApplication', $decoded['@type']);
+
+        $types = array_column($decoded['@graph'], '@type');
+
+        $this->assertContains('Organization', $types);
+        $this->assertContains('SoftwareApplication', $types);
+    }
+
+    /**
+     * The advertised price has to be one a visitor can actually pay.
+     *
+     * Google drops a rich result whose offer does not match the page, and
+     * "from $17" above a $5 service is the kind of mismatch that earns a
+     * manual action rather than a ranking.
+     */
+    public function test_the_advertised_price_is_the_cheapest_real_one(): void
+    {
+        // Seeded here rather than relied on: RefreshDatabase leaves no plans,
+        // and a test that passes against an empty table is asserting that two
+        // zeroes match rather than that the price is right.
+        $this->seed(\Database\Seeders\PlanSeeder::class);
+
+        // The view caches the lookup for an hour, which would otherwise carry
+        // a value across from whatever ran before this.
+        cache()->forget('seo:cheapest-plan');
+
+        $cheapest = Plan::where('status', 'active')->min('price_monthly');
+
+        $this->assertGreaterThan(0, $cheapest, 'the fixture should have priced plans');
+
+        $body = $this->get('/')->getContent();
+
+        preg_match('#<script type="application/ld\+json">(.*?)</script>#s', $body, $matches);
+
+        $decoded = json_decode(trim($matches[1]), true);
+
+        $offer = collect($decoded['@graph'])
+            ->firstWhere('@type', 'SoftwareApplication')['offers'] ?? null;
+
+        $this->assertNotNull($offer, 'the software entry should carry an offer');
+        $this->assertSame(
+            number_format((float) $cheapest, 2, '.', ''),
+            $offer['price'],
+            'the schema price should be the cheapest active plan',
+        );
     }
 
     // ---- robots ----------------------------------------------------------
