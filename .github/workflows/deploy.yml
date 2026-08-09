@@ -128,8 +128,13 @@ jobs:
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
+          # Both halves of the build: public/build is what the browser loads,
+          # bootstrap/ssr is the bundle Node renders the pages from. Both are
+          # gitignored, so the checkout on the VPS has neither.
           tar -czf build.tar.gz -C public build
+          tar -czf ssr.tar.gz -C bootstrap ssr
           scp -i ~/.ssh/deploy_key build.tar.gz "root@$SSH_HOST:/tmp/build.tar.gz"
+          scp -i ~/.ssh/deploy_key ssr.tar.gz "root@$SSH_HOST:/tmp/ssr.tar.gz"
 
       - name: Release
         env:
