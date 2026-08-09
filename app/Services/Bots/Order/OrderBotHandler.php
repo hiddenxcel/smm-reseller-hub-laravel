@@ -540,6 +540,10 @@ class OrderBotHandler implements BotHandler
                 'unit' => $service->unit_label,
                 'panel_id' => $service->panel_id,
                 'provider_service_id' => $service->provider_service_id,
+                // Snapshotted for the same reason as the price: what this
+                // order cost is what the panel charged on the day, and a cost
+                // that moves next week must not rewrite last week's margin.
+                'cost_price' => $service->cost_price === null ? null : (string) $service->cost_price,
                 'paused' => $isPaused,
             ];
         }

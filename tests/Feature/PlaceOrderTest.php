@@ -19,12 +19,13 @@ class PlaceOrderTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function service(?int $panelId = null): array
+    private function service(?int $panelId = null, ?string $costPrice = null): array
     {
         return [
             'panel_id' => $panelId,
             'provider_service_id' => '1234',
             'name' => 'Instagram Followers',
+            'cost_price' => $costPrice,
         ];
     }
 
@@ -45,6 +46,47 @@ class PlaceOrderTest extends TestCase
             'paid_from' => 'wallet',
             'status' => 'pending',
         ]);
+    }
+
+    /**
+     * What the panel costs is recorded alongside what the customer paid, or
+     * every margin the app displays is null — which is what it was before.
+     *
+     * Per 1,000 units, the basis the selling price is quoted on: 500 units of
+     * a service costing 1.50 per 1,000 is 0.75.
+     */
+    public function test_it_records_what_the_order_cost_at_the_panel(): void
+    {
+        $customer = BotCustomer::factory()->withBalance('10.00')->create();
+
+        $result = (new PlaceOrder)->handle(
+            $customer,
+            $this->service(costPrice: '1.5000'),
+            'https://insta.gr/x',
+            500,
+            '2.50',
+        );
+
+        $this->assertSame('0.7500', (string) $result->order->fresh()->charge);
+    }
+
+    /**
+     * An unknown cost stays unknown. Recording it as zero would report the
+     * whole sale as profit, which is a large and flattering lie.
+     */
+    public function test_a_service_with_no_known_cost_records_no_charge(): void
+    {
+        $customer = BotCustomer::factory()->withBalance('10.00')->create();
+
+        $result = (new PlaceOrder)->handle(
+            $customer,
+            $this->service(),
+            'https://insta.gr/x',
+            500,
+            '2.50',
+        );
+
+        $this->assertNull($result->order->fresh()->charge);
     }
 
     public function test_it_refuses_when_the_wallet_is_short_and_charges_nothing(): void

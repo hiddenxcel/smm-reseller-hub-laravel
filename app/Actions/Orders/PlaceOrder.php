@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\DB;
 class PlaceOrder
 {
     /**
-     * @param  array{panel_id: ?int, provider_service_id: string, name: string}  $service
+     * @param  array{panel_id: ?int, provider_service_id: string, name: string, cost_price?: ?string}  $service
      */
     public function handle(
         BotCustomer $customer,
@@ -55,6 +55,7 @@ class PlaceOrder
                 'link' => $link,
                 'quantity' => $quantity,
                 'amount' => $amount,
+                'charge' => $this->costOf($service, $quantity),
                 'payment_status' => 'paid',
                 'paid_from' => 'wallet',
                 'status' => 'pending',
@@ -62,5 +63,33 @@ class PlaceOrder
 
             return PlaceOrderResult::placed($order);
         });
+    }
+
+    /**
+     * What this order costs the reseller at the panel, recorded alongside what
+     * the customer paid.
+     *
+     * Without this, `charge` was never written and every margin the app
+     * displays — per order, per service, per customer — was permanently null.
+     *
+     * It is a snapshot, not a live lookup: costs move, and an order's margin
+     * is a fact about the day it was placed. Recomputing it later from the
+     * current cost would quietly rewrite history, and a reseller reviewing a
+     * bad month would be shown today's numbers instead of that month's.
+     *
+     * Per 1,000 units, matching OrderPricing::charge — the same basis the
+     * selling price is quoted on, so the two subtract meaningfully. Null when
+     * the panel never reported a cost, which BotService::profit() already
+     * treats as "unknown" rather than "free".
+     */
+    private function costOf(array $service, int $quantity): ?string
+    {
+        $cost = $service['cost_price'] ?? null;
+
+        if ($cost === null) {
+            return null;
+        }
+
+        return bcdiv(bcmul((string) $cost, (string) $quantity, 4), '1000', 4);
     }
 }
