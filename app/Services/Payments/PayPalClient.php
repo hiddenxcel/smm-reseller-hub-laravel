@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
  * and let PayPal answer. That call needs the webhook's own id, which is why
  * this gateway stores three credentials.
  */
-class PayPalClient implements WebhookVerifier
+class PayPalClient implements PaymentGateway, WebhookVerifier
 {
     private const BASE_URL = 'https://api-m.paypal.com';
 

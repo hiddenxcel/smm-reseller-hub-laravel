@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ServiceKey;
 use App\Models\BotConversation;
 use App\Models\BotOrder;
 use App\Models\GuaranteeRule;
+use App\Models\Subscription;
 use App\Models\Tenant;
+use App\Models\TenantAi;
 use App\Models\TenantPanel;
 use App\Models\Ticket;
 use App\Services\Bots\BotSettings;
@@ -322,6 +325,93 @@ class SupportBotFlowTest extends TestCase
 
         $this->assertStringNotContainsString('wa.me', $this->lastToCustomer());
         $this->assertStringContainsString('reply here', $this->lastToCustomer());
+    }
+
+    // ---- option 8: AI FAQ ------------------------------------------------
+
+    /** A reseller who has paid for AI and stored a key. */
+    private function withAi(): void
+    {
+        Subscription::factory()->for($this->tenant)->active()->create([
+            'service_key' => ServiceKey::AiChat,
+        ]);
+
+        TenantAi::withoutTenantScope()->create([
+            'tenant_id' => $this->tenant->id,
+            'deepseek_api_key_enc' => 'sk-deepseek',
+            'status' => 'active',
+        ]);
+    }
+
+    public function test_the_ai_faq_answers_a_question(): void
+    {
+        $this->withAi();
+
+        Http::fake([
+            'api.deepseek.com/*' => Http::response([
+                'choices' => [['message' => ['content' => 'Delivery starts within an hour.']]],
+            ]),
+        ]);
+
+        $this->send('hi');
+        $this->send('8');
+        $this->send('how long does delivery take?');
+
+        $this->assertStringContainsString('within an hour', $this->lastToCustomer());
+        $this->assertSame(SupportState::AiFaq->value, $this->state());
+    }
+
+    /**
+     * A reseller without the add-on must not leave a customer on a dead
+     * option — they get a person instead, and DeepSeek is never called.
+     */
+    public function test_the_ai_faq_falls_back_to_a_human_without_the_addon(): void
+    {
+        Http::fake();
+
+        $this->send('hi');
+        $this->send('8');
+
+        Http::assertNothingSent();
+        $this->assertNotNull(Ticket::handoffFor($this->tenant->id, self::CUSTOMER));
+    }
+
+    /**
+     * DeepSeek being down mid-conversation is the case most likely to strand
+     * someone: they have already typed a question and are owed a person.
+     */
+    public function test_a_failed_answer_hands_the_customer_to_a_human(): void
+    {
+        $this->withAi();
+
+        Http::fake(['api.deepseek.com/*' => Http::response([], 500)]);
+
+        $this->send('hi');
+        $this->send('8');
+        $this->send('are you there?');
+
+        $this->assertNotNull(Ticket::handoffFor($this->tenant->id, self::CUSTOMER));
+    }
+
+    /** The escape hatch: *0* must always reach the menu, mid-AI or not. */
+    public function test_the_menu_word_escapes_the_ai_faq(): void
+    {
+        $this->withAi();
+
+        Http::fake([
+            'api.deepseek.com/*' => Http::response([
+                'choices' => [['message' => ['content' => 'An answer.']]],
+            ]),
+        ]);
+
+        $this->send('hi');
+        $this->send('8');
+        $this->send('a question');
+        $this->assertSame(SupportState::AiFaq->value, $this->state());
+
+        $this->send('0');
+
+        $this->assertSame(SupportState::Menu->value, $this->state());
     }
 
     public function test_talk_to_a_human_still_answers_with_no_staff_configured(): void

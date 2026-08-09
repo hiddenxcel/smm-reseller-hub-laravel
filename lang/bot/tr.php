@@ -42,6 +42,12 @@ return [
     'menu_website_title' => '🌐 Web Sitesi',
     'menu_website_desc' => 'Çevrimiçi daha fazlası',
 
+    // ---- AI support ----------------------------------------------------------
+    'ai_chat_open' => "🤖 Hizmetlerimiz veya fiyatlarımız hakkında bana her şeyi sorabilirsiniz.\nSipariş vermeye hazır olduğunuzda *menu* yazın.",
+    'ai_chat_empty' => 'Lütfen sorunuzu yazın veya geri dönmek için *menu* gönderin.',
+    'ai_chat_failed' => '⚠️ Üzgünüm, şu anda buna cevap veremedim.',
+    'support_unavailable' => '🎧 Yardım için bize buradan yazın, ekibimiz size dönecektir.',
+
     // ---- Settings / language -------------------------------------------------
     'settings_choose_language' => '🌐 *Dilinizi seçin:*',
     'settings_press_language' => 'Lütfen dil düğmelerinden birine dokunun.',
@@ -89,6 +95,14 @@ return [
     'topup_no_gateway' => '⚠️ Bu mağaza için çevrimiçi ödeme henüz ayarlanmadı. Bakiye eklemek için lütfen destek ile iletişime geçin.',
     'topup_prompt' => '💰 Cüzdanınıza ne kadar eklemek istersiniz? {cur} cinsinden bir tutar girin (en az {min}).',
     'topup_amount_invalid' => 'Lütfen geçerli bir tutar girin (en az {min} {cur}).',
+
+    // ---- Choosing a payment method ------------------------------------------
+    'choose_payment_method' => '💳 *{amount}* tutarını nasıl ödemek istersiniz?',
+    'btn_choose_payment' => 'Ödeme yöntemleri',
+    'payment_header' => 'Şununla öde',
+    'pay_method_mobile' => 'Telefonunuzdan ödeyin',
+    'pay_method_online' => 'Çevrimiçi ödeyin',
+    'pay_method_invalid' => 'Bu ödeme yöntemi kullanılamıyor. Lütfen listeden birini seçin.',
 
     // ---- Payment phone (mobile money) ---------------------------------------
     'ask_pay_phone' => '📱 Ödeme yapılacak telefon numarasını girin (mobil ödeme). *{suggest}* kullanın veya başka bir numara gönderin.',

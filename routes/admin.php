@@ -154,6 +154,11 @@ Route::middleware(['auth:superadmin', 'admin'])->group(function () {
     Route::get('settings', [SystemController::class, 'settings'])->name('settings');
     Route::post('settings', [SystemController::class, 'saveSettings'])->name('settings.save');
 
+    // The platform's own merchant credentials. Owner-only in the controller:
+    // these keys decide where a reseller's subscription payment lands.
+    Route::post('settings/gateways/{gateway}', [SystemController::class, 'saveGateway'])
+        ->name('settings.gateway.save');
+
     Route::get('admins', [AdminUsersController::class, 'index'])->name('admins.index');
     Route::post('admins', [AdminUsersController::class, 'store'])->name('admins.store');
     Route::patch('admins/{admin}', [AdminUsersController::class, 'update'])->name('admins.update');

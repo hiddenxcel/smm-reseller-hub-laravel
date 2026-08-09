@@ -6,6 +6,7 @@ use App\Models\BotMessage;
 use App\Models\GuaranteeRule;
 use App\Models\ResponseTemplate;
 use App\Models\Tenant;
+use App\Models\TenantPanel;
 use App\Models\TenantWhatsApp;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
@@ -160,7 +161,7 @@ class SupportBotPageTest extends TestCase
     public function test_a_rule_cannot_be_attached_to_another_tenants_panel(): void
     {
         $other = Tenant::factory()->create();
-        $panel = \App\Models\TenantPanel::factory()->for($other)->create();
+        $panel = TenantPanel::factory()->for($other)->create();
 
         $this->actingAs($this->tenant)
             ->post(route('support-bot.rules.store'), [

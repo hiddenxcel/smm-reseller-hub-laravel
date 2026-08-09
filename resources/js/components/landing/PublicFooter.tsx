@@ -14,31 +14,38 @@ import Reveal from './Reveal';
  * who was never going to scroll back up to the hero.
  */
 
-const COLUMNS = [
-    {
-        heading: 'Product',
-        links: [
-            { label: 'Features', href: route('features') },
-            { label: 'Services', href: route('what-we-do') },
-            { label: 'Pricing', href: route('pricing') },
-        ],
-    },
-    {
-        heading: 'Resources',
-        links: [
-            { label: 'API docs', href: route('api-docs') },
-            { label: 'Blog', href: route('blog') },
-            { label: 'Contact', href: route('contact') },
-        ],
-    },
-    {
-        heading: 'Account',
-        links: [
-            { label: 'Log in', href: route('login') },
-            { label: 'Start free', href: route('register') },
-        ],
-    },
-];
+/**
+ * Built per render rather than at module scope: route() is bound per request
+ * under SSR, so calling it while the bundle is still being imported finds
+ * nothing there. See resources/js/ssr.tsx.
+ */
+function columns() {
+    return [
+        {
+            heading: 'Product',
+            links: [
+                { label: 'Features', href: route('features') },
+                { label: 'Services', href: route('what-we-do') },
+                { label: 'Pricing', href: route('pricing') },
+            ],
+        },
+        {
+            heading: 'Resources',
+            links: [
+                { label: 'API docs', href: route('api-docs') },
+                { label: 'Blog', href: route('blog') },
+                { label: 'Contact', href: route('contact') },
+            ],
+        },
+        {
+            heading: 'Account',
+            links: [
+                { label: 'Log in', href: route('login') },
+                { label: 'Start free', href: route('register') },
+            ],
+        },
+    ];
+}
 
 export default function PublicFooter({
     demoNumber,
@@ -54,6 +61,8 @@ export default function PublicFooter({
     demoNumber?: string | null;
     cta?: boolean;
 }) {
+    const COLUMNS = columns();
+
     return (
         <footer className="mt-8 border-t border-border/60 px-4 pt-16 pb-10">
             <div className="mx-auto max-w-6xl">

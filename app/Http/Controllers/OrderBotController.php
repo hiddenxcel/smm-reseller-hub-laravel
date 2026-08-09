@@ -106,10 +106,7 @@ class OrderBotController extends Controller
         // AI support is a separate paid add-on, and it needs a key of its own.
         // Both have to hold, so the screen reports them separately.
         $aiActive = Subscription::isServiceActive($tenantId, ServiceKey::AiChat);
-        $aiHasKey = TenantAi::withoutTenantScope()
-            ->where('tenant_id', $tenantId)
-            ->whereNotNull('deepseek_api_key_enc')
-            ->exists();
+        $ai = TenantAi::forTenant($tenantId);
 
         return [
             'checks' => [
@@ -127,7 +124,14 @@ class OrderBotController extends Controller
             'websiteUrl' => Arr::get($settings, 'shop.website_url', ''),
             'supportMode' => Arr::get($settings, 'shop.support_mode', 'admin') === 'ai' ? 'ai' : 'admin',
             'staff' => Arr::get($settings, 'staff.numbers', []),
-            'ai' => ['active' => $aiActive, 'hasKey' => $aiHasKey],
+            'ai' => [
+                'active' => $aiActive,
+                'hasKey' => $ai?->deepseek_api_key_enc !== null,
+                // The reseller's own DeepSeek bill is invisible to us, so
+                // these counts are the only thing connecting it to their bot.
+                'answersToday' => (int) $ai?->answersToday(),
+                'answersTotal' => (int) $ai?->answers_total,
+            ],
         ];
     }
 

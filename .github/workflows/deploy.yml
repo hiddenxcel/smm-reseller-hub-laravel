@@ -50,20 +50,44 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # Feature tests render real pages, and @vite() throws without a
+      # manifest. public/build is gitignored, so the runner has to build it
+      # before the suite runs — locally it is already there from dev work,
+      # which is why this only ever failed in CI.
+      - name: Build assets for the render tests
+        run: |
+          npm ci
+          npm run build
+
       - name: Run tests
-        env:
-          DB_CONNECTION: pgsql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 5432
-          DB_DATABASE: testing
-          DB_USERNAME: postgres
-          DB_PASSWORD: postgres
-          CACHE_STORE: array
-          QUEUE_CONNECTION: sync
-          SESSION_DRIVER: array
         run: |
           cp .env.example .env
+
+          # .env.example ships DB_CONNECTION=sqlite, and phpunit.xml sets
+          # DB_DATABASE but not DB_CONNECTION — so without this the suite
+          # runs against a sqlite file that does not exist here. Writing the
+          # values into .env rather than exporting them matters: phpunit.xml's
+          # own <env> entries win over shell variables.
+          sed -i 's|^DB_CONNECTION=.*|DB_CONNECTION=pgsql|' .env
+          sed -i 's|^# *DB_HOST=.*|DB_HOST=127.0.0.1|'     .env
+          sed -i 's|^# *DB_PORT=.*|DB_PORT=5432|'          .env
+          sed -i 's|^# *DB_DATABASE=.*|DB_DATABASE=testing|' .env
+          sed -i 's|^# *DB_USERNAME=.*|DB_USERNAME=postgres|' .env
+          sed -i 's|^# *DB_PASSWORD=.*|DB_PASSWORD=postgres|' .env
+
+          grep -q '^DB_HOST='     .env || echo 'DB_HOST=127.0.0.1'   >> .env
+          grep -q '^DB_PORT='     .env || echo 'DB_PORT=5432'        >> .env
+          grep -q '^DB_DATABASE=' .env || echo 'DB_DATABASE=testing' >> .env
+          grep -q '^DB_USERNAME=' .env || echo 'DB_USERNAME=postgres' >> .env
+          grep -q '^DB_PASSWORD=' .env || echo 'DB_PASSWORD=postgres' >> .env
+
           php artisan key:generate
+          php artisan config:clear
           php artisan test
 
   deploy:
@@ -104,8 +128,13 @@ jobs:
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
+          # Both halves of the build: public/build is what the browser loads,
+          # bootstrap/ssr is the bundle Node renders the pages from. Both are
+          # gitignored, so the checkout on the VPS has neither.
           tar -czf build.tar.gz -C public build
+          tar -czf ssr.tar.gz -C bootstrap ssr
           scp -i ~/.ssh/deploy_key build.tar.gz "root@$SSH_HOST:/tmp/build.tar.gz"
+          scp -i ~/.ssh/deploy_key ssr.tar.gz "root@$SSH_HOST:/tmp/ssr.tar.gz"
 
       - name: Release
         env:

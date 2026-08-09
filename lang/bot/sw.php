@@ -39,6 +39,12 @@ return [
     'menu_website_title' => '🌐 Tovuti',
     'menu_website_desc' => 'Huduma zaidi mtandaoni',
 
+    // ---- AI support ----------------------------------------------------------
+    'ai_chat_open' => "🤖 Niulize chochote kuhusu huduma zetu au bei.\nTuma *menu* ukiwa tayari kuagiza.",
+    'ai_chat_empty' => 'Tafadhali andika swali lako, au tuma *menu* kurudi.',
+    'ai_chat_failed' => '⚠️ Samahani, sikuweza kujibu hilo kwa sasa.',
+    'support_unavailable' => '🎧 Kwa msaada, tutumie ujumbe hapa na timu yetu itakujibu.',
+
     // ---- Settings / language -------------------------------------------------
     'settings_choose_language' => '🌐 *Chagua lugha yako:*',
     'settings_press_language' => 'Tafadhali bonyeza mojawapo ya vitufe vya lugha.',
@@ -86,6 +92,14 @@ return [
     'topup_no_gateway' => '⚠️ Malipo mtandaoni bado hayajawekwa kwenye duka hili. Tafadhali wasiliana na huduma kuongeza pesa.',
     'topup_prompt' => '💰 Ungependa kuongeza kiasi gani kwenye salio lako? Andika kiasi kwa {cur} (kima cha chini {min}).',
     'topup_amount_invalid' => 'Tafadhali andika kiasi sahihi (kima cha chini {min} {cur}).',
+
+    // ---- Choosing a payment method ------------------------------------------
+    'choose_payment_method' => '💳 Ungependa kulipa *{amount}* kwa njia gani?',
+    'btn_choose_payment' => 'Njia za malipo',
+    'payment_header' => 'Lipa kwa',
+    'pay_method_mobile' => 'Lipa kwa simu yako',
+    'pay_method_online' => 'Lipa mtandaoni',
+    'pay_method_invalid' => 'Njia hiyo ya malipo haipatikani. Tafadhali chagua moja kwenye orodha.',
 
     // ---- Payment phone (mobile money) ---------------------------------------
     'ask_pay_phone' => '📱 Andika namba ya simu ya kulipia (mobile money). Tumia *{suggest}* au tuma namba nyingine.',

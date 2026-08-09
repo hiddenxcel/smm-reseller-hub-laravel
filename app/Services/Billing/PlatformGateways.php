@@ -2,9 +2,12 @@
 
 namespace App\Services\Billing;
 
+use App\Models\PlatformGatewayCredential;
+use App\Services\Payments\BinancePayClient;
 use App\Services\Payments\CryptomusClient;
 use App\Services\Payments\HeleketClient;
 use App\Services\Payments\NowPaymentsClient;
+use App\Services\Payments\PaymentGateway;
 use App\Services\Payments\SnippeClient;
 use Illuminate\Support\Arr;
 
@@ -42,20 +45,100 @@ class PlatformGateways
 
     public static function isConfigured(string $code): bool
     {
-        $keys = config("services.billing.{$code}", []);
+        $keys = self::keys($code);
 
         return match ($code) {
             'snippe' => filled(Arr::get($keys, 'api_key')),
             'nowpayments' => filled(Arr::get($keys, 'api_key')),
             'cryptomus', 'heleket' => filled(Arr::get($keys, 'api_key'))
                 && filled(Arr::get($keys, 'merchant_id')),
+            // Both halves are needed before it is offered: the secret is not
+            // merely for webhooks here, it signs the order request too, so a
+            // key on its own cannot even reach the checkout.
+            'binance' => filled(Arr::get($keys, 'api_key'))
+                && filled(Arr::get($keys, 'webhook_secret')),
             default => false,
         };
+    }
+
+    /**
+     * The credentials for a gateway: environment first, database second.
+     *
+     * .env wins so an operator who already keeps keys there — the original
+     * arrangement, and the safer one — is not overridden by anything typed
+     * into the console. The database row exists because editing .env needs
+     * SSH, which in practice meant the keys were never set at all and no
+     * reseller could pay.
+     *
+     * A row that exists but is not enabled is ignored: credentials are stored
+     * so they can be checked before resellers are shown the option.
+     *
+     * @return array<string, string|null>
+     */
+    public static function keys(string $code): array
+    {
+        $fromEnv = config("services.billing.{$code}", []);
+
+        if (filled(Arr::get($fromEnv, 'api_key'))) {
+            return $fromEnv;
+        }
+
+        $row = PlatformGatewayCredential::all()->get($code);
+
+        if ($row === null || ! $row->enabled) {
+            return $fromEnv;
+        }
+
+        return [
+            ...$fromEnv,
+            'api_key' => $row->api_key_enc,
+            // Each gateway names its second secret differently; the row holds
+            // one column and the mapping happens here rather than in four
+            // places downstream.
+            'webhook_secret' => $row->webhook_secret_enc,
+            'ipn_secret' => $row->webhook_secret_enc,
+            'merchant_id' => $row->extra_enc,
+        ];
     }
 
     public static function exists(string $code): bool
     {
         return Arr::has(config('billing.gateways', []), $code);
+    }
+
+    /**
+     * Where this gateway's credentials came from.
+     *
+     * Worth showing: an owner who edits a key in the console and sees no
+     * change needs to know an .env value is winning, rather than concluding
+     * the save did not work.
+     */
+    public static function source(string $code): string
+    {
+        if (filled(Arr::get(config("services.billing.{$code}", []), 'api_key'))) {
+            return 'env';
+        }
+
+        $row = PlatformGatewayCredential::all()->get($code);
+
+        if ($row === null) {
+            return 'none';
+        }
+
+        return $row->enabled ? 'database' : 'stored-disabled';
+    }
+
+    /**
+     * The last four characters of the key, and nothing else.
+     *
+     * Enough to tell two keys apart when rotating one; useless to anyone who
+     * captures the screen.
+     */
+    public static function hint(string $code): ?string
+    {
+        $key = (string) Arr::get(self::keys($code), 'api_key');
+
+        return $key === '' ? null : '…'.mb_substr($key, -4);
     }
 
     /** Mobile money pushes a prompt to a handset, so it must ask for a number. */
@@ -93,9 +176,13 @@ class PlatformGateways
         return (string) (int) ceil(($cents / 100) * $rate);
     }
 
-    public static function make(string $code): SnippeClient|NowPaymentsClient|CryptomusClient|null
+    /**
+     * The platform's own client for a gateway, built from config rather than
+     * from a reseller's stored credentials — this is how resellers pay us.
+     */
+    public static function make(string $code): ?PaymentGateway
     {
-        $keys = config("services.billing.{$code}", []);
+        $keys = self::keys($code);
 
         return match ($code) {
             'snippe' => new SnippeClient(
@@ -114,6 +201,10 @@ class PlatformGateways
             'heleket' => new HeleketClient(
                 (string) Arr::get($keys, 'api_key'),
                 (string) Arr::get($keys, 'merchant_id'),
+            ),
+            'binance' => new BinancePayClient(
+                (string) Arr::get($keys, 'api_key'),
+                (string) Arr::get($keys, 'webhook_secret'),
             ),
             default => null,
         };

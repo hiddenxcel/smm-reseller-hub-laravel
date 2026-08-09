@@ -39,6 +39,12 @@ return [
     'menu_website_title' => '🌐 Site web',
     'menu_website_desc' => 'Plus en ligne',
 
+    // ---- AI support ----------------------------------------------------------
+    'ai_chat_open' => "🤖 Posez-moi vos questions sur nos services ou nos prix.\nEnvoyez *menu* quand vous êtes prêt à commander.",
+    'ai_chat_empty' => 'Veuillez écrire votre question, ou envoyez *menu* pour revenir.',
+    'ai_chat_failed' => "⚠️ Désolé, je n'ai pas pu répondre à cela pour le moment.",
+    'support_unavailable' => '🎧 Pour toute aide, écrivez-nous ici et notre équipe vous répondra.',
+
     // ---- Settings / language -------------------------------------------------
     'settings_choose_language' => '🌐 *Choisissez votre langue :*',
     'settings_press_language' => 'Veuillez appuyer sur l\'un des boutons de langue.',
@@ -64,7 +70,7 @@ return [
     'per_1k' => '/ 1k',
     'pick_service_again' => 'Veuillez choisir un service dans la liste. Envoyez *hi* pour recommencer.',
     'service_paused_label' => 'Indisponible',
-    'service_paused' => "⏸️ Celui-ci est indisponible pour le moment. Choisissez-en un autre, ou réessayez plus tard.",
+    'service_paused' => '⏸️ Celui-ci est indisponible pour le moment. Choisissez-en un autre, ou réessayez plus tard.',
     'how_many' => 'Combien de *{service}* ?',
     'packages_header' => 'Quantité',
     'btn_packages' => 'Forfaits',
@@ -86,6 +92,14 @@ return [
     'topup_no_gateway' => "⚠️ Le paiement en ligne n'est pas encore configuré pour cette boutique. Veuillez contacter l'assistance pour ajouter des fonds.",
     'topup_prompt' => '💰 Combien souhaitez-vous ajouter à votre portefeuille ? Saisissez un montant en {cur} (minimum {min}).',
     'topup_amount_invalid' => 'Veuillez saisir un montant valide (minimum {min} {cur}).',
+
+    // ---- Choosing a payment method ------------------------------------------
+    'choose_payment_method' => '💳 Comment souhaitez-vous payer *{amount}* ?',
+    'btn_choose_payment' => 'Moyens de paiement',
+    'payment_header' => 'Payer avec',
+    'pay_method_mobile' => 'Payer depuis votre téléphone',
+    'pay_method_online' => 'Payer en ligne',
+    'pay_method_invalid' => "Ce moyen de paiement n'est pas disponible. Veuillez en choisir un dans la liste.",
 
     // ---- Payment phone (mobile money) ---------------------------------------
     'ask_pay_phone' => '📱 Saisissez le numéro pour payer (mobile money). Utilisez *{suggest}* ou envoyez un autre numéro.',

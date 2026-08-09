@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BotService;
 use App\Models\NumberRental;
 use App\Models\PlatformNumber;
 use App\Models\TenantPanel;
@@ -143,7 +144,7 @@ class SettingsController extends Controller
             'panel' => ['id' => $panel->id, 'name' => $panel->name],
             'services' => $catalogue->services,
             'catalogueError' => $catalogue->message,
-            'importedCount' => \App\Models\BotService::withoutTenantScope()
+            'importedCount' => BotService::withoutTenantScope()
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'active')
                 ->count(),

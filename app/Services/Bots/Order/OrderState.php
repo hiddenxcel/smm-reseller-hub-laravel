@@ -23,6 +23,8 @@ enum OrderState: string
     // Paying for it.
     case TopupAmount = 'TOPUP_AMOUNT';
     case TopupDecision = 'TOPUP_DECISION';
+    /** Only reached when the reseller has more than one gateway connected. */
+    case SelectGateway = 'SELECT_GATEWAY';
     case TopupPhone = 'TOPUP_PHONE';
     case AwaitingPayment = 'AWAITING_PAYMENT';
     case AwaitingBinanceOrder = 'AWAITING_BINANCE_ORDER';

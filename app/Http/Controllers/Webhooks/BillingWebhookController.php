@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\SubscriptionPayment;
 use App\Services\Billing\ActivatePurchase;
 use App\Services\Billing\PlatformGateways;
+use App\Services\Payments\BinancePayClient;
+use App\Services\Payments\CryptomusClient;
+use App\Services\Payments\NowPaymentsClient;
 use App\Services\Payments\WebhookVerifier;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -69,7 +72,7 @@ class BillingWebhookController extends Controller
             return response('invalid signature', 401);
         }
 
-        if (! $this->reportsSuccess($request)) {
+        if (! $this->reportsSuccess($gateway, $request)) {
             return $this->ack('not a success event');
         }
 
@@ -89,7 +92,7 @@ class BillingWebhookController extends Controller
      */
     private function reference(Request $request): ?string
     {
-        $payload = $request->all();
+        $payload = $this->flatten($request->all());
 
         $candidates = [
             'reference',
@@ -100,6 +103,8 @@ class BillingWebhookController extends Controller
             'data.order_id',
             'result.order_id',
             'payment.reference',
+            // Binance Pay, once its `data` string has been decoded below.
+            'merchantTradeNo',
         ];
 
         foreach ($candidates as $key) {
@@ -111,6 +116,31 @@ class BillingWebhookController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Binance Pay's payload nests the part that matters as a JSON *string*
+     * under `data`, so merchantTradeNo and bizStatus are invisible to
+     * data_get() until it is decoded.
+     *
+     * Merged into the top level rather than parsed separately, so the
+     * reference and status lookups keep working the way they do for every
+     * other gateway.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function flatten(array $payload): array
+    {
+        $data = $payload['data'] ?? null;
+
+        if (! is_string($data) || $data === '') {
+            return $payload;
+        }
+
+        $decoded = json_decode($data, true);
+
+        return is_array($decoded) ? [...$payload, ...$decoded] : $payload;
     }
 
     /**
@@ -152,30 +182,53 @@ class BillingWebhookController extends Controller
      * success may grant a subscription. Unrecognised shapes are treated as
      * not-success, which is the safe way to be wrong.
      */
-    private function reportsSuccess(Request $request): bool
+    private function reportsSuccess(string $gateway, Request $request): bool
     {
-        $payload = $request->all();
+        $payload = $this->flatten($request->all());
+
+        // Binance Pay before anything else. Its envelope carries a top-level
+        // `status` of "SUCCESS" meaning only that the notification itself was
+        // built successfully — the payment's own outcome is bizStatus, and
+        // reading the wrong one would activate a subscription on a closed
+        // order.
+        $bizStatus = data_get($payload, 'bizStatus');
+
+        if (is_string($bizStatus)) {
+            return BinancePayClient::isPaidStatus($bizStatus);
+        }
+
+        $status = null;
 
         foreach (['status', 'payment_status', 'data.status', 'result.status'] as $key) {
-            $status = data_get($payload, $key);
+            $found = data_get($payload, $key);
 
-            if (! is_string($status)) {
-                continue;
+            if (is_string($found)) {
+                $status = $found;
+
+                break;
             }
+        }
 
-            return in_array(strtolower($status), [
+        if ($status === null) {
+            return false;
+        }
+
+        // Each gateway's own vocabulary, because the same word means different
+        // things to different providers. A shared word-list once decided this,
+        // and it credited NOWPayments' `confirmed` — a state where the customer
+        // has paid but the funds have not yet reached us and may still fail.
+        return match ($gateway) {
+            'nowpayments' => NowPaymentsClient::isPaidStatus($status),
+            'cryptomus', 'heleket' => CryptomusClient::isPaidStatus($status),
+            default => in_array(strtolower($status), [
                 'success',
                 'succeeded',
                 'successful',
                 'completed',
                 'complete',
                 'paid',
-                'finished',
-                'confirmed',
-            ], true);
-        }
-
-        return false;
+            ], true),
+        };
     }
 
     private function ack(string $reason): Response

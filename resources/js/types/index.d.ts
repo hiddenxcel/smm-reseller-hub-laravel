@@ -63,4 +63,14 @@ export type PageProps<
     /** Support tickets whose last word was ours — the sidebar badge. */
     supportUnread: number;
     flash: Flash;
+    /**
+     * Laravel's route list, shared for `route()`. In the browser it also
+     * arrives as a global from Blade's @routes; under SSR this prop is the
+     * only copy, since Node has no window for that tag to write to.
+     */
+    ziggy: {
+        url: string;
+        location: string;
+        routes: Record<string, unknown>;
+    };
 };

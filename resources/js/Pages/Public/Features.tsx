@@ -4,6 +4,7 @@ import { Section, SectionHeading } from '@/components/landing/Section';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { Button } from '@/components/ui/button';
 import { Head, Link } from '@inertiajs/react';
+import Seo from '@/components/Seo';
 import {
     BarChart3,
     Bot,
@@ -177,7 +178,10 @@ export default function Features({ plans, demoNumber }: Props) {
             description="Five services, sold separately. Take the one that solves today's problem and add the rest when it becomes tomorrow's."
             demoNumber={demoNumber}
         >
-            <Head title="Features" />
+            <Seo
+                title="Features"
+                description="Every service in the Resellers Hub platform: the WhatsApp order bot, the support bot, AI chat, AI tickets and rented Cloud API numbers — with what each one actually does."
+            />
 
             {/* ---- each service in turn ---- */}
             <Section className="pt-0">

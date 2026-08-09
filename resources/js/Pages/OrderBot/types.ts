@@ -16,7 +16,12 @@ export type Setup = {
     websiteUrl: string;
     supportMode: 'admin' | 'ai';
     staff: string[];
-    ai: { active: boolean; hasKey: boolean };
+    ai: {
+        active: boolean;
+        hasKey: boolean;
+        answersToday: number;
+        answersTotal: number;
+    };
 };
 
 export type Language = { code: string; name: string };

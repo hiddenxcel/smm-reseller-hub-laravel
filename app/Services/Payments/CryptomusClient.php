@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
  * md5(base64(json_body) + api_key) — in the `sign` header on the way out, and
  * in the body on the way back.
  */
-class CryptomusClient implements WebhookVerifier
+class CryptomusClient implements PaymentGateway, WebhookVerifier
 {
     protected const INVOICE_URL = 'https://api.cryptomus.com/v1/payment';
 
@@ -102,16 +102,34 @@ class CryptomusClient implements WebhookVerifier
 
         unset($data['sign']);
 
+        // Slashes must stay escaped. Cryptomus signs with PHP's json_encode
+        // defaults, where "https://x" becomes "https:\/\/x", and every callback
+        // carries url_callback — so JSON_UNESCAPED_SLASHES here rejected every
+        // genuine webhook while looking perfectly reasonable. Their docs
+        // single this out as the mistake that breaks non-PHP integrations.
         $expected = md5(base64_encode(
-            json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+            json_encode($data, JSON_UNESCAPED_UNICODE)
         ).$this->apiKey);
 
         return hash_equals($expected, $signature);
     }
 
-    /** Cryptomus's terminal paid states. "paid_over" is an overpayment. */
+    /**
+     * The two states that mean the money arrived in full.
+     *
+     * The documented set is: confirm_check, paid, paid_over, fail,
+     * wrong_amount, cancel, system_fail, refund_process, refund_fail,
+     * refund_paid. Only `paid` and `paid_over` (an overpayment) are ours to
+     * credit.
+     *
+     * `wrong_amount` is deliberately excluded: it means the customer sent less
+     * than the invoice, and crediting it in full would sell an order for
+     * whatever the payer felt like paying. `confirm_check` is still awaiting
+     * confirmations, and `finished` — which this once accepted — is not a
+     * status Cryptomus sends at all.
+     */
     public static function isPaidStatus(?string $status): bool
     {
-        return in_array($status, ['paid', 'paid_over', 'finished'], true);
+        return in_array($status, ['paid', 'paid_over'], true);
     }
 }

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\SendCustomerBroadcast;
 use App\Models\BotCustomer;
 use App\Models\BotMessage;
 use App\Models\BotOrder;

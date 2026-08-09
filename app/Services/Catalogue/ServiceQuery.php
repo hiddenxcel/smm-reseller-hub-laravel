@@ -7,7 +7,8 @@ use App\Models\BotService;
 use App\Models\Tenant;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Reads the services list: KPIs, filter, search, sort, paginate.
@@ -112,7 +113,7 @@ class ServiceQuery
             'underwater' => (int) ($row->underwater ?? 0),
             'lastSyncedAt' => $row->last_synced === null
                 ? null
-                : \Illuminate\Support\Carbon::parse($row->last_synced)->toIso8601String(),
+                : Carbon::parse($row->last_synced)->toIso8601String(),
         ];
     }
 
@@ -304,7 +305,7 @@ class ServiceQuery
      * Orders record the PANEL's service id, not ours, so this keys on
      * (panel_id, provider_service_id). Two panels can hand out the same id.
      *
-     * @param  \Illuminate\Support\Collection<int, BotService>  $services
+     * @param  Collection<int, BotService>  $services
      * @return array<string, int>
      */
     public function orderCountsFor($services): array

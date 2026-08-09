@@ -3,6 +3,7 @@ import { Section, SectionHeading } from '@/components/landing/Section';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { Button } from '@/components/ui/button';
 import { Head, Link } from '@inertiajs/react';
+import Seo from '@/components/Seo';
 import {
     ArrowRight,
     Bot,
@@ -96,7 +97,10 @@ export default function Services({ plans, demoNumber }: Props) {
             description="Each solves one problem and is sold on its own — so you are never paying for a part of the shop you do not run."
             demoNumber={demoNumber}
         >
-            <Head title="Services" />
+            <Seo
+                title="Services"
+                description="Five services sold separately, each solving one problem: taking orders on WhatsApp, answering support, AI replies, website tickets, and starting without a Meta Business account."
+            />
 
             <Section className="pt-0">
                 <div className="grid gap-5 lg:grid-cols-2">

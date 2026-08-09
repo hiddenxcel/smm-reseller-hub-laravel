@@ -54,7 +54,7 @@ class DemoSeeder extends Seeder
         $this->subscriptions($tenant);
         $this->invoices($tenant);
 
-        $this->command?->info("Demo reseller ready: ".self::EMAIL." / ".self::PASSWORD);
+        $this->command?->info('Demo reseller ready: '.self::EMAIL.' / '.self::PASSWORD);
     }
 
     /**

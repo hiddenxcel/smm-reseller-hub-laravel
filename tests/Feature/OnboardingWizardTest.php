@@ -48,7 +48,6 @@ class OnboardingWizardTest extends TestCase
         TenantWhatsApp::factory()->for($this->tenant)->create();
     }
 
-
     // ---- where a finished step sends you ---------------------------------
 
     /**

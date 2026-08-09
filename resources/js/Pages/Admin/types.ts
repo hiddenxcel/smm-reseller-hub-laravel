@@ -523,12 +523,29 @@ export type PlatformSettings = {
     registration_open: boolean;
 };
 
+export type GatewayField = {
+    name: string;
+    label: string;
+    store: string;
+    required?: boolean;
+};
+
 export type GatewayStatus = {
     code: string;
     label: string;
     type: string;
-    /** Whether keys are present in .env — never the keys themselves. */
+    /** Whether usable keys exist — never the keys themselves. */
     configured: boolean;
+    /**
+     * Where those keys came from. `env` cannot be edited from the console:
+     * an environment value always wins, so a form there would let an owner
+     * save something with no effect.
+     */
+    source: 'env' | 'database' | 'stored-disabled' | 'none';
+    /** Last four characters of the key, enough to tell two apart. */
+    hint: string | null;
+    fields: GatewayField[];
+    help: string | null;
 };
 
 export type SecurityKpis = {

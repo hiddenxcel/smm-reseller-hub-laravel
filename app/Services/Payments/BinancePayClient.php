@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
  * Both the outgoing request signature and the incoming webhook signature are
  * HMAC-SHA512, uppercased, over "{timestamp}\n{nonce}\n{body}\n".
  */
-class BinancePayClient implements WebhookVerifier
+class BinancePayClient implements PaymentGateway, WebhookVerifier
 {
     private const ORDER_URL = 'https://bpay.binanceapi.com/binancepay/openapi/v3/order';
 
@@ -72,7 +72,11 @@ class BinancePayClient implements WebhookVerifier
     }
 
     /**
-     * @param  array{signature?: string, timestamp?: string, nonce?: string}  $headers
+     * Binance sends its own BinancePay-* headers, which reach us lowercased by
+     * Symfony. The bare names are accepted too because the signature is the
+     * same either way and the unit tests address them that way.
+     *
+     * @param  array{binancepay-signature?: string, binancepay-timestamp?: string, binancepay-nonce?: string, signature?: string, timestamp?: string, nonce?: string}  $headers
      */
     public function verifyWebhook(string $body, array $headers): bool
     {
@@ -82,9 +86,9 @@ class BinancePayClient implements WebhookVerifier
             return false;
         }
 
-        $signature = $headers['signature'] ?? '';
-        $timestamp = $headers['timestamp'] ?? '';
-        $nonce = $headers['nonce'] ?? '';
+        $signature = $headers['binancepay-signature'] ?? $headers['signature'] ?? '';
+        $timestamp = $headers['binancepay-timestamp'] ?? $headers['timestamp'] ?? '';
+        $nonce = $headers['binancepay-nonce'] ?? $headers['nonce'] ?? '';
 
         if ($signature === '' || $timestamp === '' || $nonce === '') {
             return false;

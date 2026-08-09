@@ -8,6 +8,7 @@ export default defineConfig({
     plugins: [
         laravel({
             input: 'resources/js/app.tsx',
+            ssr: 'resources/js/ssr.tsx',
             refresh: true,
         }),
         react(),
@@ -16,6 +17,13 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, 'resources/js'),
+
+            // Matches the path mapping in tsconfig.json, which until now was
+            // the only place Ziggy was pointed at: the browser gets `route()`
+            // as a global from Blade's @routes, so nothing had to resolve the
+            // import. Node has no such global, and the SSR bundle needs the
+            // real module to call.
+            'ziggy-js': path.resolve(__dirname, 'vendor/tightenco/ziggy'),
         },
     },
 

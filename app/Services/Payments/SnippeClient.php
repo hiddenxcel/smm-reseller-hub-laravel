@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
  * confirmation arrives later on the webhook. There is no redirect URL — the
  * customer approves on the handset.
  */
-class SnippeClient implements WebhookVerifier
+class SnippeClient implements PaymentGateway, StatusCheckable, WebhookVerifier
 {
     private const PAYMENTS_URL = 'https://api.snippe.sh/v1/payments';
 
@@ -25,7 +25,8 @@ class SnippeClient implements WebhookVerifier
         private string $webhookSecret,
     ) {}
 
-    public function initiate(PaymentRequest $request): PaymentInitiation
+    /** The description goes unused: a USSD prompt shows the amount, not a label. */
+    public function initiate(PaymentRequest $request, string $description = 'Wallet top-up'): PaymentInitiation
     {
         try {
             $response = Http::withToken($this->apiKey)
@@ -39,10 +40,14 @@ class SnippeClient implements WebhookVerifier
                         'amount' => (int) round((float) $request->amount),
                         'currency' => $request->currency,
                     ],
+                    // Snippe rejects a blank lastname or email outright, so
+                    // neither may be sent empty — a one-word name still has to
+                    // yield two parts, and a chat customer with no address
+                    // still has to have something that parses.
                     'customer' => [
-                        'firstname' => $request->customerName,
-                        'lastname' => '',
-                        'email' => '',
+                        'firstname' => $this->firstName($request->customerName),
+                        'lastname' => $this->lastName($request->customerName),
+                        'email' => $request->emailOrPlaceholder(),
                     ],
                     'webhook_url' => $request->webhookUrl,
                     'metadata' => ['order_id' => $request->reference],
@@ -60,6 +65,29 @@ class SnippeClient implements WebhookVerifier
         }
 
         return PaymentInitiation::failed($result['message'] ?? 'Unknown Snippe error');
+    }
+
+    /**
+     * The first word of a name, or "Customer" when there is nothing to split —
+     * a business_name is often one word, and a bot customer may have none.
+     */
+    private function firstName(string $name): string
+    {
+        $first = trim(strtok(trim($name), ' ') ?: '');
+
+        return $first !== '' ? $first : 'Customer';
+    }
+
+    /**
+     * Whatever follows the first word. "Kuza Panels" gives "Panels"; a
+     * one-word name gives a full stop, because Snippe will not take a blank
+     * and a real surname is not ours to invent.
+     */
+    private function lastName(string $name): string
+    {
+        $parts = preg_split('/\s+/', trim($name), 2) ?: [];
+
+        return trim($parts[1] ?? '') !== '' ? trim($parts[1]) : '.';
     }
 
     public function checkStatus(string $reference): ?string

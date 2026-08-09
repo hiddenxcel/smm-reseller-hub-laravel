@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BotCustomer;
+use App\Services\Customers\ActionOutcome;
 use App\Services\Customers\BulkCustomerAction;
 use App\Services\Customers\CustomerActions;
 use App\Services\Customers\CustomerFilters;
@@ -270,7 +271,7 @@ class CustomersController extends Controller
         ]);
     }
 
-    private function back(\App\Services\Customers\ActionOutcome $outcome): RedirectResponse
+    private function back(ActionOutcome $outcome): RedirectResponse
     {
         return Redirect::back()->with(
             $outcome->failed ? 'error' : 'success',

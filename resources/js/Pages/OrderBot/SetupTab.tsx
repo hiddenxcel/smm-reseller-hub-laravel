@@ -320,7 +320,11 @@ function LanguageAndSupportCard({
 }
 
 /** AI is two separate things — a subscription and a key — and it needs both. */
-function AiState({ ai }: { ai: { active: boolean; hasKey: boolean } }) {
+function AiState({
+    ai,
+}: {
+    ai: { active: boolean; hasKey: boolean; answersToday: number; answersTotal: number };
+}) {
     if (!ai.active) {
         return (
             <Note
@@ -343,7 +347,19 @@ function AiState({ ai }: { ai: { active: boolean; hasKey: boolean } }) {
         );
     }
 
-    return <Note icon={CircleCheck} tone="ok" text="AI support is ready." />;
+    return (
+        <div className="space-y-2">
+            <Note icon={CircleCheck} tone="ok" text="AI support is ready." />
+
+            {/* DeepSeek bills the reseller directly for every answer, and we
+                never see that invoice — this is the only place they can see
+                what their bot has been doing on their key. */}
+            <p className="text-xs text-muted-foreground">
+                {ai.answersToday} answered today · {ai.answersTotal} in total.
+                Your DeepSeek key is billed for each one.
+            </p>
+        </div>
+    );
 }
 
 function Note({

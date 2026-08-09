@@ -6,9 +6,13 @@ use App\Actions\Payments\CompleteTopup;
 use App\Http\Controllers\Controller;
 use App\Models\BotPayment;
 use App\Models\TenantPaymentGateway;
+use App\Services\Payments\BinancePayClient;
+use App\Services\Payments\CryptomusClient;
 use App\Services\Payments\Gateway;
 use App\Services\Payments\GatewayFactory;
+use App\Services\Payments\NowPaymentsClient;
 use App\Services\Payments\PayPalClient;
+use App\Services\Payments\StatusCheckable;
 use App\Services\Payments\WebhookVerifier;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -95,7 +99,7 @@ class PaymentWebhookController extends Controller
             return response('invalid signature', 401);
         }
 
-        if (! $this->reportsSuccess($request)) {
+        if (! $this->reportsSuccess($gateway, $request)) {
             return $this->ack('not a success event');
         }
 
@@ -114,7 +118,7 @@ class PaymentWebhookController extends Controller
      */
     private function reference(Request $request): ?string
     {
-        $payload = $request->all();
+        $payload = $this->flatten($request->all());
 
         $candidates = [
             'reference',
@@ -138,6 +142,12 @@ class PaymentWebhookController extends Controller
             'resource.purchase_units.0.custom_id',
             // Pesapal echoes the id we submitted.
             'OrderMerchantReference',
+            // Razorpay nests the entity that carries our reference_id, and
+            // which entity that is depends on the event.
+            'payload.payment_link.entity.reference_id',
+            'payload.payment.entity.notes.reference',
+            // Binance Pay, once its `data` string has been decoded below.
+            'merchantTradeNo',
         ];
 
         foreach ($candidates as $key) {
@@ -152,6 +162,31 @@ class PaymentWebhookController extends Controller
     }
 
     /**
+     * Binance Pay's payload nests the part that matters as a JSON *string*
+     * under `data`, so merchantTradeNo and bizStatus are invisible to
+     * data_get() until it is decoded.
+     *
+     * Merged into the top level rather than parsed separately, so the
+     * reference and status lookups keep working the way they do for every
+     * other gateway.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function flatten(array $payload): array
+    {
+        $data = $payload['data'] ?? null;
+
+        if (! is_string($data) || $data === '') {
+            return $payload;
+        }
+
+        $decoded = json_decode($data, true);
+
+        return is_array($decoded) ? [...$payload, ...$decoded] : $payload;
+    }
+
+    /**
      * For gateways whose notification carries no status: go and ask.
      *
      * Pesapal is explicit that its IPN withholds the result "for security
@@ -162,7 +197,7 @@ class PaymentWebhookController extends Controller
     {
         $client = $this->factory->make($credentials);
 
-        if (! method_exists($client, 'checkStatus')) {
+        if (! $client instanceof StatusCheckable) {
             return false;
         }
 
@@ -220,44 +255,78 @@ class PaymentWebhookController extends Controller
      * success may credit a wallet. Unrecognised shapes are treated as
      * not-success, which is the safe way to be wrong.
      */
-    private function reportsSuccess(Request $request): bool
+    private function reportsSuccess(string $gateway, Request $request): bool
     {
-        $payload = $request->all();
+        $payload = $this->flatten($request->all());
 
-        // Stripe and PayPal say what happened in an event name rather than a
+        // Binance Pay before anything else. Its envelope carries a top-level
+        // `status` of "SUCCESS" meaning only that the notification itself was
+        // built successfully — the payment's own outcome is bizStatus, and
+        // reading the wrong one would credit a wallet on a closed order.
+        $bizStatus = data_get($payload, 'bizStatus');
+
+        if (is_string($bizStatus)) {
+            return BinancePayClient::isPaidStatus($bizStatus);
+        }
+
+        // Several gateways say what happened in an event name rather than a
         // status field, so those are matched first — their payloads also carry
-        // a `status` that means something else entirely.
-        $event = data_get($payload, 'type') ?? data_get($payload, 'event_type');
+        // a `status` that means something else entirely. Razorpay is the clear
+        // case: `payload.payment.entity.status` reads "captured" on a refund
+        // event too, so only the event name can be trusted.
+        $event = data_get($payload, 'type')
+            ?? data_get($payload, 'event_type')
+            ?? data_get($payload, 'event');
 
         if (is_string($event)) {
             return in_array($event, [
+                // Stripe
                 'checkout.session.completed',
                 'checkout.session.async_payment_succeeded',
                 'payment_intent.succeeded',
+                // PayPal
                 PayPalClient::COMPLETED_EVENT,
+                // Paystack
+                'charge.success',
+                // Razorpay: the link being paid, and the payment behind it.
+                'payment_link.paid',
+                'payment.captured',
             ], true);
         }
 
+        $status = null;
+
         foreach (['status', 'payment_status', 'data.status', 'result.status'] as $key) {
-            $status = data_get($payload, $key);
+            $found = data_get($payload, $key);
 
-            if (! is_string($status)) {
-                continue;
+            if (is_string($found)) {
+                $status = $found;
+
+                break;
             }
+        }
 
-            return in_array(strtolower($status), [
+        if ($status === null) {
+            return false;
+        }
+
+        // Each gateway's own vocabulary, because the same word means different
+        // things to different providers. A shared word-list once decided this,
+        // and it credited NOWPayments' `confirmed` — a state where the customer
+        // has paid but the funds have not yet reached the reseller and may
+        // still fail — and Cryptomus's `wrong_amount`, where they underpaid.
+        return match ($gateway) {
+            'nowpayments' => NowPaymentsClient::isPaidStatus($status),
+            'cryptomus', 'heleket' => CryptomusClient::isPaidStatus($status),
+            default => in_array(strtolower($status), [
                 'success',
                 'succeeded',
                 'successful',
                 'completed',
                 'complete',
                 'paid',
-                'finished',
-                'confirmed',
-            ], true);
-        }
-
-        return false;
+            ], true),
+        };
     }
 
     private function ack(string $reason): Response

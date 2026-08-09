@@ -9,6 +9,7 @@ use App\Models\TenantPaymentGateway;
 use App\Services\Payments\Gateway;
 use App\Services\Payments\GatewayFactory;
 use App\Services\Payments\StartTopup;
+use App\Services\Payments\TopupResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -53,7 +54,7 @@ class TopupFlowTest extends TestCase
         ]);
     }
 
-    private function startTopup(string $amount = '10.00'): \App\Services\Payments\TopupResult
+    private function startTopup(string $amount = '10.00'): TopupResult
     {
         return app(StartTopup::class)->handle(
             tenantId: (int) $this->tenant->id,
@@ -359,6 +360,137 @@ class TopupFlowTest extends TestCase
     public function test_the_webhook_needs_no_csrf_token(): void
     {
         $this->postJson(route('webhooks.payment', 'snippe'), [])->assertOk();
+    }
+
+    // ---- the gateways added last -----------------------------------------
+
+    /**
+     * Paystack end to end. Its event name is `event`, not `type`, and its
+     * reference is nested under data — a payload the controller has to read
+     * correctly or the wallet is never credited.
+     */
+    public function test_a_signed_paystack_success_credits_the_wallet(): void
+    {
+        $this->connect('paystack', ['api_key_enc' => 'sk_live', 'webhook_secret_enc' => 'sk_live']);
+
+        Http::fake([
+            'api.paystack.co/*' => Http::response([
+                'status' => true,
+                'data' => ['authorization_url' => 'https://checkout.paystack.com/x'],
+            ]),
+        ]);
+
+        $payment = $this->startTopup('30.00')->payment;
+
+        $body = json_encode([
+            'event' => 'charge.success',
+            'data' => ['reference' => $payment->transaction_ref, 'status' => 'success'],
+        ]);
+
+        $this->call(
+            'POST',
+            route('webhooks.payment', 'paystack'),
+            [],
+            [],
+            [],
+            $this->serverHeaders(['x-paystack-signature' => hash_hmac('sha512', $body, 'sk_live')]),
+            $body,
+        )->assertOk();
+
+        $this->assertBalance('30.00');
+    }
+
+    public function test_an_unsigned_paystack_webhook_credits_nothing(): void
+    {
+        $this->connect('paystack', ['api_key_enc' => 'sk_live', 'webhook_secret_enc' => 'sk_live']);
+
+        Http::fake([
+            'api.paystack.co/*' => Http::response([
+                'status' => true,
+                'data' => ['authorization_url' => 'https://checkout.paystack.com/x'],
+            ]),
+        ]);
+
+        $payment = $this->startTopup('30.00')->payment;
+
+        $this->postJson(route('webhooks.payment', 'paystack'), [
+            'event' => 'charge.success',
+            'data' => ['reference' => $payment->transaction_ref],
+        ])->assertStatus(401);
+
+        $this->assertBalance('0.00');
+    }
+
+    /**
+     * Razorpay end to end: its reference rides in a nested entity, and the
+     * event name is the only trustworthy signal of success.
+     */
+    public function test_a_signed_razorpay_success_credits_the_wallet(): void
+    {
+        $this->connect('razorpay', ['extra_enc' => 'wh_secret']);
+
+        Http::fake(['api.razorpay.com/*' => Http::response(['short_url' => 'https://rzp.io/i/x'])]);
+
+        $payment = $this->startTopup('15.00')->payment;
+
+        $body = json_encode([
+            'event' => 'payment_link.paid',
+            'payload' => [
+                'payment_link' => [
+                    'entity' => ['reference_id' => $payment->transaction_ref, 'status' => 'paid'],
+                ],
+            ],
+        ]);
+
+        $this->call(
+            'POST',
+            route('webhooks.payment', 'razorpay'),
+            [],
+            [],
+            [],
+            $this->serverHeaders(['x-razorpay-signature' => hash_hmac('sha256', $body, 'wh_secret')]),
+            $body,
+        )->assertOk();
+
+        $this->assertBalance('15.00');
+    }
+
+    /**
+     * A refund carries a captured payment inside it. Reading the nested status
+     * instead of the event name would credit the wallet on a refund.
+     */
+    public function test_a_razorpay_refund_event_credits_nothing(): void
+    {
+        $this->connect('razorpay', ['extra_enc' => 'wh_secret']);
+
+        Http::fake(['api.razorpay.com/*' => Http::response(['short_url' => 'https://rzp.io/i/x'])]);
+
+        $payment = $this->startTopup('15.00')->payment;
+
+        $body = json_encode([
+            'event' => 'refund.created',
+            'payload' => [
+                'payment' => [
+                    'entity' => [
+                        'status' => 'captured',
+                        'notes' => ['reference' => $payment->transaction_ref],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->call(
+            'POST',
+            route('webhooks.payment', 'razorpay'),
+            [],
+            [],
+            [],
+            $this->serverHeaders(['x-razorpay-signature' => hash_hmac('sha256', $body, 'wh_secret')]),
+            $body,
+        )->assertOk();
+
+        $this->assertSame('pending', $payment->fresh()->status);
+        $this->assertBalance('0.00');
     }
 
     /** @param array<string, string> $headers */

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
  * initiate() creates the invoice and returns its checkout URL; the payer pays
  * there and NOWPayments POSTs an IPN callback back to us.
  */
-class NowPaymentsClient implements WebhookVerifier
+class NowPaymentsClient implements PaymentGateway, StatusCheckable, WebhookVerifier
 {
     private const INVOICE_URL = 'https://api.nowpayments.io/v1/invoice';
 
@@ -103,10 +103,18 @@ class NowPaymentsClient implements WebhookVerifier
         return hash_equals($expected, $signature);
     }
 
-    /** "finished"/"confirmed" means the crypto payment cleared. */
+    /**
+     * Only `finished` means the money reached us.
+     *
+     * The lifecycle is waiting → confirming → confirmed → sending → finished.
+     * `confirmed` sounds terminal but is not: the blockchain has confirmed the
+     * customer's transfer, and NOWPayments has still to forward it. A payment
+     * can be `confirmed` and then fail on the way. `partially_paid` means they
+     * sent less than the invoice and is never a success.
+     */
     public static function isPaidStatus(?string $status): bool
     {
-        return in_array($status, ['finished', 'confirmed'], true);
+        return $status === 'finished';
     }
 
     private function sortRecursive(array $data): array

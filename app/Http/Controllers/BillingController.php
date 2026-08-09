@@ -6,6 +6,7 @@ use App\Enums\ServiceKey;
 use App\Models\PlatformNumber;
 use App\Models\Subscription;
 use App\Models\SubscriptionPayment;
+use App\Models\Tenant;
 use App\Services\Billing\Checkout;
 use App\Services\Billing\PlatformGateways;
 use App\Services\Billing\Pricing;
@@ -17,6 +18,9 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
+// Inertia::location() answers with a plain Symfony response, not an Inertia
+// one, so the checkout's return type has to admit it.
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * What a reseller pays US.
@@ -189,7 +193,7 @@ class BillingController extends Controller
      * confirms it and ActivatePurchase replays the cart — which is what stops
      * an abandoned checkout handing out a free month.
      */
-    public function checkout(Request $request): RedirectResponse
+    public function checkout(Request $request): RedirectResponse|SymfonyResponse
     {
         $data = $request->validate([
             'services' => ['required', 'array', 'min:1'],
@@ -217,7 +221,7 @@ class BillingController extends Controller
             return back()->with('error', $exception->getMessage());
         }
 
-        return $this->sendToGateway($payment, $data['phone'] ?? null);
+        return $this->sendToGateway($payment, $request->user(), $data['phone'] ?? null);
     }
 
     /**
@@ -227,8 +231,11 @@ class BillingController extends Controller
      * credit, so it is abandoned rather than left hanging — otherwise a
      * reseller whose checkout broke quietly loses the credit it held.
      */
-    private function sendToGateway(SubscriptionPayment $payment, ?string $phone): RedirectResponse
-    {
+    private function sendToGateway(
+        SubscriptionPayment $payment,
+        Tenant $tenant,
+        ?string $phone,
+    ): RedirectResponse|SymfonyResponse {
         $client = PlatformGateways::make($payment->gateway);
 
         if ($client === null) {
@@ -249,6 +256,10 @@ class BillingController extends Controller
             currency: PlatformGateways::chargeCurrency($payment->gateway),
             webhookUrl: route('webhooks.billing', $payment->gateway),
             phone: (string) ($phone ?? ''),
+            // Unlike a chat customer, a reseller has both — and Snippe
+            // refuses an order that carries neither.
+            customerName: (string) $tenant->business_name,
+            customerEmail: (string) $tenant->email,
         ));
 
         if (! $initiation->started) {
@@ -265,6 +276,13 @@ class BillingController extends Controller
                 ->with('success', 'Check your phone for the payment prompt, then come back here.');
         }
 
-        return redirect()->away($initiation->redirectUrl);
+        // Inertia::location, not redirect()->away. The checkout button posts
+        // over XHR, and Inertia will not follow a 302 to another origin: it
+        // reads the response, finds no Inertia payload, and does nothing at
+        // all — the button appeared dead while the invoice had already been
+        // created. A 409 with X-Inertia-Location is the documented way to
+        // tell the client to leave the app, and it still works for a plain
+        // form post.
+        return Inertia::location($initiation->redirectUrl);
     }
 }

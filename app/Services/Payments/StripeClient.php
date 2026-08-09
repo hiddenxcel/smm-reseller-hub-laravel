@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
  * items, so the top-up becomes a one-off inline price rather than a product
  * in the reseller's catalogue.
  */
-class StripeClient implements WebhookVerifier
+class StripeClient implements PaymentGateway, WebhookVerifier
 {
     private const SESSIONS_URL = 'https://api.stripe.com/v1/checkout/sessions';
 

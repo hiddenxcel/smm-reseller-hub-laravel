@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
  *      Confirming a payment means calling back for the status, which is what
  *      `checkStatus` is for and why this gateway is marked `verify`.
  */
-class PesapalClient implements WebhookVerifier
+class PesapalClient implements IpnRegistrar, PaymentGateway, StatusCheckable, WebhookVerifier
 {
     private const BASE_URL = 'https://pay.pesapal.com/v3';
 

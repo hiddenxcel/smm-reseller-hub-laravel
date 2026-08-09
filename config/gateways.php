@@ -17,11 +17,13 @@
 |            it. Gateways marked false are still selectable so a reseller
 |            can store keys ahead of time, but show as "coming soon".
 |   verify — no webhook: the payer reports a reference we check ourselves.
-|   fields — the credential inputs, and which of the two encrypted columns
-|            (api_key_enc / webhook_secret_enc) each one lands in.
+|   fields — the credential inputs, and which of the three encrypted columns
+|            (api_key_enc / webhook_secret_enc / extra_enc) each one lands in.
 |
-| Making a gateway live later means adding a client, a case in the top-up
-| flow, and flipping ready to true. Nothing in the dashboard changes.
+| Adding a gateway means writing a client that implements PaymentGateway, one
+| line in GatewayFactory, and an entry here. The dashboard form, the bot's
+| payment menu and the webhook route all come from this file, so none of them
+| change. GatewayContractTest holds each new entry to that contract.
 |
 */
 
@@ -48,15 +50,20 @@ return [
     ],
 
     'binance' => [
-        'label' => 'Binance (USDT — Internal Transfer)',
+        'label' => 'Binance Pay (USDT / Crypto)',
         'type' => 'crypto',
         'ready' => true,
-        // No webhook: the customer sends USDT to the reseller's Binance ID and
-        // reports the order ID, which is verified against the Spot API.
-        'verify' => true,
+        // Binance Pay is a merchant API with a real webhook, so this is an
+        // ordinary signed-notification gateway. It was once configured as
+        // `verify` — the customer quoting an order id from an internal
+        // transfer — but no code was ever written for that, and the client
+        // that does exist is the merchant one.
+        //
+        // The credentials come from Binance Merchant → Developers, not from
+        // the Spot API keys used for trading; those cannot open an order.
         'fields' => [
-            ['name' => 'api_key', 'label' => 'Binance Spot API key (read)', 'store' => 'api_key'],
-            ['name' => 'webhook_secret', 'label' => 'Binance Spot API secret', 'store' => 'webhook_secret'],
+            ['name' => 'api_key', 'label' => 'Merchant API key', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Merchant API secret', 'store' => 'webhook_secret'],
         ],
     ],
 
@@ -114,6 +121,32 @@ return [
             ['name' => 'api_key', 'label' => 'Client ID', 'store' => 'api_key'],
             ['name' => 'webhook_secret', 'label' => 'Secret', 'store' => 'webhook_secret'],
             ['name' => 'extra', 'label' => 'Webhook ID', 'store' => 'extra'],
+        ],
+    ],
+
+    'paystack' => [
+        'label' => 'Paystack (West Africa)',
+        'type' => 'card',
+        'ready' => true,
+        // Paystack signs webhooks with the secret key itself and issues no
+        // separate webhook secret, so the reseller enters the one key and it
+        // is stored in both slots.
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'Secret key', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Secret key (again, for webhooks)', 'store' => 'webhook_secret'],
+        ],
+    ],
+
+    'razorpay' => [
+        'label' => 'Razorpay (India)',
+        'type' => 'card',
+        'ready' => true,
+        // Three values: the key pair for the API, plus the webhook secret the
+        // reseller chooses when they add the webhook in Razorpay's dashboard.
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'Key ID', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Key secret', 'store' => 'webhook_secret'],
+            ['name' => 'extra', 'label' => 'Webhook secret', 'store' => 'extra'],
         ],
     ],
 

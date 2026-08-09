@@ -49,28 +49,63 @@ return [
     | `charge_currency` is what the gateway is actually charged in, when that
     | differs from the price. Snippe is Tanzanian mobile money and settles in
     | TZS; the payment row stays in USD so accounting has one currency.
-    |
-    | Binance is deliberately absent: it has no webhook, so it needs the payer
-    | to report an order ID and a screen to verify it on. It can be added back
-    | once that flow is built.
+    */
+    /*
+    | `fields` describes what the settings screen asks for and where to find
+    | it. It lives here rather than in the component so adding a gateway is
+    | one edit: the form, the validation and the instructions all read from
+    | this. `store` names the column, because each provider calls its second
+    | secret something different.
     */
     'gateways' => [
         'snippe' => [
             'label' => 'Mobile Money',
             'type' => 'mobile',
             'charge_currency' => 'TZS',
+            'help' => 'Snippe settles M-Pesa, Tigo Pesa and Airtel Money in TZS. Find both values in your Snippe dashboard under API.',
+            'fields' => [
+                ['name' => 'api_key', 'label' => 'API key', 'store' => 'api_key', 'required' => true],
+                ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret', 'required' => true],
+            ],
         ],
         'cryptomus' => [
             'label' => 'Crypto (Cryptomus)',
             'type' => 'crypto',
+            'help' => 'From your Cryptomus merchant settings. The merchant UUID is on the same page as the payment API key.',
+            'fields' => [
+                ['name' => 'api_key', 'label' => 'Payment API key', 'store' => 'api_key', 'required' => true],
+                ['name' => 'extra', 'label' => 'Merchant UUID', 'store' => 'extra', 'required' => true],
+            ],
         ],
         'heleket' => [
             'label' => 'Crypto (Heleket)',
             'type' => 'crypto',
+            'help' => 'Heleket uses the same API as Cryptomus, so the two values mean the same things.',
+            'fields' => [
+                ['name' => 'api_key', 'label' => 'Payment API key', 'store' => 'api_key', 'required' => true],
+                ['name' => 'extra', 'label' => 'Merchant UUID', 'store' => 'extra', 'required' => true],
+            ],
         ],
         'nowpayments' => [
             'label' => 'Crypto (NOWPayments)',
             'type' => 'crypto',
+            'help' => 'The IPN secret is separate from the API key — generate it in NOWPayments under Settings → IPN, or payment confirmations will be rejected.',
+            'fields' => [
+                ['name' => 'api_key', 'label' => 'API key', 'store' => 'api_key', 'required' => true],
+                ['name' => 'webhook_secret', 'label' => 'IPN secret', 'store' => 'webhook_secret', 'required' => true],
+            ],
+        ],
+        'binance' => [
+            'label' => 'Crypto (Binance Pay)',
+            'type' => 'crypto',
+            // USDT is what Binance Pay settles a crypto order in, and the
+            // prices are already in USD, so the two line up 1:1.
+            'charge_currency' => 'USDT',
+            'help' => 'From Binance Merchant → Developers, not your Spot API keys — trading keys cannot open a Binance Pay order. Both values sign every request and every webhook.',
+            'fields' => [
+                ['name' => 'api_key', 'label' => 'Merchant API key', 'store' => 'api_key', 'required' => true],
+                ['name' => 'webhook_secret', 'label' => 'Merchant API secret', 'store' => 'webhook_secret', 'required' => true],
+            ],
         ],
     ],
 
