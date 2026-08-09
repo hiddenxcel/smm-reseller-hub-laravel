@@ -105,6 +105,19 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, zip, bcmath, intl
+          coverage: none
+
+      # Ziggy ships its JavaScript inside the Composer package, and both
+      # tsconfig.json and vite.config.js resolve `ziggy-js` to
+      # vendor/tightenco/ziggy. Without the vendor directory the SSR entry
+      # fails to typecheck, which fails the build before Vite ever runs.
+      - name: Install PHP dependencies
+        run: composer install --no-dev --no-interaction --prefer-dist --no-progress
+
       # Built here rather than on the VPS: vite needs more memory than a 4GB
       # box shared with another site can spare.
       - name: Build the front-end
