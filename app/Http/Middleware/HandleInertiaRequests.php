@@ -8,6 +8,7 @@ use App\Services\Admin\Impersonation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Middleware;
+use Tighten\Ziggy\Ziggy;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -35,6 +36,15 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
+            // The route list, for `route()` inside the page components.
+            //
+            // The browser gets this from Blade's @routes and hangs it off
+            // window; Node has no window, so under SSR the same list has to
+            // arrive as a prop. See resources/js/ssr.tsx, which binds it.
+            'ziggy' => fn () => [
+                ...(new Ziggy)->toArray(),
+                'location' => $request->url(),
+            ],
             'auth' => [
                 'user' => $request->user(),
                 // The admin behind the screen, if there is one. Present on both

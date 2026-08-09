@@ -16,20 +16,30 @@ import { useEffect, useRef, useState } from 'react';
 /**
  * Real pages now, not anchors. A link that only works from the landing page
  * is a link that breaks the moment someone follows it from anywhere else.
+ *
+ * Built inside the component rather than at module scope, because route() is
+ * not free to call at import time: under SSR it is bound per render from the
+ * route list Laravel sends, and a module-level call runs while Node is still
+ * loading the bundle — before there is anything to bind. See resources/js/ssr.tsx.
  */
-const RESOURCES = [
-    { href: route('api-docs'), label: 'API docs', note: 'Sell from your own site' },
-    { href: route('blog'), label: 'Blog', note: 'Notes on running a shop' },
-    { href: route('contact'), label: 'Contact', note: 'Talk to a person' },
-];
-
-const DIRECT = [
-    { href: route('features'), label: 'Features' },
-    { href: route('what-we-do'), label: 'Services' },
-    { href: route('pricing'), label: 'Pricing' },
-];
+function links() {
+    return {
+        resources: [
+            { href: route('api-docs'), label: 'API docs', note: 'Sell from your own site' },
+            { href: route('blog'), label: 'Blog', note: 'Notes on running a shop' },
+            { href: route('contact'), label: 'Contact', note: 'Talk to a person' },
+        ],
+        direct: [
+            { href: route('features'), label: 'Features' },
+            { href: route('what-we-do'), label: 'Services' },
+            { href: route('pricing'), label: 'Pricing' },
+        ],
+    };
+}
 
 export default function LandingNav() {
+    const { resources: RESOURCES, direct: DIRECT } = links();
+
     const [open, setOpen] = useState(false);
     const [productOpen, setProductOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);

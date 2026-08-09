@@ -4,7 +4,36 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        @php
+            /*
+             * Whether Node is rendering this page, decided before anything in
+             * the head is written.
+             *
+             * @inertiaHead further down prints the page's own <title> and
+             * <meta name="description">. The defaults below print the same two
+             * tags. With SSR on, both end up in the document: Inertia dedupes
+             * by the `inertia` attribute once React takes over in the browser,
+             * but a crawler reads the HTML as served and takes the first title
+             * it meets — the generic one, on every page.
+             *
+             * Dispatching here rather than reading a flag because there is no
+             * flag to read: the directives share $__inertiaSsrResponse, and
+             * whichever runs first is the one that calls Node. @inertia is in
+             * the body, so without this the head would be written before the
+             * answer was known. Guarded the same way the directives guard it,
+             * so this stays one render per request rather than two.
+             */
+            if (! isset($__inertiaSsrDispatched)) {
+                $__inertiaSsrDispatched = true;
+                $__inertiaSsrResponse = app(\Inertia\Ssr\Gateway::class)->dispatch($page);
+            }
+
+            $ssr = (bool) $__inertiaSsrResponse;
+        @endphp
+
+        @unless ($ssr)
+            <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        @endunless
 
         {{-- Icons. All generated from one source by `make_icons.py`, so the tab
              icon, the phone home screen and the in-app mark stay in step. --}}
@@ -54,20 +83,26 @@
              add a second one. Without it a page setting its own description
              leaves both in the document, and a crawler is free to read the
              wrong one. --}}
-        <meta inertia="description" name="description" content="{{ $seoDescription }}">
+        {{-- The keyed tags are the ones a page replaces, so under SSR they are
+             left to @inertiaHead. The unkeyed ones below are the same on every
+             page and are written here either way. --}}
+        @unless ($ssr)
+            <meta inertia="description" name="description" content="{{ $seoDescription }}">
+            <meta inertia="og:title" property="og:title" content="{{ $seoTitle }}">
+            <meta inertia="og:description" property="og:description" content="{{ $seoDescription }}">
+            <meta inertia="og:image" property="og:image" content="{{ $seoImage }}">
+            <meta inertia="twitter:title" name="twitter:title" content="{{ $seoTitle }}">
+            <meta inertia="twitter:description" name="twitter:description" content="{{ $seoDescription }}">
+            <meta inertia="twitter:image" name="twitter:image" content="{{ $seoImage }}">
+        @endunless
+
         <link rel="canonical" href="{{ $canonical }}">
 
         <meta property="og:type" content="website">
         <meta property="og:site_name" content="{{ config('app.name') }}">
-        <meta inertia="og:title" property="og:title" content="{{ $seoTitle }}">
-        <meta inertia="og:description" property="og:description" content="{{ $seoDescription }}">
-        <meta inertia="og:image" property="og:image" content="{{ $seoImage }}">
         <meta property="og:url" content="{{ $canonical }}">
 
         <meta name="twitter:card" content="summary_large_image">
-        <meta inertia="twitter:title" name="twitter:title" content="{{ $seoTitle }}">
-        <meta inertia="twitter:description" name="twitter:description" content="{{ $seoDescription }}">
-        <meta inertia="twitter:image" name="twitter:image" content="{{ $seoImage }}">
 
         {{-- Tells Google what kind of thing this is, which is what earns the
              richer result rather than a plain blue link. --}}

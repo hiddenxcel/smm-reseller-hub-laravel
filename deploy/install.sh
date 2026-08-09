@@ -313,6 +313,33 @@ ExecStart=/usr/bin/php$PHP_VERSION $APP_DIR/current/artisan queue:work --tries=3
 WantedBy=multi-user.target
 UNIT
 
+cat > /etc/systemd/system/smmhub-ssr.service <<UNIT
+[Unit]
+Description=Resellers Hub Inertia SSR renderer
+After=network.target
+
+[Service]
+Type=simple
+User=$APP_USER
+Group=$APP_USER
+Restart=always
+RestartSec=5
+
+# Node renders the React pages to HTML before nginx serves them, so a crawler
+# that does not run JavaScript still gets the words. If this process is down
+# Inertia falls back to client rendering: the site works, but the marketing
+# pages go back to being an empty div as far as Google and the WhatsApp link
+# preview are concerned. Hence Restart=always.
+#
+# It listens on loopback only (see config/inertia.php) and must stay that way:
+# it answers unauthenticated render requests, and its output is injected into
+# the page as trusted HTML.
+ExecStart=/usr/bin/node $APP_DIR/current/bootstrap/ssr/ssr.js
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
 cat > /etc/systemd/system/smmhub-schedule.service <<UNIT
 [Unit]
 Description=Resellers Hub scheduler
@@ -338,13 +365,14 @@ UNIT
 cat > /etc/sudoers.d/$APP_USER-deploy <<SUDO
 $APP_USER ALL=(root) NOPASSWD: /bin/systemctl restart php$PHP_VERSION-fpm
 $APP_USER ALL=(root) NOPASSWD: /bin/systemctl restart smmhub-queue
-$APP_USER ALL=(root) NOPASSWD: /bin/systemctl restart php$PHP_VERSION-fpm smmhub-queue
+$APP_USER ALL=(root) NOPASSWD: /bin/systemctl restart smmhub-ssr
+$APP_USER ALL=(root) NOPASSWD: /bin/systemctl restart php$PHP_VERSION-fpm smmhub-queue smmhub-ssr
 SUDO
 chmod 440 /etc/sudoers.d/$APP_USER-deploy
 visudo -cf /etc/sudoers.d/$APP_USER-deploy >/dev/null
 
 systemctl daemon-reload
-systemctl enable --now smmhub-queue.service smmhub-schedule.timer >/dev/null
+systemctl enable --now smmhub-queue.service smmhub-ssr.service smmhub-schedule.timer >/dev/null
 
 # ---------------------------------------------------------------------------
 say "Adding the nginx site"

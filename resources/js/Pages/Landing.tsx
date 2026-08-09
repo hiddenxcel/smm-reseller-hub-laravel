@@ -15,7 +15,7 @@ import TryOnWhatsApp from '@/components/landing/TryOnWhatsApp';
 import { Section, SectionHeading } from '@/components/landing/Section';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     BadgeCheck,
     Bot,
@@ -165,6 +165,7 @@ const FAQS = [
 
 export default function Landing({ plans, gateways, demoNumber }: Props) {
     const planList = Object.entries(plans);
+    const { ziggy } = usePage().props;
 
     return (
         <>
@@ -198,6 +199,19 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                     name="twitter:description"
                     content="Sell followers, likes and views on WhatsApp around the clock — paid by mobile money or crypto, on top of the panel you already run."
                     head-key="twitter:description"
+                />
+                {/* Restated for the same reason as the rest: under SSR the
+                    keyed tags a page emits are the whole set, and this is the
+                    page most likely to be pasted into a WhatsApp group. */}
+                <meta
+                    property="og:image"
+                    content={`${ziggy.url}/logo.png`}
+                    head-key="og:image"
+                />
+                <meta
+                    name="twitter:image"
+                    content={`${ziggy.url}/logo.png`}
+                    head-key="twitter:image"
                 />
             </Head>
 

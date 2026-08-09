@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\BlogPost;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Ssr\Gateway;
+use Inertia\Ssr\Response;
 use Tests\TestCase;
 
 /**
@@ -158,6 +160,52 @@ class SeoTest extends TestCase
                 "{$path} should carry exactly one description",
             );
         }
+    }
+
+    /**
+     * The same rule as above, on the path that made it fragile.
+     *
+     * With SSR on, the page's own tags are printed into the document by the
+     * inertiaHead directive rather than swapped in by the browser, so the
+     * Blade defaults would be a second title and a second description sitting
+     * above them. Inertia's keying does not help — that runs in the browser,
+     * and a crawler reads the bytes as served, taking the first title it meets.
+     *
+     * Faked rather than run against Node: booting the renderer in a test would
+     * make this suite depend on a built bundle. What is being asserted is that
+     * the Blade template steps aside when something else is providing the
+     * head, which is decided by the gateway's answer either way.
+     */
+    public function test_a_server_rendered_page_carries_no_duplicate_head_tags(): void
+    {
+        $this->app->bind(Gateway::class, fn () => new class implements Gateway
+        {
+            public function dispatch(array $page): ?Response
+            {
+                return new Response(
+                    head: '<title inertia>A Page - Resellers Hub</title>'
+                        .'<meta name="description" content="The page\'s own." inertia="description">',
+                    body: '<div id="app"><h1>A Page</h1></div>',
+                );
+            }
+        });
+
+        $body = $this->get('/')->getContent();
+
+        $this->assertSame(
+            1,
+            preg_match_all('#<title#', $body),
+            'a server-rendered page should carry exactly one title',
+        );
+
+        $this->assertSame(
+            1,
+            preg_match_all('#<meta[^>]+name="description"#', $body),
+            'a server-rendered page should carry exactly one description',
+        );
+
+        // The page's own, not the generic default it would otherwise sit under.
+        $this->assertStringContainsString('A Page - Resellers Hub', $body);
     }
 
     /** Malformed JSON-LD is not an error anywhere — it is simply ignored. */

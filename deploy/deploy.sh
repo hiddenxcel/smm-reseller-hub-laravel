@@ -39,6 +39,7 @@ rollback() {
     sudo -u user $PHP artisan view:cache   >/dev/null 2>&1
     sudo -u user $PHP artisan up           >/dev/null 2>&1
     systemctl restart smmhub-queue 2>/dev/null
+    systemctl restart smmhub-ssr 2>/dev/null
     fail "Rolled back. The site is on the previous commit."
     exit 1
 }
@@ -78,6 +79,19 @@ else
     rollback
 fi
 
+# The SSR bundle, built by the same CI job. Missing it is not fatal: Inertia
+# falls back to rendering in the browser, so the site works. What it costs is
+# the reason SSR is here at all — crawlers and link previews go back to seeing
+# an empty page — so it is loud rather than silent.
+if [ -f /tmp/ssr.tar.gz ]; then
+    sudo -u user rm -rf bootstrap/ssr
+    sudo -u user tar -xzf /tmp/ssr.tar.gz -C bootstrap
+    rm -f /tmp/ssr.tar.gz
+    echo "ssr bundle in place"
+else
+    fail "No ssr.tar.gz — pages will render in the browser only (bad for search)"
+fi
+
 # ---------------------------------------------------------------------------
 say "Migrating"
 
@@ -96,12 +110,23 @@ sudo -u user chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 # ---------------------------------------------------------------------------
 say "Restarting the worker"
 
-# It holds the old code in memory until it is restarted.
+# They hold the old code in memory until they are restarted.
 systemctl restart smmhub-queue
 sleep 3
 systemctl is-active --quiet smmhub-queue \
     || { fail "Queue worker did not come back"; rollback; }
 echo "queue: active"
+
+# Not a rollback if this one fails: a dead renderer costs the site its search
+# visibility, not its ability to serve. Rolling the whole deploy back over it
+# would be the larger outage.
+systemctl restart smmhub-ssr 2>/dev/null || true
+sleep 3
+if systemctl is-active --quiet smmhub-ssr; then
+    echo "ssr: active"
+else
+    fail "SSR renderer is down — pages still serve, but search engines see an empty page"
+fi
 
 # ---------------------------------------------------------------------------
 say "Bringing the site back"

@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 
 /**
  * Per-page search and social tags.
@@ -14,7 +14,7 @@ import { Head } from '@inertiajs/react';
 export default function Seo({
     title,
     description,
-    /** Absolute URL. Falls back to the site logo set in Blade. */
+    /** Absolute URL. Defaults to the site logo. */
     image,
 }: {
     title: string;
@@ -22,6 +22,17 @@ export default function Seo({
     image?: string;
 }) {
     const fullTitle = `${title} — Resellers Hub`;
+
+    // Spelled out rather than left to Blade. Blade's copy is only written when
+    // the page is not server-rendered — under SSR these keyed tags are the
+    // whole set — so a page that names no image needs one supplied here, or a
+    // shared link unfurls as a bare title with an empty square where the card
+    // image goes.
+    //
+    // The origin comes from the shared Ziggy prop rather than from window,
+    // which does not exist in the Node process that renders this page.
+    const { ziggy } = usePage().props;
+    const card = image ?? `${ziggy?.url ?? ''}/logo.png`;
 
     return (
         <Head title={title}>
@@ -41,12 +52,8 @@ export default function Seo({
                 head-key="twitter:description"
             />
 
-            {image && (
-                <>
-                    <meta property="og:image" content={image} head-key="og:image" />
-                    <meta name="twitter:image" content={image} head-key="twitter:image" />
-                </>
-            )}
+            <meta property="og:image" content={card} head-key="og:image" />
+            <meta name="twitter:image" content={card} head-key="twitter:image" />
         </Head>
     );
 }
