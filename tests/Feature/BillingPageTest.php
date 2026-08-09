@@ -185,6 +185,39 @@ class BillingPageTest extends TestCase
         $this->assertDatabaseCount('subscriptions', 0);
     }
 
+    /**
+     * The Pay button posts over XHR, and this is the response that decides
+     * whether the reseller ever reaches the gateway.
+     *
+     * A 302 to another origin is useless here: the browser's fetch follows it
+     * silently, Inertia gets the gateway's HTML instead of an Inertia payload,
+     * and the page simply does not move — the button looked dead while the
+     * invoice had already been created. Inertia's answer is a 409 carrying
+     * X-Inertia-Location, which the client turns into a real navigation.
+     *
+     * Asserting on the status is what makes this test bite. The plain-POST
+     * test above passes with either implementation, because Laravel's test
+     * client follows redirects that a browser would not, and
+     * `assertRedirect` would be satisfied by the very bug this pins.
+     */
+    public function test_the_checkout_sends_an_inertia_request_out_to_the_gateway(): void
+    {
+        Http::fake(['*' => Http::response(['state' => 0, 'result' => ['url' => 'https://pay.example/abc']])]);
+
+        $response = $this->actingAs($this->tenant)
+            ->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => ''])
+            ->post(route('billing.checkout'), [
+                'services' => ['order_bot'],
+                'months' => 1,
+                'gateway' => 'cryptomus',
+            ]);
+
+        // 409, not 302: a redirect status here means the reseller never
+        // leaves the billing page.
+        $response->assertStatus(409);
+        $response->assertHeader('x-inertia-location', 'https://pay.example/abc');
+    }
+
     public function test_an_empty_cart_is_refused(): void
     {
         $this->actingAs($this->tenant)->post(route('billing.checkout'), [

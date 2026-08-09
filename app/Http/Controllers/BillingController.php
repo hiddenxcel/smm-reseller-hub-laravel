@@ -18,6 +18,9 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
+// Inertia::location() answers with a plain Symfony response, not an Inertia
+// one, so the checkout's return type has to admit it.
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * What a reseller pays US.
@@ -190,7 +193,7 @@ class BillingController extends Controller
      * confirms it and ActivatePurchase replays the cart — which is what stops
      * an abandoned checkout handing out a free month.
      */
-    public function checkout(Request $request): RedirectResponse
+    public function checkout(Request $request): RedirectResponse|SymfonyResponse
     {
         $data = $request->validate([
             'services' => ['required', 'array', 'min:1'],
@@ -232,7 +235,7 @@ class BillingController extends Controller
         SubscriptionPayment $payment,
         Tenant $tenant,
         ?string $phone,
-    ): RedirectResponse {
+    ): RedirectResponse|SymfonyResponse {
         $client = PlatformGateways::make($payment->gateway);
 
         if ($client === null) {
@@ -273,6 +276,13 @@ class BillingController extends Controller
                 ->with('success', 'Check your phone for the payment prompt, then come back here.');
         }
 
-        return redirect()->away($initiation->redirectUrl);
+        // Inertia::location, not redirect()->away. The checkout button posts
+        // over XHR, and Inertia will not follow a 302 to another origin: it
+        // reads the response, finds no Inertia payload, and does nothing at
+        // all — the button appeared dead while the invoice had already been
+        // created. A 409 with X-Inertia-Location is the documented way to
+        // tell the client to leave the app, and it still works for a plain
+        // form post.
+        return Inertia::location($initiation->redirectUrl);
     }
 }

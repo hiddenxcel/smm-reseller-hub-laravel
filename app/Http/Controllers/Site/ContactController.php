@@ -28,7 +28,10 @@ class ContactController extends Controller
             'website.size' => 'That submission looked automated.',
         ]);
 
-        $to = config('mail.from.address');
+        // A mailbox somebody opens, not the noreply@ everything is sent from.
+        // These were the same address, so every message the form collected was
+        // delivered to an account with no reader and no forwarding.
+        $to = config('mail.contact_to');
 
         if (blank($to)) {
             throw ValidationException::withMessages([

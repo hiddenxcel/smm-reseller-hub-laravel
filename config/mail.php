@@ -115,4 +115,20 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Where contact-form messages go
+    |--------------------------------------------------------------------------
+    |
+    | Deliberately not the From address. Outgoing mail is sent as a noreply@
+    | that nobody reads — sending the contact form there means a visitor writes
+    | in and nobody ever sees it. This is a mailbox a person actually opens.
+    |
+    | Falls back to the From address so a deployment that has not set it keeps
+    | the old behaviour rather than failing to send at all.
+    |
+    */
+
+    'contact_to' => env('MAIL_CONTACT_ADDRESS', env('MAIL_FROM_ADDRESS')),
+
 ];
