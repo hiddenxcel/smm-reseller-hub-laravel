@@ -19,6 +19,9 @@ class DatabaseSeeder extends Seeder
             // duplicating — which is what makes it safe to edit a post here
             // and re-seed.
             BlogSeeder::class,
+            // What the website assistant may say. Idempotent on the question,
+            // for the same reason as the posts above.
+            AssistantKnowledgeSeeder::class,
         ]);
 
         // ResponseTemplateSeeder (18 keys x 3 langs) is ported alongside the

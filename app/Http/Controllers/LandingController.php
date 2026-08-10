@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Plan;
+use App\Services\Assistant\AssistantKey;
 use App\Services\Payments\Gateway;
 use Illuminate\Support\Arr;
 use Inertia\Inertia;
@@ -54,6 +55,7 @@ class LandingController extends Controller
             // Null until DEMO_WHATSAPP_NUMBER is set, and the button hides
             // itself — an unanswered chat reads as a broken product.
             'demoNumber' => config('services.demo_whatsapp_number'),
+            'assistantEnabled' => AssistantKey::isReady(),
         ]);
     }
 }

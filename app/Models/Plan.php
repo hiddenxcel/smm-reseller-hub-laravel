@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ServiceKey;
+use App\Services\Assistant\PlatformContext;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -38,6 +39,15 @@ class Plan extends Model
             'price_monthly' => 'decimal:2',
             'price_yearly' => 'decimal:2',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // The website assistant quotes these prices from a cached prompt. A
+        // price changed in the console has to change what it says immediately
+        // — a visitor quoted yesterday's figure arrives expecting it.
+        static::saved(fn () => PlatformContext::forget());
+        static::deleted(fn () => PlatformContext::forget());
     }
 
     public static function forService(ServiceKey|string $service): ?self

@@ -4,6 +4,7 @@ use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\BlockListedIps;
 use App\Http\Middleware\EnsureAdminIsActive;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\LockDemoAccount;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -58,6 +59,11 @@ return Application::configure(basePath: dirname(__DIR__))
             // Listing routes to protect would mean a new one is unprotected by
             // default, which is the wrong way round for this.
             BlockDuringImpersonation::class,
+            // Same reasoning, different reader: the demo account's password is
+            // published, so every route it can reach is one a stranger can
+            // post to. Group-wide, so a route added next month is locked
+            // without anyone remembering to lock it.
+            LockDemoAccount::class,
         ]);
 
         $middleware->alias([

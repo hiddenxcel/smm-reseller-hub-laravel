@@ -33,6 +33,7 @@ type PlanSummary = {
 type Props = {
     plans: Record<string, PlanSummary>;
     demoNumber: string | null;
+    assistantEnabled: boolean;
 };
 
 /**
@@ -170,13 +171,14 @@ const EVERYTHING = [
     { icon: Bot, title: 'API access', body: 'Place orders from your own site or software.' },
 ];
 
-export default function Features({ plans, demoNumber }: Props) {
+export default function Features({ plans, demoNumber, assistantEnabled }: Props) {
     return (
         <PublicLayout
             eyebrow="Features"
             title="Everything the shop needs to run itself"
             description="Five services, sold separately. Take the one that solves today's problem and add the rest when it becomes tomorrow's."
             demoNumber={demoNumber}
+            assistantEnabled={assistantEnabled}
         >
             <Seo
                 title="Features"

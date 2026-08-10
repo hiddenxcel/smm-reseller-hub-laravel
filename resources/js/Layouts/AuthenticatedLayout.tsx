@@ -1,4 +1,5 @@
 import AppLogo from '@/components/AppLogo';
+import DemoBanner from '@/components/DemoBanner';
 import ImpersonationBanner from '@/components/ImpersonationBanner';
 import { Toaster } from '@/components/ui/sonner';
 import { useFlashToasts } from '@/hooks/useFlashToasts';
@@ -174,6 +175,10 @@ export default function AuthenticatedLayout({
             {/* Above the grid, not inside it: while an admin is viewing this
                 account the warning has to span the sidebar too. */}
             <ImpersonationBanner />
+
+            {/* Same reasoning, different reader: this account's password is
+                published, so whoever is looking did not set it up. */}
+            <DemoBanner />
 
             <div className="lg:grid lg:grid-cols-[248px_1fr]">
 

@@ -70,6 +70,7 @@ class AddAction implements ApiAction
                 'panel_id' => $service->panel_id,
                 'provider_service_id' => $service->provider_service_id,
                 'name' => $service->name,
+                'cost_price' => $service->cost_price === null ? null : (string) $service->cost_price,
             ],
             link: (string) $request->input('link'),
             quantity: $quantity,

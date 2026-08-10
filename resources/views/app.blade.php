@@ -187,5 +187,26 @@
     </head>
     <body class="font-sans antialiased">
         @inertia
+
+        {{-- Analytics.
+
+             Cloudflare rather than Google: a ~2KB beacon against ~50KB, no
+             cookies and so no consent banner to argue about, and nothing to
+             run on the box — a self-hosted Node dashboard was tried first and
+             could not be built on one CPU.
+
+             Last in the body and deferred, so it never delays first paint.
+             Page speed is itself a ranking signal, which makes a heavy
+             analytics script a thing that costs rankings to measure them.
+
+             Absent until the token is set, so a local or staging run does not
+             report itself as production traffic. --}}
+        @if (config('services.cloudflare_analytics_token'))
+            <script
+                defer
+                src="https://static.cloudflareinsights.com/beacon.min.js"
+                data-cf-beacon='@json(['token' => config('services.cloudflare_analytics_token')])'
+            ></script>
+        @endif
     </body>
 </html>

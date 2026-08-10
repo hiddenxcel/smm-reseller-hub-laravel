@@ -65,6 +65,35 @@ type Props = {
     trend: Array<{ date: string; revenue: number; orders: number }>;
     statusMix: Record<OrderStatus, number>;
     topServices: Array<{ name: string; orders: number; revenue: number }>;
+    profit: {
+        summary: {
+            revenue: number;
+            cost: number;
+            profit: number;
+            margin: number | null;
+            previousProfit: number;
+            delta: number | null;
+            measuredOrders: number;
+            totalOrders: number;
+            coverage: number | null;
+        };
+        byService: Array<{
+            name: string;
+            orders: number;
+            revenue: number;
+            cost: number;
+            profit: number;
+            margin: number | null;
+        }>;
+        underwater: Array<{
+            id: number;
+            name: string;
+            platform: string;
+            myPrice: number;
+            costPrice: number;
+            lossPerThousand: number;
+        }>;
+    };
     panels: Array<{
         id: number;
         name: string;
@@ -72,6 +101,7 @@ type Props = {
         currency: string | null;
         checkedAt: string | null;
         status: string;
+        lowBalance: boolean;
     }>;
     recentOrders: Array<{
         id: number;
@@ -144,6 +174,7 @@ export default function Dashboard({
     trend,
     statusMix,
     topServices,
+    profit,
     panels,
     recentOrders,
     recentTickets,
@@ -236,6 +267,10 @@ export default function Dashboard({
                         />
                     </div>
                 </section>
+
+                {/* Directly under revenue, because it is the correction to it:
+                    turnover above, what is left of it here. */}
+                <ProfitSection profit={profit} />
 
                 <section className="grid gap-6 lg:grid-cols-2" aria-label="Trends">
                     <ChartCard
@@ -427,29 +462,7 @@ export default function Dashboard({
                         ) : (
                             <ul className="space-y-3">
                                 {panels.map((panel) => (
-                                    <li
-                                        key={panel.id}
-                                        className="flex items-center justify-between gap-3 text-sm"
-                                    >
-                                        <span className="flex min-w-0 items-center gap-2.5">
-                                            <Package className="size-4 shrink-0 text-muted-foreground" />
-                                            <span className="min-w-0 truncate">{panel.name}</span>
-                                        </span>
-                                        <span className="shrink-0 text-right">
-                                            {panel.balance !== null ? (
-                                                <span className="[font-variant-numeric:tabular-nums]">
-                                                    {formatMoney(
-                                                        panel.balance,
-                                                        panel.currency ?? 'USD',
-                                                    )}
-                                                </span>
-                                            ) : (
-                                                <span className="text-muted-foreground">
-                                                    Balance unknown
-                                                </span>
-                                            )}
-                                        </span>
-                                    </li>
+                                    <PanelRow key={panel.id} panel={panel} />
                                 ))}
                             </ul>
                         )}
@@ -507,6 +520,205 @@ function BotHealthPill({
                 </p>
             </div>
         </div>
+    );
+}
+
+/**
+ * What the shop actually earned, and which services are eating it.
+ *
+ * Kept out of the KPI row above deliberately. Revenue and profit look alike as
+ * two tiles side by side, and they are not alike at all — a reseller reading
+ * quickly needs the second to correct the first, not to sit beside it as
+ * another number of the same kind.
+ */
+function ProfitSection({ profit }: { profit: Props['profit'] }) {
+    const { summary, byService, underwater } = profit;
+
+    // Nothing measurable yet: no paid orders carrying a cost. Saying so beats
+    // a row of confident zeroes, which reads as "you made nothing".
+    if (summary.measuredOrders === 0 && underwater.length === 0) {
+        return null;
+    }
+
+    const losing = summary.profit < 0;
+
+    return (
+        <section className="grid gap-6 lg:grid-cols-3" aria-label="Profit">
+            <Card
+                title="Profit"
+                subtitle="What you kept, last 30 days"
+                className="lg:col-span-1"
+            >
+                <p
+                    className="font-heading text-3xl font-extrabold tracking-tight [font-variant-numeric:tabular-nums]"
+                    style={losing ? { color: STATUS_COLORS.failed } : undefined}
+                >
+                    {formatMoney(summary.profit)}
+                </p>
+
+                <dl className="mt-4 space-y-1.5 text-sm">
+                    <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">Sold for</dt>
+                        <dd className="[font-variant-numeric:tabular-nums]">
+                            {formatMoney(summary.revenue)}
+                        </dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">Cost at panel</dt>
+                        <dd className="[font-variant-numeric:tabular-nums]">
+                            {formatMoney(summary.cost)}
+                        </dd>
+                    </div>
+                    {summary.margin !== null && (
+                        <div className="flex justify-between gap-3 border-t border-border pt-1.5">
+                            <dt className="text-muted-foreground">Margin</dt>
+                            <dd className="[font-variant-numeric:tabular-nums] font-semibold">
+                                {summary.margin}%
+                            </dd>
+                        </div>
+                    )}
+                </dl>
+
+                {/* A margin drawn from a fraction of the orders has to say so,
+                    or it reads as the whole picture. */}
+                {summary.coverage !== null && summary.coverage < 100 && (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                        Based on {summary.measuredOrders} of {summary.totalOrders} paid orders —
+                        the rest were placed before costs were recorded.
+                    </p>
+                )}
+            </Card>
+
+            <Card
+                title="Margin by service"
+                subtitle="Thinnest first — these are the ones to reprice"
+                className="lg:col-span-2"
+            >
+                {byService.length === 0 ? (
+                    <Empty>No orders with a recorded cost yet.</Empty>
+                ) : (
+                    <ul className="space-y-3">
+                        {byService.map((service) => (
+                            <li key={service.name} className="text-sm">
+                                <div className="flex items-baseline justify-between gap-3">
+                                    <span className="min-w-0 truncate">{service.name}</span>
+                                    <span
+                                        className="shrink-0 [font-variant-numeric:tabular-nums]"
+                                        style={
+                                            service.profit < 0
+                                                ? { color: STATUS_COLORS.failed }
+                                                : undefined
+                                        }
+                                    >
+                                        {formatMoney(service.profit)}
+                                        {service.margin !== null && (
+                                            <span className="ml-2 text-xs text-muted-foreground">
+                                                {service.margin}%
+                                            </span>
+                                        )}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    {service.orders} {service.orders === 1 ? 'order' : 'orders'} ·{' '}
+                                    {formatMoney(service.revenue)} in, {formatMoney(service.cost)}{' '}
+                                    out
+                                </p>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+
+                {/* Read from the catalogue rather than from orders, so a badly
+                    priced service is caught before anyone buys one. */}
+                {underwater.length > 0 && (
+                    <div className="mt-5 rounded-lg border border-border p-3.5">
+                        <p
+                            className="flex items-center gap-1.5 text-sm font-semibold"
+                            style={{ color: STATUS_COLORS.failed }}
+                        >
+                            <TriangleAlert className="size-4 shrink-0" />
+                            {underwater.length}{' '}
+                            {underwater.length === 1 ? 'service is' : 'services are'} priced at or
+                            below cost
+                        </p>
+                        <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                            {underwater.map((service) => (
+                                <li key={service.id} className="flex justify-between gap-3">
+                                    <span className="min-w-0 truncate">{service.name}</span>
+                                    <span className="shrink-0 [font-variant-numeric:tabular-nums]">
+                                        {formatMoney(service.myPrice)} vs{' '}
+                                        {formatMoney(service.costPrice)} per 1,000
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <Link
+                            href={route('services.index')}
+                            className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                        >
+                            Fix pricing
+                            <ArrowRight className="size-3" />
+                        </Link>
+                    </div>
+                )}
+            </Card>
+        </section>
+    );
+}
+
+/**
+ * One panel: what it holds, and whether it is answering.
+ *
+ * A panel that has stopped responding is the failure a reseller cannot
+ * otherwise see — the balance beside it is simply the last figure we managed
+ * to read, and showing it alone would keep claiming everything is fine. So the
+ * state leads and the balance is marked stale, rather than the reverse.
+ *
+ * Same rule as the bot pills: an icon and words carry the state, never hue.
+ */
+function PanelRow({ panel }: { panel: Props['panels'][number] }) {
+    const down = panel.status === 'error';
+
+    return (
+        <li className="flex items-center justify-between gap-3 text-sm">
+            <span className="flex min-w-0 items-center gap-2.5">
+                <Package className="size-4 shrink-0 text-muted-foreground" />
+                <span className="min-w-0">
+                    <span className="block truncate">{panel.name}</span>
+                    {down && (
+                        <span
+                            className="flex items-center gap-1 text-xs"
+                            style={{ color: STATUS_COLORS.failed }}
+                        >
+                            <XCircle className="size-3 shrink-0" />
+                            Not responding
+                        </span>
+                    )}
+                    {!down && panel.lowBalance && (
+                        <span
+                            className="flex items-center gap-1 text-xs"
+                            style={{ color: STATUS_COLORS.pending }}
+                        >
+                            <TriangleAlert className="size-3 shrink-0" />
+                            Running low — top up
+                        </span>
+                    )}
+                </span>
+            </span>
+            <span className="shrink-0 text-right">
+                {panel.balance !== null ? (
+                    <span
+                        className={`[font-variant-numeric:tabular-nums] ${
+                            down ? 'text-muted-foreground line-through' : ''
+                        }`}
+                    >
+                        {formatMoney(panel.balance, panel.currency ?? 'USD')}
+                    </span>
+                ) : (
+                    <span className="text-muted-foreground">Balance unknown</span>
+                )}
+            </span>
+        </li>
     );
 }
 

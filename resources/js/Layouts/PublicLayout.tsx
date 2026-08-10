@@ -1,7 +1,7 @@
+import AssistantWidget from '@/components/assistant/AssistantWidget';
 import LandingNav from '@/components/landing/LandingNav';
 import PublicFooter from '@/components/landing/PublicFooter';
 import Reveal from '@/components/landing/Reveal';
-import TryOnWhatsApp from '@/components/landing/TryOnWhatsApp';
 import { PropsWithChildren, ReactNode } from 'react';
 
 /**
@@ -17,12 +17,14 @@ export default function PublicLayout({
     title,
     description,
     demoNumber,
+    assistantEnabled,
     children,
 }: PropsWithChildren<{
     eyebrow?: string;
     title: string;
     description?: ReactNode;
     demoNumber?: string | null;
+    assistantEnabled?: boolean;
 }>) {
     return (
         <div className="min-h-dvh bg-background">
@@ -60,7 +62,9 @@ export default function PublicLayout({
 
             <PublicFooter demoNumber={demoNumber} />
 
-            <TryOnWhatsApp number={demoNumber} />
+            {/* Hidden entirely without a key behind it: a chat that cannot
+                answer reads as a broken product, not a missing feature. */}
+            {assistantEnabled && <AssistantWidget demoNumber={demoNumber} />}
         </div>
     );
 }

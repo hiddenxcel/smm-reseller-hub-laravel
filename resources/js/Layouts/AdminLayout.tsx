@@ -21,6 +21,7 @@ import {
     Settings,
     Shield,
     ShieldCheck,
+    Sparkles,
     Sun,
     Tags,
     Ticket,
@@ -123,6 +124,11 @@ const SECTIONS: NavSection[] = [
         label: 'Analytics',
         items: [
             { label: 'Reports', icon: TrendingUp, routeName: 'admin.reports' },
+            {
+                label: 'AI Assistant',
+                icon: Sparkles,
+                routeName: 'admin.assistant.index',
+            },
             {
                 label: 'Announcements',
                 icon: Megaphone,

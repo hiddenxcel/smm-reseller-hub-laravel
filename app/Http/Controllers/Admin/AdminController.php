@@ -40,4 +40,24 @@ abstract class AdminController extends Controller
     {
         return $this->admin()->can($ability);
     }
+
+    protected function isOwner(): bool
+    {
+        return $this->admin()->role === 'owner';
+    }
+
+    /**
+     * Refuse anyone but an owner.
+     *
+     * A grade check rather than a named ability, and deliberately so: `owner`
+     * is the grade holding `*`, so an ability string would also be granted to
+     * whatever a future role change hands the wildcard to. What sits behind
+     * this — credentials, admin accounts — should not widen by accident.
+     */
+    protected function authoriseOwner(string $what = 'reach this'): void
+    {
+        if (! $this->isOwner()) {
+            abort(403, "Only an owner can {$what}.");
+        }
+    }
 }

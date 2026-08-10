@@ -6,6 +6,7 @@ use App\Models\ApiKey;
 use App\Models\BotCustomer;
 use App\Services\Api\ApiLogger;
 use App\Services\Api\ApiRateLimiter;
+use App\Services\Demo\DemoAccount;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +24,15 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class AuthenticateApiKey
 {
+    /**
+     * What the demo account may still do over the API.
+     *
+     * The read-only actions of the v2 standard. `add` and `refill` are absent
+     * because both spend a customer's wallet and reach a panel — see the check
+     * in handle().
+     */
+    private const DEMO_READABLE = ['services', 'balance', 'status'];
+
     public function __construct(
         private ApiRateLimiter $limiter,
         private ApiLogger $logger,
@@ -65,6 +75,22 @@ class AuthenticateApiKey
         // closed" is what they need to know.
         if ($tenant === null || $tenant->status !== 'active') {
             return $this->refuse($request, 'This shop is not accepting orders', $key);
+        }
+
+        // The demo account is read-only, and this API is outside the web group
+        // — so LockDemoAccount never sees these requests. Without this, a
+        // published demo login is a published way to place orders and drain a
+        // wallet through `action=add`.
+        //
+        // Only the actions that change something are refused. `services`,
+        // `balance` and `status` are what someone evaluating the API actually
+        // wants to try, and they are as safe here as a GET is on the screens.
+        // Normalised the same way ApiV2Controller resolves it, or `ADD` would
+        // fail this check and then be dispatched as `add`.
+        $normalised = is_string($action) ? mb_strtolower(trim($action)) : '';
+
+        if (DemoAccount::is($tenant) && ! in_array($normalised, self::DEMO_READABLE, true)) {
+            return $this->refuse($request, config('demo.message'), $key);
         }
 
         // Read unscoped, and deliberately: the tenant guard is not set until

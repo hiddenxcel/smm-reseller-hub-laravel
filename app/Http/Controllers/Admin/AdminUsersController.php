@@ -23,7 +23,7 @@ class AdminUsersController extends AdminController
 
     public function index(): Response
     {
-        $this->authoriseOwner();
+        $this->authoriseOwner('manage admin accounts');
 
         return Inertia::render('Admin/Users/Index', [
             'admins' => Superadmin::orderBy('username')
@@ -36,7 +36,7 @@ class AdminUsersController extends AdminController
 
     public function store(Request $request): RedirectResponse
     {
-        $this->authoriseOwner();
+        $this->authoriseOwner('manage admin accounts');
 
         $validated = $request->validate([
             'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('superadmins', 'username')],
@@ -59,7 +59,7 @@ class AdminUsersController extends AdminController
 
     public function update(Request $request, Superadmin $admin): RedirectResponse
     {
-        $this->authoriseOwner();
+        $this->authoriseOwner('manage admin accounts');
 
         $validated = $request->validate([
             'name' => ['nullable', 'string', 'max:100'],
@@ -82,7 +82,7 @@ class AdminUsersController extends AdminController
 
     public function act(Request $request, Superadmin $admin, string $action): RedirectResponse
     {
-        $this->authoriseOwner();
+        $this->authoriseOwner('manage admin accounts');
 
         $actions = AdminUserActions::for($admin);
 
@@ -125,19 +125,5 @@ class AdminUsersController extends AdminController
         $actions->setPassword($validated['password']);
 
         return back()->with('success', "Password set for {$admin->username}.");
-    }
-
-    /**
-     * Only an owner may manage admins.
-     *
-     * A separate check from the permission strings: `owner` is the grade that
-     * holds `*`, so a named ability would be granted to anyone a future role
-     * change hands the wildcard to.
-     */
-    private function authoriseOwner(): void
-    {
-        if ($this->admin()->role !== 'owner') {
-            abort(403, 'Only an owner can manage admin accounts.');
-        }
     }
 }

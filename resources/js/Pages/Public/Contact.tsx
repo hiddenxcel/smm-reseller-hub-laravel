@@ -13,9 +13,10 @@ import { FormEventHandler } from 'react';
 
 type Props = {
     demoNumber: string | null;
+    assistantEnabled: boolean;
 };
 
-export default function Contact({ demoNumber }: Props) {
+export default function Contact({ demoNumber, assistantEnabled }: Props) {
     const status = (usePage().props as { flash?: { success?: string | null } }).flash
         ?.success;
 
@@ -43,6 +44,7 @@ export default function Contact({ demoNumber }: Props) {
             title="Talk to a person"
             description="Questions before signing up, or something not working? Write to us and we will answer by email."
             demoNumber={demoNumber}
+            assistantEnabled={assistantEnabled}
         >
             <Seo
                 title="Contact"

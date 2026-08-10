@@ -118,4 +118,33 @@ return [
 
     'demo_whatsapp_number' => env('DEMO_WHATSAPP_NUMBER'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Website assistant
+    |--------------------------------------------------------------------------
+    |
+    | The platform's own DeepSeek key, used by the chat widget on the public
+    | pages. Deliberately not a reseller's key: this assistant answers about
+    | our product, to people who have not bought anything, so the cost is ours.
+    |
+    | Unset switches the widget off entirely, for the same reason the demo
+    | number does — a chat that cannot answer is worse than no chat at all.
+    |
+    */
+
+    'platform_deepseek_key' => env('PLATFORM_DEEPSEEK_KEY'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cloudflare Web Analytics
+    |--------------------------------------------------------------------------
+    |
+    | The site token from the Cloudflare dashboard. Blank switches the beacon
+    | off entirely, which is what keeps local and staging traffic out of the
+    | numbers. It is a public token — it appears in the page source by design.
+    |
+    */
+
+    'cloudflare_analytics_token' => env('CLOUDFLARE_ANALYTICS_TOKEN'),
+
 ];

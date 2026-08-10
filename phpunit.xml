@@ -30,6 +30,11 @@
         <env name="DB_DATABASE" value="testing"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
+        <!-- Empty, so no account is the demo unless a test says so. Inherited
+             from .env it locks every tenant whose factory email happens to
+             match read-only, and the failures land in whichever unrelated
+             tests wrote something. DemoAccountTest sets it per-test. -->
+        <env name="DEMO_EMAIL" value=""/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>

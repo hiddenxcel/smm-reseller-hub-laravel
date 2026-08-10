@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\Dashboard\DashboardMetrics;
+use App\Services\Dashboard\ProfitReport;
 use App\Services\Onboarding\OnboardingProgress;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,6 +19,7 @@ class DashboardController extends Controller
     {
         $tenant = $request->user();
         $metrics = DashboardMetrics::for($tenant);
+        $profit = ProfitReport::for($tenant);
         $progress = OnboardingProgress::for($tenant);
 
         return Inertia::render('Dashboard', [
@@ -27,6 +29,12 @@ class DashboardController extends Controller
             'trend' => $metrics->trend(),
             'statusMix' => $metrics->orderStatusMix(),
             'topServices' => $metrics->topServices(),
+            // Turnover is what the KPI row shows; this is what is left of it.
+            'profit' => [
+                'summary' => $profit->summary(),
+                'byService' => $profit->byService(),
+                'underwater' => $profit->underwater(),
+            ],
             'panels' => $metrics->panels(),
             'recentOrders' => $metrics->recentOrders(),
             'recentTickets' => $metrics->recentTickets(),

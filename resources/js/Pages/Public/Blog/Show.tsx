@@ -25,6 +25,7 @@ type Props = {
     post: Post;
     more: Related[];
     demoNumber: string | null;
+    assistantEnabled: boolean;
 };
 
 function formatted(date: string | null): string {
@@ -97,13 +98,14 @@ function Body({ text }: { text: string }) {
     );
 }
 
-export default function BlogShow({ post, more, demoNumber }: Props) {
+export default function BlogShow({ post, more, demoNumber, assistantEnabled }: Props) {
     return (
         <PublicLayout
             eyebrow={formatted(post.published_at)}
             title={post.title}
             description={post.excerpt}
             demoNumber={demoNumber}
+            assistantEnabled={assistantEnabled}
         >
             {/* Through Seo rather than a bare Head: its tags are keyed, so a
                 post's description replaces the site default instead of

@@ -20,6 +20,7 @@ type Props = {
         links: { url: string | null; label: string; active: boolean }[];
     };
     demoNumber: string | null;
+    assistantEnabled: boolean;
 };
 
 function formatted(date: string | null): string {
@@ -34,13 +35,14 @@ function formatted(date: string | null): string {
     });
 }
 
-export default function BlogIndex({ posts, demoNumber }: Props) {
+export default function BlogIndex({ posts, demoNumber, assistantEnabled }: Props) {
     return (
         <PublicLayout
             eyebrow="Blog"
             title="Notes on running an SMM shop"
             description="What we are learning about panels, WhatsApp and getting paid — written for the people doing it."
             demoNumber={demoNumber}
+            assistantEnabled={assistantEnabled}
         >
             <Seo
                 title="Blog"

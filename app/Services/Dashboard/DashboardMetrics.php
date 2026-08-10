@@ -216,7 +216,13 @@ class DashboardMetrics
             ->all();
     }
 
-    /** Panel balance — the thing that silently stops a shop when it runs out. */
+    /**
+     * Panel balance and health — the two things that silently stop a shop.
+     *
+     * `lowBalance` comes from the model rather than being recomputed here, so
+     * the badge and the email are answering the same question against the same
+     * per-panel threshold — see TenantPanel::isLowOnFunds().
+     */
     public function panels(): array
     {
         return TenantPanel::withoutTenantScope()
@@ -229,6 +235,7 @@ class DashboardMetrics
                 'currency' => $panel->balance_currency,
                 'checkedAt' => $panel->last_checked_at?->toIso8601String(),
                 'status' => $panel->status,
+                'lowBalance' => $panel->isLowOnFunds(),
             ])
             ->all();
     }
