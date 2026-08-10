@@ -3,13 +3,17 @@ name: Deploy
 # Deploys only when you press the button: Actions → Deploy → Run workflow.
 # Nothing reaches the server on a push, so an unfinished branch cannot go
 # live by accident. The tests still gate it — a red run refuses to deploy.
+#
+# What gets deployed is the branch picked in the "Use workflow from" dropdown,
+# and nothing else. There used to be a `branch` input as well, defaulting to a
+# fixed branch name, and the two disagreed in the worst possible way: the run
+# was labelled with the dropdown's branch while both jobs checked out the
+# input's default. A deploy of the wrong code reported success, and the tests
+# that "passed" had never seen the commit being shipped.
+#
+# One control cannot disagree with itself.
 on:
   workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to deploy'
-        required: true
-        default: 'onboarding-payments-and-test-bot'
 
 concurrency:
   # Two deploys overlapping would race on the git reset and the migration.
@@ -38,8 +42,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.branch }}
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -97,8 +99,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.branch }}
 
       - uses: actions/setup-node@v4
         with:
@@ -151,6 +151,19 @@ jobs:
           # Both halves of the build: public/build is what the browser loads,
           # bootstrap/ssr is the bundle Node renders the pages from. Both are
           # gitignored, so the checkout on the VPS has neither.
+          #
+          # Checked before tarring so a missing half says which half and why,
+          # rather than failing as "tar: ssr: Cannot stat" — which is what it
+          # did when a checkout of the wrong branch built a bundle nobody
+          # asked for.
+          for dir in public/build bootstrap/ssr; do
+            if [ ! -d "$dir" ]; then
+              echo "::error::$dir was not built. 'npm run build' should produce both;"
+              echo "::error::check the build step above for which half it stopped after."
+              exit 1
+            fi
+          done
+
           tar -czf build.tar.gz -C public build
           tar -czf ssr.tar.gz -C bootstrap ssr
           scp -i ~/.ssh/deploy_key build.tar.gz "root@$SSH_HOST:/tmp/build.tar.gz"
@@ -159,7 +172,10 @@ jobs:
       - name: Release
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          BRANCH: ${{ inputs.branch }}
+          # The branch this run was started from — the same one the
+          # runner checked out and built, so the VPS cannot end up on a
+          # different commit from the assets sent to it.
+          BRANCH: ${{ github.ref_name }}
         run: |
           ssh -i ~/.ssh/deploy_key "root@$SSH_HOST" \
             "BRANCH='$BRANCH' bash /root/deploy.sh"
