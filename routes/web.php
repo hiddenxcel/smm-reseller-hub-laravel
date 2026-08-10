@@ -21,6 +21,7 @@ use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\Site\AssistantController;
 use App\Http\Controllers\Site\BlogController;
 use App\Http\Controllers\Site\ContactController;
 use App\Http\Controllers\Site\PublicPageController;
@@ -62,6 +63,23 @@ Route::post('/contact', [ContactController::class, 'store'])
 
 Route::get('/blog', [BlogController::class, 'index'])->name('blog');
 Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
+
+/*
+| The website assistant. JSON rather than Inertia — the widget floats over
+| whatever page is being read and answering must not navigate away from it.
+|
+| Throttled because every question that misses the written answers costs money
+| at DeepSeek. Twenty a minute is more than any real conversation and far less
+| than a script.
+*/
+Route::post('/assistant/ask', [AssistantController::class, 'ask'])
+    ->middleware('throttle:20,1')
+    ->name('assistant.ask');
+
+// Tighter still: this one sends mail, so the reasoning is the contact form's.
+Route::post('/assistant/lead', [AssistantController::class, 'lead'])
+    ->middleware('throttle:5,10')
+    ->name('assistant.lead');
 
 // Generated rather than kept by hand: a static one goes stale the first time
 // a post is published, which is exactly when it matters.

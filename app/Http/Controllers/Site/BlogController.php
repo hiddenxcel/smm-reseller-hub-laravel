@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Site;
 
 use App\Http\Controllers\Controller;
 use App\Models\BlogPost;
+use App\Services\Assistant\AssistantKey;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,6 +26,7 @@ class BlogController extends Controller
         return Inertia::render('Public/Blog/Index', [
             'posts' => $posts,
             'demoNumber' => config('services.demo_whatsapp_number'),
+            'assistantEnabled' => AssistantKey::isReady(),
         ]);
     }
 
@@ -56,6 +58,7 @@ class BlogController extends Controller
                     'published_at' => $other->published_at?->toDateString(),
                 ]),
             'demoNumber' => config('services.demo_whatsapp_number'),
+            'assistantEnabled' => AssistantKey::isReady(),
         ]);
     }
 }

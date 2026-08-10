@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminSessionController;
 use App\Http\Controllers\Admin\AdminUsersController;
 use App\Http\Controllers\Admin\AnnouncementsController;
+use App\Http\Controllers\Admin\AssistantAdminController;
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\BotsController;
 use App\Http\Controllers\Admin\CatalogueController;
@@ -109,6 +110,29 @@ Route::middleware(['auth:superadmin', 'admin'])->group(function () {
 
     // Analytics.
     Route::get('reports', [ReportsController::class, 'index'])->name('reports');
+
+    // The website assistant. `knowledge` sits under it rather than beside it
+    // because the conversations and the answers are read together — a question
+    // it failed is edited into an answer on the same screen.
+    Route::get('assistant', [AssistantAdminController::class, 'index'])->name('assistant.index');
+
+    // Owner-only, and the value is written but never read back. Here rather
+    // than in .env because editing .env needs SSH, which in practice meant the
+    // key was never set and the widget never appeared at all.
+    Route::post('assistant/key', [AssistantAdminController::class, 'saveKey'])
+        ->name('assistant.key');
+
+    Route::post('assistant/knowledge', [AssistantAdminController::class, 'store'])
+        ->name('assistant.knowledge.store');
+    Route::patch('assistant/knowledge/{knowledge}', [AssistantAdminController::class, 'update'])
+        ->whereNumber('knowledge')
+        ->name('assistant.knowledge.update');
+    Route::delete('assistant/knowledge/{knowledge}', [AssistantAdminController::class, 'destroy'])
+        ->whereNumber('knowledge')
+        ->name('assistant.knowledge.destroy');
+    Route::get('assistant/conversations/{conversation}', [AssistantAdminController::class, 'show'])
+        ->whereNumber('conversation')
+        ->name('assistant.conversations.show');
 
     Route::get('announcements', [AnnouncementsController::class, 'index'])->name('announcements.index');
     Route::post('announcements', [AnnouncementsController::class, 'store'])->name('announcements.store');

@@ -26,6 +26,7 @@ type PlanSummary = {
 type Props = {
     plans: Record<string, PlanSummary>;
     demoNumber: string | null;
+    assistantEnabled: boolean;
 };
 
 /**
@@ -89,13 +90,14 @@ const SERVICES = [
     },
 ];
 
-export default function Services({ plans, demoNumber }: Props) {
+export default function Services({ plans, demoNumber, assistantEnabled }: Props) {
     return (
         <PublicLayout
             eyebrow="Services"
             title="Five services. Take the ones you need."
             description="Each solves one problem and is sold on its own — so you are never paying for a part of the shop you do not run."
             demoNumber={demoNumber}
+            assistantEnabled={assistantEnabled}
         >
             <Seo
                 title="Services"

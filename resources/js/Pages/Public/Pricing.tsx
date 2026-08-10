@@ -26,6 +26,7 @@ type Props = {
     plans: Record<string, PlanSummary>;
     gateways: GatewaySummary[];
     demoNumber: string | null;
+    assistantEnabled: boolean;
 };
 
 /**
@@ -74,13 +75,14 @@ const PRICING_FAQS = [
     },
 ];
 
-export default function Pricing({ plans, gateways, demoNumber }: Props) {
+export default function Pricing({ plans, gateways, demoNumber, assistantEnabled }: Props) {
     return (
         <PublicLayout
             eyebrow="Pricing"
             title="Pay for what you use, nothing else"
             description="Every service is sold on its own. No commission, no per-order fee, no contract."
             demoNumber={demoNumber}
+            assistantEnabled={assistantEnabled}
         >
             <Seo
                 title="Pricing"

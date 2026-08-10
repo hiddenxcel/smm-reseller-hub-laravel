@@ -9,6 +9,7 @@ import { useState } from 'react';
 type Props = {
     baseUrl: string;
     demoNumber: string | null;
+    assistantEnabled: boolean;
 };
 
 /**
@@ -155,13 +156,14 @@ function CodeBlock({ code, label }: { code: string; label?: string }) {
     );
 }
 
-export default function ApiDocs({ baseUrl, demoNumber }: Props) {
+export default function ApiDocs({ baseUrl, demoNumber, assistantEnabled }: Props) {
     return (
         <PublicLayout
             eyebrow="API"
             title="Sell from your own site, not just WhatsApp"
             description="One endpoint, the standard SMM API v2 — so anything already written against a panel works here unchanged."
             demoNumber={demoNumber}
+            assistantEnabled={assistantEnabled}
         >
             <Seo
                 title="API docs"

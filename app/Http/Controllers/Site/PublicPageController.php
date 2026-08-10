@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Site;
 
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
+use App\Services\Assistant\AssistantKey;
 use App\Services\Payments\Gateway;
 use Illuminate\Support\Arr;
 use Inertia\Inertia;
@@ -22,7 +23,7 @@ class PublicPageController extends Controller
     {
         return Inertia::render('Public/Features', [
             'plans' => $this->plans(),
-            'demoNumber' => config('services.demo_whatsapp_number'),
+            ...$this->chrome(),
         ]);
     }
 
@@ -30,7 +31,7 @@ class PublicPageController extends Controller
     {
         return Inertia::render('Public/Services', [
             'plans' => $this->plans(),
-            'demoNumber' => config('services.demo_whatsapp_number'),
+            ...$this->chrome(),
         ]);
     }
 
@@ -42,7 +43,7 @@ class PublicPageController extends Controller
             // would be hiding the answer they came for.
             'plans' => $this->plans(),
             'gateways' => $this->gateways(),
-            'demoNumber' => config('services.demo_whatsapp_number'),
+            ...$this->chrome(),
         ]);
     }
 
@@ -50,15 +51,32 @@ class PublicPageController extends Controller
     {
         return Inertia::render('Public/ApiDocs', [
             'baseUrl' => rtrim(config('app.url'), '/').'/api/v2',
-            'demoNumber' => config('services.demo_whatsapp_number'),
+            ...$this->chrome(),
         ]);
     }
 
     public function contact(): Response
     {
         return Inertia::render('Public/Contact', [
-            'demoNumber' => config('services.demo_whatsapp_number'),
+            ...$this->chrome(),
         ]);
+    }
+
+    /**
+     * What every public page needs regardless of what it is about: the
+     * floating assistant and the WhatsApp number behind its escalation.
+     *
+     * One method rather than a repeated pair of lines, so a third piece of
+     * page furniture is added in one place instead of five.
+     *
+     * @return array<string, mixed>
+     */
+    private function chrome(): array
+    {
+        return [
+            'demoNumber' => config('services.demo_whatsapp_number'),
+            'assistantEnabled' => AssistantKey::isReady(),
+        ];
     }
 
     /** @return array<string, array> */

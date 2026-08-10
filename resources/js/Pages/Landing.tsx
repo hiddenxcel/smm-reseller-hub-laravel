@@ -11,7 +11,7 @@ import PricingTable from '@/components/landing/PricingTable';
 import PublicFooter from '@/components/landing/PublicFooter';
 import Reveal from '@/components/landing/Reveal';
 import TwoBots from '@/components/landing/TwoBots';
-import TryOnWhatsApp from '@/components/landing/TryOnWhatsApp';
+import AssistantWidget from '@/components/assistant/AssistantWidget';
 import { Section, SectionHeading } from '@/components/landing/Section';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -53,6 +53,7 @@ type Props = {
     plans: Record<string, PlanSummary>;
     gateways: GatewaySummary[];
     demoNumber: string | null;
+    assistantEnabled: boolean;
 };
 
 /**
@@ -183,7 +184,7 @@ function faqSchema() {
     });
 }
 
-export default function Landing({ plans, gateways, demoNumber }: Props) {
+export default function Landing({ plans, gateways, demoNumber, assistantEnabled }: Props) {
     const planList = Object.entries(plans);
     const { ziggy } = usePage().props;
 
@@ -656,7 +657,9 @@ export default function Landing({ plans, gateways, demoNumber }: Props) {
                 offer, and asking twice in a row reads as nagging. */}
             <PublicFooter demoNumber={demoNumber} cta={false} />
 
-            <TryOnWhatsApp number={demoNumber} />
+            {/* See PublicLayout: hidden without a key rather than shown
+                unable to answer. */}
+            {assistantEnabled && <AssistantWidget demoNumber={demoNumber} />}
         </>
     );
 }

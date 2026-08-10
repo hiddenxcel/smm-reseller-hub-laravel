@@ -293,11 +293,4 @@ class SystemController extends AdminController
 
         return back()->with('success', 'Backup deleted.');
     }
-
-    private function authoriseOwner(): void
-    {
-        if ($this->admin()->role !== 'owner') {
-            abort(403, 'Only an owner can reach this.');
-        }
-    }
 }
