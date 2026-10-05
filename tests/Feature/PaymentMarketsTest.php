@@ -441,75 +441,182 @@ class PaymentMarketsTest extends TestCase
         $this->assertFalse((new FimipayClient('sk', '', 'fimipay_usd'))->verifyWebhook($body, ['x-fimipay-signature' => hash_hmac('sha256', $body, '')]));
     }
 
-    public function test_a_signed_fimipay_success_credits_the_wallet(): void
+    /**
+     * FimiPay is confirmed by asking FimiPay, so the fake answers both calls:
+     * the order being created, and the status being looked up afterwards.
+     */
+    private function fakeFimipay(string $paymentStatus): void
     {
-        Http::fake(['fimipay.com/*' => Http::response([
-            'status' => 'success',
-            'data' => ['order_id' => 'x', 'payment_gateway_url' => 'https://pay.fimipay.com/o/abc'],
-        ])]);
+        Http::fake([
+            'fimipay.com/api/v1/payment/create_order' => Http::response([
+                'status' => 'success',
+                'data' => ['order_id' => 'x', 'payment_gateway_url' => 'https://pay.fimipay.com/o/abc'],
+            ]),
+            'fimipay.com/api/v1/payment/order_status' => Http::response([
+                'status' => 'success',
+                'data' => ['payment_status' => $paymentStatus],
+            ]),
+        ]);
+    }
+
+    private function statusLookups(): int
+    {
+        return Http::recorded(fn ($request) => str_ends_with($request->url(), '/order_status'))->count();
+    }
+
+    public function test_a_fimipay_payment_fimipay_confirms_credits_the_wallet(): void
+    {
+        $this->fakeFimipay('SUCCESS');
 
         $payment = $this->startTopup('fimipay_gh', '10.00', 'USD', '024 123 4567')->payment;
 
-        $body = json_encode(['order_id' => $payment->transaction_ref, 'payment_status' => 'SUCCESS', 'amount' => 150]);
+        // The notification itself says nothing that is believed — not even a
+        // success. What credits the wallet is FimiPay's own answer.
+        $body = json_encode(['order_id' => $payment->transaction_ref, 'payment_status' => 'whatever']);
 
         $this->webhook('fimipay_gh', $body, $this->fimipaySigned($body))->assertOk();
 
         $this->assertSame('success', $payment->fresh()->status);
         $this->assertSame(0, bccomp('10.00', (string) $this->customer->fresh()->balance, 2));
+
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/order_status')
+            && $request['order_id'] === $payment->transaction_ref);
     }
 
-    public function test_a_fimipay_event_name_alone_is_enough(): void
+    public function test_a_fimipay_notification_needs_no_signature_because_fimipay_is_asked(): void
     {
-        Http::fake(['fimipay.com/*' => Http::response([
-            'status' => 'success',
-            'data' => ['order_id' => 'x', 'payment_gateway_url' => 'https://pay.fimipay.com/o/abc'],
-        ])]);
+        // This is how the live panel runs it: no webhook secret saved at all.
+        $this->fakeFimipay('COMPLETED');
 
-        $payment = $this->startTopup('fimipay_usd', '10.00', 'USD')->payment;
+        $payment = $this->startTopup('fimipay_ng', '10.00', 'USD', '0803 123 4567')->payment;
 
-        $body = json_encode(['event' => 'payment.success', 'order_id' => $payment->transaction_ref]);
-
-        $this->webhook('fimipay_usd', $body, $this->fimipaySigned($body))->assertOk();
+        $this->webhook('fimipay_ng', json_encode(['order_id' => $payment->transaction_ref]), ['CONTENT_TYPE' => 'application/json'])
+            ->assertOk();
 
         $this->assertSame('success', $payment->fresh()->status);
     }
 
-    public function test_fimipay_pending_failed_and_unsigned_credit_nothing(): void
+    public function test_a_forged_fimipay_success_credits_nothing_when_fimipay_says_otherwise(): void
     {
-        Http::fake(['fimipay.com/*' => Http::response([
-            'status' => 'success',
-            'data' => ['order_id' => 'x', 'payment_gateway_url' => 'https://pay.fimipay.com/o/abc'],
-        ])]);
+        $this->fakeFimipay('PENDING');
 
-        $payment = $this->startTopup('fimipay_ng', '10.00', 'USD', '0803 123 4567')->payment;
+        $payment = $this->startTopup('fimipay_usd', '10.00', 'USD')->payment;
 
-        foreach (['PENDING', 'FAILED', 'EXPIRED'] as $status) {
-            $body = json_encode(['order_id' => $payment->transaction_ref, 'payment_status' => $status]);
-            $this->webhook('fimipay_ng', $body, $this->fimipaySigned($body))->assertOk();
-        }
+        // An attacker who knows the reference posts a convincing success...
+        $body = json_encode([
+            'event' => 'payment.success',
+            'order_id' => $payment->transaction_ref,
+            'payment_status' => 'SUCCESS',
+            'amount' => 10,
+        ]);
 
-        $paid = json_encode(['order_id' => $payment->transaction_ref, 'payment_status' => 'SUCCESS']);
-        $this->webhook('fimipay_ng', $paid, ['CONTENT_TYPE' => 'application/json'])->assertStatus(401);
-        $this->webhook('fimipay_ng', $paid, $this->fimipaySigned($paid, 'wrong-secret'))->assertStatus(401);
+        $this->webhook('fimipay_usd', $body, $this->fimipaySigned($body))->assertOk();
+        $this->webhook('fimipay_usd', $body, ['CONTENT_TYPE' => 'application/json'])->assertOk();
 
+        // ...and FimiPay, asked directly, says it is still pending.
         $this->assertSame('pending', $payment->fresh()->status);
         $this->assertSame(0, bccomp('0', (string) $this->customer->fresh()->balance, 2));
     }
 
-    public function test_a_replayed_fimipay_webhook_credits_once(): void
+    /** @dataProvider unfinishedFimipayStates */
+    public function test_a_fimipay_order_that_is_not_complete_credits_nothing(string $status): void
     {
-        Http::fake(['fimipay.com/*' => Http::response([
-            'status' => 'success',
-            'data' => ['order_id' => 'x', 'payment_gateway_url' => 'https://pay.fimipay.com/o/abc'],
-        ])]);
+        $this->fakeFimipay($status);
 
         $payment = $this->startTopup('fimipay_za', '10.00', 'USD', '082 123 4567')->payment;
-        $body = json_encode(['order_id' => $payment->transaction_ref, 'payment_status' => 'SUCCESS']);
 
-        $this->webhook('fimipay_za', $body, $this->fimipaySigned($body))->assertOk();
-        $this->webhook('fimipay_za', $body, $this->fimipaySigned($body))->assertOk();
+        $this->webhook('fimipay_za', json_encode(['order_id' => $payment->transaction_ref, 'payment_status' => 'SUCCESS']), [
+            'CONTENT_TYPE' => 'application/json',
+        ])->assertOk();
 
+        $this->assertSame('pending', $payment->fresh()->status);
+    }
+
+    public static function unfinishedFimipayStates(): array
+    {
+        return ['pending' => ['PENDING'], 'failed' => ['FAILED'], 'expired' => ['EXPIRED'], 'unknown' => ['SOMETHING_NEW']];
+    }
+
+    public function test_fimipay_being_unreachable_credits_nothing(): void
+    {
+        // The order is created fine; it is the later status lookup that fails.
+        Http::fake([
+            'fimipay.com/api/v1/payment/create_order' => Http::response([
+                'status' => 'success',
+                'data' => ['order_id' => 'x', 'payment_gateway_url' => 'https://pay.fimipay.com/o/abc'],
+            ]),
+            'fimipay.com/api/v1/payment/order_status' => Http::response('down', 503),
+        ]);
+
+        $payment = $this->startTopup('fimipay_cm', '10.00', 'USD', '6 71 23 45 67');
+
+        $this->webhook('fimipay_cm', json_encode(['order_id' => $payment->payment->transaction_ref]), ['CONTENT_TYPE' => 'application/json'])
+            ->assertOk();
+
+        $this->assertSame('pending', $payment->payment->fresh()->status);
+    }
+
+    public function test_a_settled_fimipay_payment_is_not_looked_up_again(): void
+    {
+        $this->fakeFimipay('SUCCESS');
+
+        $payment = $this->startTopup('fimipay_gh', '10.00', 'USD', '024 123 4567')->payment;
+        $body = json_encode(['order_id' => $payment->transaction_ref]);
+        $server = ['CONTENT_TYPE' => 'application/json'];
+
+        $this->webhook('fimipay_gh', $body, $server)->assertOk();
+        $this->assertSame(1, $this->statusLookups());
+
+        // A retry, or anyone POSTing at a known reference: no second call out,
+        // and no second credit.
+        $this->webhook('fimipay_gh', $body, $server)->assertOk();
+        $this->webhook('fimipay_gh', $body, $server)->assertOk();
+
+        $this->assertSame(1, $this->statusLookups());
         $this->assertSame(0, bccomp('10.00', (string) $this->customer->fresh()->balance, 2));
+    }
+
+    public function test_an_unknown_fimipay_reference_triggers_no_lookup(): void
+    {
+        $this->fakeFimipay('SUCCESS');
+        $this->connect('fimipay_gh');
+
+        $this->webhook('fimipay_gh', json_encode(['order_id' => 'tu_never_issued']), ['CONTENT_TYPE' => 'application/json'])
+            ->assertOk();
+
+        $this->assertSame(0, $this->statusLookups());
+    }
+
+    public function test_fimipay_asks_without_a_webhook_secret_and_the_form_allows_it(): void
+    {
+        $this->assertTrue(Gateway::confirmsByApi('fimipay_ng'));
+
+        foreach (['fimipay_ng', 'fimipay_gh', 'fimipay_cm', 'fimipay_za', 'fimipay_usd'] as $code) {
+            $field = collect(config("gateways.{$code}.fields"))->firstWhere('name', 'webhook_secret');
+
+            $this->assertTrue($field['optional'] ?? false, "{$code}: webhook secret should be optional");
+        }
+
+        // The secret key itself stays required.
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        \App\Services\Payments\GatewayCredentials::columns('fimipay_ng', ['api_key' => '', 'webhook_secret' => ''], null);
+    }
+
+    public function test_snippe_still_requires_its_webhook_secret(): void
+    {
+        $this->assertFalse(Gateway::confirmsByApi('snippe'));
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        \App\Services\Payments\GatewayCredentials::columns('snippe', ['api_key' => 'k', 'webhook_secret' => ''], null);
+    }
+
+    public function test_leaving_fimipays_webhook_secret_blank_saves_the_key_and_nothing_else(): void
+    {
+        $columns = \App\Services\Payments\GatewayCredentials::columns('fimipay_gh', ['api_key' => 'sk_live_abc', 'webhook_secret' => ''], null);
+
+        $this->assertSame(['api_key_enc' => 'sk_live_abc'], $columns);
     }
 
     // ---- wiring ------------------------------------------------------------

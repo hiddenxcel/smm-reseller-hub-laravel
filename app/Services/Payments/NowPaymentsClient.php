@@ -24,7 +24,7 @@ class NowPaymentsClient implements PaymentGateway, StatusCheckable, WebhookVerif
         private string $payCurrency = 'usdttrc20',
     ) {}
 
-    public function initiate(PaymentRequest $request, string $description = 'Resellers Hub'): PaymentInitiation
+    public function initiate(PaymentRequest $request, string $description = 'Auto Resellers Hub'): PaymentInitiation
     {
         try {
             $response = Http::withHeaders(['x-api-key' => $this->apiKey])

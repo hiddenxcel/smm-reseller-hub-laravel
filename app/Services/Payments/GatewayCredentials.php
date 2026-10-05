@@ -44,6 +44,11 @@ class GatewayCredentials
                 continue;
             }
 
+            // Left blank on purpose: the gateway needs nothing in this slot.
+            if (($field['optional'] ?? false) === true) {
+                continue;
+            }
+
             if ($existing?->{$column} === null) {
                 throw ValidationException::withMessages([
                     "credentials.{$field['name']}" => "{$field['label']} is required.",

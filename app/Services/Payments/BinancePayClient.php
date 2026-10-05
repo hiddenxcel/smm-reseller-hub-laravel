@@ -21,7 +21,7 @@ class BinancePayClient implements PaymentGateway, WebhookVerifier
         private string $apiSecret,
     ) {}
 
-    public function initiate(PaymentRequest $request, string $description = 'Resellers Hub'): PaymentInitiation
+    public function initiate(PaymentRequest $request, string $description = 'Auto Resellers Hub'): PaymentInitiation
     {
         $body = json_encode([
             'env' => ['terminalType' => 'WEB'],

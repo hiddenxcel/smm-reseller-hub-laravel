@@ -181,27 +181,6 @@ class FimipayClient implements PaymentGateway, StatusCheckable, WebhookVerifier
     }
 
     /**
-     * Did this webhook report a paid order?
-     *
-     * Either the event names it, or the order's own status does. The status is
-     * `payment_status`, and `status` only as a fallback — FimiPay's envelope
-     * has a `status` that can mean the notification succeeded rather than the
-     * payment.
-     *
-     * @param  array<string, mixed>  $payload
-     */
-    public static function isCompleted(array $payload): bool
-    {
-        if (in_array($payload['event'] ?? '', ['payment.success', 'payment.completed'], true)) {
-            return true;
-        }
-
-        $status = (string) ($payload['payment_status'] ?? $payload['status'] ?? '');
-
-        return self::normaliseStatus($status) === 'completed';
-    }
-
-    /**
      * Digits only, the local leading 0 swapped for the market's dial code, and
      * the dial code added when missing. USD accepts any international number,
      * so it is only reduced to digits.

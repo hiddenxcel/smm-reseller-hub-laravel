@@ -76,14 +76,22 @@ return [
     // guessed. All five run on the one FimipayClient. FimiPay takes a phone for
     // every market; where the bot does not ask for one (cards) it uses the
     // number the customer is already chatting from.
+    //
+    // A payment is confirmed by asking FimiPay for the order's status rather than
+    // by verifying a signature, so the webhook secret is optional.
 
     'fimipay_ng' => [
         'label' => 'FimiPay (Nigeria — NGN)',
         'type' => 'mobile',
         'ready' => true,
+        // Confirmed by asking FimiPay, not by trusting the notification: the
+        // webhook only prompts a lookup of the order's status, and the answer
+        // comes from FimiPay's API under our own key. That is why no webhook
+        // secret is needed — see PaymentWebhookController.
+        'confirm_by_api' => true,
         'fields' => [
             ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key'],
-            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret (optional)', 'store' => 'webhook_secret', 'optional' => true],
         ],
     ],
 
@@ -91,9 +99,14 @@ return [
         'label' => 'FimiPay (Ghana — GHS)',
         'type' => 'mobile',
         'ready' => true,
+        // Confirmed by asking FimiPay, not by trusting the notification: the
+        // webhook only prompts a lookup of the order's status, and the answer
+        // comes from FimiPay's API under our own key. That is why no webhook
+        // secret is needed — see PaymentWebhookController.
+        'confirm_by_api' => true,
         'fields' => [
             ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key'],
-            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret (optional)', 'store' => 'webhook_secret', 'optional' => true],
         ],
     ],
 
@@ -101,9 +114,14 @@ return [
         'label' => 'FimiPay (Cameroon — XAF)',
         'type' => 'mobile',
         'ready' => true,
+        // Confirmed by asking FimiPay, not by trusting the notification: the
+        // webhook only prompts a lookup of the order's status, and the answer
+        // comes from FimiPay's API under our own key. That is why no webhook
+        // secret is needed — see PaymentWebhookController.
+        'confirm_by_api' => true,
         'fields' => [
             ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key'],
-            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret (optional)', 'store' => 'webhook_secret', 'optional' => true],
         ],
     ],
 
@@ -111,9 +129,14 @@ return [
         'label' => 'FimiPay (South Africa — ZAR)',
         'type' => 'card',
         'ready' => true,
+        // Confirmed by asking FimiPay, not by trusting the notification: the
+        // webhook only prompts a lookup of the order's status, and the answer
+        // comes from FimiPay's API under our own key. That is why no webhook
+        // secret is needed — see PaymentWebhookController.
+        'confirm_by_api' => true,
         'fields' => [
             ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key'],
-            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret (optional)', 'store' => 'webhook_secret', 'optional' => true],
         ],
     ],
 
@@ -121,9 +144,14 @@ return [
         'label' => 'FimiPay (International card — USD)',
         'type' => 'card',
         'ready' => true,
+        // Confirmed by asking FimiPay, not by trusting the notification: the
+        // webhook only prompts a lookup of the order's status, and the answer
+        // comes from FimiPay's API under our own key. That is why no webhook
+        // secret is needed — see PaymentWebhookController.
+        'confirm_by_api' => true,
         'fields' => [
             ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key'],
-            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret (optional)', 'store' => 'webhook_secret', 'optional' => true],
         ],
     ],
 

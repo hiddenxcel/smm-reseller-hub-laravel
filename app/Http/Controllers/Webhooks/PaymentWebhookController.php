@@ -92,7 +92,13 @@ class PaymentWebhookController extends Controller
         // notification is only a nudge, and the truth is fetched from their
         // API. Those are checked by asking, not by verifying.
         if (Gateway::confirmsByApi($gateway)) {
-            if (! $this->confirmedByGateway($credentials, $request)) {
+            // Already settled: nothing to ask. Without this, every retry and
+            // every stray POST at a known reference would cost an outbound call.
+            if ($payment->status !== 'pending') {
+                return $this->ack('already settled');
+            }
+
+            if (! $this->confirmedByGateway($credentials, $payment, $request)) {
                 return $this->ack('not confirmed by the gateway');
             }
 
@@ -217,12 +223,18 @@ class PaymentWebhookController extends Controller
      * reasons", which cuts both ways — anyone can POST to the URL, so the
      * notification proves nothing and only the API's answer counts.
      */
-    private function confirmedByGateway(TenantPaymentGateway $credentials, Request $request): bool
+    private function confirmedByGateway(TenantPaymentGateway $credentials, BotPayment $payment, Request $request): bool
     {
         $client = $this->factory->make($credentials);
 
         if (! $client instanceof StatusCheckable) {
             return false;
+        }
+
+        // FimiPay's order id is the reference we gave it, so there is nothing to
+        // read off the notification — and nothing on it is trusted anyway.
+        if (FimipayClient::isFimipay($payment->gateway)) {
+            return $client->checkStatus($payment->transaction_ref) === 'completed';
         }
 
         // Pesapal identifies the transaction by its own tracking id, which is
@@ -288,10 +300,6 @@ class PaymentWebhookController extends Controller
         // adding them there would change what every other gateway credits.
         if (str_starts_with($gateway, 'snippe')) {
             return SnippeClient::isCompleted($payload);
-        }
-
-        if (FimipayClient::isFimipay($gateway)) {
-            return FimipayClient::isCompleted($payload);
         }
 
         // Binance Pay before anything else. Its envelope carries a top-level

@@ -26,7 +26,7 @@ class CryptomusClient implements PaymentGateway, WebhookVerifier
         private string $merchantId,
     ) {}
 
-    public function initiate(PaymentRequest $request, string $description = 'Resellers Hub'): PaymentInitiation
+    public function initiate(PaymentRequest $request, string $description = 'Auto Resellers Hub'): PaymentInitiation
     {
         if ($this->apiKey === '' || $this->merchantId === '') {
             return PaymentInitiation::failed('This payment method is not configured.');
