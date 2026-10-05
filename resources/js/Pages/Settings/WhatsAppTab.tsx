@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import PhoneInput from '@/components/PhoneInput';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { router, useForm } from '@inertiajs/react';
@@ -250,11 +251,10 @@ function ConnectOwnCard({
 
                 <div>
                     <Label htmlFor="display_number">Display number</Label>
-                    <Input
+                    <PhoneInput
                         id="display_number"
                         value={data.display_number}
-                        onChange={(event) => setData('display_number', event.target.value)}
-                        placeholder="+255…"
+                        onChange={(value) => setData('display_number', value)}
                         className="mt-1.5"
                     />
                     <FieldError message={errors.display_number} />

@@ -1,5 +1,6 @@
 import InputError from '@/components/InputError';
 import { Button } from '@/components/ui/button';
+import PhoneInput from '@/components/PhoneInput';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import GuestLayout from '@/Layouts/GuestLayout';
@@ -84,16 +85,11 @@ export default function Register() {
                         </span>
                     </Label>
 
-                    <Input
+                    <PhoneInput
                         id="phone"
-                        type="tel"
                         name="phone"
                         value={data.phone}
-                        className="h-10"
-                        autoComplete="tel"
-                        placeholder="+255 700 000 000"
-                        aria-invalid={!!errors.phone}
-                        onChange={(e) => setData('phone', e.target.value)}
+                        onChange={(value) => setData('phone', value)}
                     />
 
                     <InputError message={errors.phone} />

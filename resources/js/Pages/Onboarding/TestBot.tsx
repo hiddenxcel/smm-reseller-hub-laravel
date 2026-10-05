@@ -1,4 +1,5 @@
 import OnboardingLayout, { WizardStep } from '@/Layouts/OnboardingLayout';
+import PhoneInput from '@/components/PhoneInput';
 import WhatsAppSimulator, { SimulatorConfig } from '@/components/simulator/WhatsAppSimulator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -138,11 +139,11 @@ export default function TestBot({
                     <form onSubmit={addNumber} className="mt-4 flex items-end gap-2">
                         <div className="flex-1">
                             <Label htmlFor="phone">Your WhatsApp number</Label>
-                            <Input
+                            <PhoneInput
                                 id="phone"
+                                format="digits"
                                 value={numberForm.data.phone}
-                                onChange={(event) => numberForm.setData('phone', event.target.value)}
-                                placeholder="255700000000"
+                                onChange={(value) => numberForm.setData('phone', value)}
                                 className="mt-1.5"
                                 required
                             />

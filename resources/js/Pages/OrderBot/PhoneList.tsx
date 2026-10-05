@@ -1,3 +1,4 @@
+import PhoneInput from '@/components/PhoneInput';
 import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
 import { useState } from 'react';
@@ -23,10 +24,12 @@ export function PhoneList({
 
     const add = () => {
         const value = draft.trim();
+        const digits = (number: string) => number.replace(/\D/g, '');
 
         // Silently ignoring a duplicate is right here — the number is already
-        // in the list, which is what the reseller wanted.
-        if (value === '' || numbers.includes(value)) {
+        // in the list, which is what the reseller wanted. Compared as digits:
+        // "+255712345678" and "255712345678" are the same phone.
+        if (value === '' || numbers.some((number) => digits(number) === digits(value))) {
             setDraft('');
 
             return;
@@ -62,19 +65,14 @@ export function PhoneList({
             )}
 
             <div className="flex gap-2">
-                <input
+                <PhoneInput
+                    className="min-w-0 flex-1"
+                    format="digits"
                     value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                        // Without this the key would submit the whole form and
-                        // save everything but the number being typed.
-                        if (event.key === 'Enter') {
-                            event.preventDefault();
-                            add();
-                        }
-                    }}
-                    placeholder="255712345678"
-                    className={inputClass}
+                    onChange={setDraft}
+                    // Without this the key would submit the whole form and
+                    // save everything but the number being typed.
+                    onEnter={add}
                 />
                 <Button type="button" variant="outline" onClick={add}>
                     <Plus className="size-4" />

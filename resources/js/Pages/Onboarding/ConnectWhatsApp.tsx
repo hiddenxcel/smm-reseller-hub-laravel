@@ -1,3 +1,4 @@
+import PhoneInput from '@/components/PhoneInput';
 import OnboardingLayout, { WizardStep } from '@/Layouts/OnboardingLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -356,11 +357,10 @@ function OwnNumberPanel({
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                         <Label htmlFor="display_number">Phone number (optional)</Label>
-                        <Input
+                        <PhoneInput
                             id="display_number"
                             value={data.display_number}
-                            onChange={(event) => setData('display_number', event.target.value)}
-                            placeholder="255700000000"
+                            onChange={(value) => setData('display_number', value)}
                             className="mt-1.5"
                         />
                         <FieldError message={errors.display_number} />
