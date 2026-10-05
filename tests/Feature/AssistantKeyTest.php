@@ -149,8 +149,19 @@ class AssistantKeyTest extends TestCase
         $this->assertSame('sk-live-abcdefgh1234', PlatformSecret::firstOrFail()->value_enc);
     }
 
-    public function test_the_widget_only_renders_once_a_key_is_in_place(): void
+    public function test_the_widget_is_shown_even_before_a_key_is_in_place(): void
     {
+        // The written answers work without a model, and the widget offers a
+        // person when it cannot help — so it is not hidden for want of a key.
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('assistantEnabled', true));
+    }
+
+    public function test_it_can_still_be_tied_to_the_key(): void
+    {
+        config(['assistant.always_on' => false]);
+
         $this->get('/')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page->where('assistantEnabled', false));

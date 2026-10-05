@@ -34,6 +34,24 @@ class AssistantKey
         return filled(self::get());
     }
 
+    /**
+     * Whether the chat widget is shown on public pages.
+     *
+     * Not the same question as isReady(). The model is what lets the assistant
+     * answer anything and in any language, but it is not what makes it
+     * useful: the written answers cover the questions most visitors have, work
+     * with no key at all, and when neither can help the widget offers a person.
+     * Hiding the whole thing because the model is not configured turned a
+     * working help desk off for want of its premium tier.
+     *
+     * Switch it off outright with ASSISTANT_ALWAYS_ON=false, in which case it
+     * follows the key again.
+     */
+    public static function widgetEnabled(): bool
+    {
+        return (bool) config('assistant.always_on', true) || self::isReady();
+    }
+
     /** env | database | stored-disabled | none — see PlatformSecret::source(). */
     public static function source(): string
     {

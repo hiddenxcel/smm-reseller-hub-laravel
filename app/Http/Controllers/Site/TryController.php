@@ -36,7 +36,7 @@ class TryController extends Controller
                 'sendBusiness' => true,
             ],
             'demoNumber' => config('services.demo_whatsapp_number'),
-            'assistantEnabled' => AssistantKey::isReady(),
+            'assistantEnabled' => AssistantKey::widgetEnabled(),
         ]);
     }
 

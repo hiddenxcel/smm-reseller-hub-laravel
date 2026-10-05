@@ -6,16 +6,24 @@ export type AssistantTurn = {
     id: number;
     role: 'user' | 'assistant';
     text: string;
-    cta?: AssistantCta | null;
+    /** Up to two buttons under an answer. */
+    ctas?: AssistantCta[];
     /** Set on the newest assistant turn only — see the reveal in AssistantMessage. */
     fresh?: boolean;
 };
 
-export type Locale = 'en' | 'sw';
+/**
+ * A language code. English and Kiswahili have written answers; anything else
+ * is answered by the model in whatever language was asked, so the type is
+ * open — the server can report a language the widget has no strings for, and
+ * strings.ts falls back to English furniture for it.
+ */
+export type Locale = string;
 
 type AskResponse = {
     reply: string;
     cta: AssistantCta | null;
+    ctas?: AssistantCta[];
     suggestions: string[];
     answered_by: 'knowledge' | 'ai' | 'fallback';
     token: string;
@@ -32,6 +40,15 @@ type AskResponse = {
  * wants to be met by yesterday's half-question.
  */
 const STORE_KEY = 'resellershub.assistant';
+
+/**
+ * The language the visitor picked, kept across tabs and days.
+ *
+ * Separate from the conversation, and in localStorage: choosing a language is
+ * a statement about the person, not about this chat, and asking again every
+ * session would make a Portuguese speaker re-pick it on every visit.
+ */
+const LANG_KEY = 'resellershub.assistant.lang';
 
 type Stored = { token: string | null; turns: AssistantTurn[]; locale?: Locale };
 
@@ -93,16 +110,20 @@ export function useAssistant(page: string) {
     const [failed, setFailed] = useState<string | null>(null);
 
     /**
-     * What language this conversation is being held in.
+     * What language the conversation is in, as the server last judged it.
      *
      * Decided by the server, which is the only side that can see the whole
      * conversation. The widget's own wording follows it, so a visitor writing
      * Kiswahili is not answered in Kiswahili underneath English buttons.
      */
-    const [locale, setLocale] = useState<Locale>('en');
+    const [detected, setDetected] = useState<Locale>('en');
+
+    /** 'auto' lets the server decide; anything else is the visitor's own choice. */
+    const [choice, setChoiceState] = useState<string>('auto');
 
     const token = useRef<string | null>(null);
     const nextId = useRef(1);
+    const choiceRef = useRef('auto');
 
     // Restored after mount, never during render: this component is
     // server-rendered and the server has no session to restore from.
@@ -112,7 +133,18 @@ export function useAssistant(page: string) {
         token.current = stored.token;
 
         if (stored.locale) {
-            setLocale(stored.locale);
+            setDetected(stored.locale);
+        }
+
+        try {
+            const saved = window.localStorage.getItem(LANG_KEY);
+
+            if (saved) {
+                choiceRef.current = saved;
+                setChoiceState(saved);
+            }
+        } catch {
+            // Private mode. Auto-detect is the safe default.
         }
 
         if (stored.turns.length > 0) {
@@ -126,9 +158,24 @@ export function useAssistant(page: string) {
 
     useEffect(() => {
         if (turns.length > 0) {
-            write({ token: token.current, turns, locale });
+            write({ token: token.current, turns, locale: detected });
         }
     }, [turns]);
+
+    const setChoice = useCallback((code: string) => {
+        choiceRef.current = code;
+        setChoiceState(code);
+
+        try {
+            if (code === 'auto') {
+                window.localStorage.removeItem(LANG_KEY);
+            } else {
+                window.localStorage.setItem(LANG_KEY, code);
+            }
+        } catch {
+            // See above.
+        }
+    }, []);
 
     const ask = useCallback(
         async (message: string) => {
@@ -155,7 +202,12 @@ export function useAssistant(page: string) {
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                     credentials: 'same-origin',
-                    body: JSON.stringify({ message: text, token: token.current, page }),
+                    body: JSON.stringify({
+                        message: text,
+                        token: token.current,
+                        page,
+                        lang: choiceRef.current === 'auto' ? null : choiceRef.current,
+                    }),
                 });
 
                 if (!response.ok) {
@@ -166,19 +218,21 @@ export function useAssistant(page: string) {
 
                 token.current = data.token;
 
+                const ctas = data.ctas ?? (data.cta ? [data.cta] : []);
+
                 setTurns((current) => [
                     ...current,
                     {
                         id: nextId.current++,
                         role: 'assistant',
                         text: data.reply,
-                        cta: data.cta,
+                        ctas,
                         fresh: true,
                     },
                 ]);
                 setSuggestions(data.suggestions ?? []);
                 setEscalate(data.escalate);
-                setLocale(data.locale ?? 'en');
+                setDetected(data.locale ?? 'en');
             } catch {
                 // Rate limits and dropped connections both land here. The
                 // message says what to do next rather than what went wrong,
@@ -206,7 +260,7 @@ export function useAssistant(page: string) {
         setSuggestions([]);
         setEscalate(false);
         setFailed(null);
-        setLocale('en');
+        setDetected('en');
 
         try {
             window.sessionStorage.removeItem(STORE_KEY);
@@ -221,7 +275,11 @@ export function useAssistant(page: string) {
         pending,
         escalate,
         failed,
-        locale,
+        // What the widget's own wording speaks: the visitor's pick when they
+        // made one, otherwise whatever the conversation turned out to be in.
+        locale: choice === 'auto' ? detected : choice,
+        choice,
+        setChoice,
         ask,
         reset,
         token: token.current,

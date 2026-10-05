@@ -50,6 +50,12 @@ class AssistantReply
     /** Follow-up questions offered under an answer. */
     private const SUGGESTIONS = 3;
 
+    /** Buttons under one answer. Two is a next step; three is a menu. */
+    private const MAX_CTAS = 2;
+
+    /** Longest answer the model may write, in tokens. */
+    private const AI_MAX_TOKENS = 700;
+
     /**
      * Answer, record both turns, and return everything the widget renders.
      *
@@ -60,9 +66,26 @@ class AssistantReply
      *     answered_by: string,
      * }
      */
-    public function answer(AssistantConversation $conversation, string $question, ?string $page = null): array
-    {
-        $locale = AssistantLanguage::forConversation($question, $conversation->locale);
+    public function answer(
+        AssistantConversation $conversation,
+        string $question,
+        ?string $page = null,
+        ?string $chosen = null,
+    ): array {
+        // The visitor's own choice beats any guess; failing that, a sentence
+        // plainly in some other language; failing that, the English/Kiswahili
+        // detection that was here first, untouched.
+        $language = VisitorLanguage::resolve(
+            $question,
+            $conversation->locale,
+            VisitorLanguage::normalize($chosen),
+        );
+
+        // Written answers exist in English and Kiswahili only. Everyone else is
+        // answered by the model, in their language, and the English base is
+        // what that prompt is built on.
+        $other = ! in_array($language, AssistantLanguage::SUPPORTED, true);
+        $locale = $other ? 'en' : $language;
 
         // Read before the question is recorded, or the model is handed the
         // question twice — once as history and once as the question.
@@ -74,12 +97,13 @@ class AssistantReply
         // been obeyed — the locale above is the answer to it — so the reply is
         // an acknowledgement in the new language rather than a search for
         // something it could never have found.
-        $switched = AssistantLanguage::requested($question) === $locale;
+        $switched = ! $other && AssistantLanguage::requested($question) === $locale;
 
-        $courtesy = $switched ? null : AssistantLanguage::courtesy($question);
-        $matched = $courtesy === null && ! $switched ? $this->match($question) : null;
+        $courtesy = $switched || $other ? null : AssistantLanguage::courtesy($question);
+        $matched = $courtesy === null && ! $switched && ! $other ? $this->match($question) : null;
 
         $result = match (true) {
+            $other => $this->fromAi($question, $history, $locale, $page, $language),
             $switched => $this->fromCourtesy('switched', $locale),
             // "asante", "sawa", "hi" — answered in kind. Sent to the model
             // these cost a paid call to improvise a "you're welcome"; matched
@@ -101,15 +125,19 @@ class AssistantReply
         // Counted in turns rather than rows, since that is what the console
         // and the escalation prompt both mean by "how long has this gone on".
         $conversation->increment('messages_count');
-        $conversation->forceFill(['locale' => $locale])->save();
+        $conversation->forceFill(['locale' => $language])->save();
 
         return [
             ...$result,
-            'suggestions' => $this->suggestions($matched, $locale),
+            // The written follow-ups are English or Kiswahili. In any other
+            // language the widget shows its own, translated, instead of
+            // chips that switch the visitor back.
+            'suggestions' => $other ? [] : $this->suggestions($matched, $locale),
             // Returned rather than read back off the conversation, so the
             // caller cannot accidentally report the language of the turn
             // before this one.
-            'locale' => $locale,
+            'locale' => $language,
+            'rtl' => VisitorLanguage::isRtl($language),
         ];
     }
 
@@ -239,6 +267,7 @@ class AssistantReply
         return [
             'reply' => AssistantLanguage::courtesyReply($kind, $locale),
             'cta' => null,
+            'ctas' => [],
             'answered_by' => AssistantMessage::KNOWLEDGE,
         ];
     }
@@ -246,9 +275,12 @@ class AssistantReply
     /** @return array{reply: string, cta: array{label: string, url: string}|null, answered_by: string} */
     private function fromKnowledge(AssistantKnowledge $entry, string $locale): array
     {
+        $cta = $this->safeCta($entry->cta());
+
         return [
             'reply' => $entry->answerIn($locale),
-            'cta' => $this->safeCta($entry->cta()),
+            'cta' => $cta,
+            'ctas' => $cta === null ? [] : [$cta],
             'answered_by' => AssistantMessage::KNOWLEDGE,
         ];
     }
@@ -257,33 +289,70 @@ class AssistantReply
      * @param  array<int, array{role: string, content: string}>  $history
      * @return array{reply: string, cta: array{label: string, url: string}|null, answered_by: string}
      */
-    private function fromAi(string $question, array $history, string $locale, ?string $page): array
+    private function fromAi(string $question, array $history, string $locale, ?string $page, ?string $language = null): array
     {
         $key = (string) AssistantKey::get();
 
         $answer = $key === ''
             ? null
             : (new DeepSeekClient($key))->ask(
-                system: PlatformContext::for($locale, $page),
+                system: PlatformContext::for($locale, $page, $language),
                 question: $question,
                 history: $history,
+                // Room for a short walkthrough. The reseller-facing bot is
+                // held to 400 because its customers are on WhatsApp; a visitor
+                // asking how setup works is owed more than a sentence.
+                maxTokens: self::AI_MAX_TOKENS,
             );
 
         if ($answer === null) {
             return [
-                'reply' => AssistantLanguage::fallback($locale),
+                'reply' => $language === null
+                    ? AssistantLanguage::fallback($locale)
+                    : VisitorLanguage::fallback($language),
                 'cta' => null,
+                'ctas' => [],
                 'answered_by' => AssistantMessage::FALLBACK,
             ];
         }
 
-        [$reply, $cta] = $this->splitCta($answer);
+        [$reply, $ctas] = $this->splitCtas($answer);
+
+        $safe = array_values(array_filter(array_map(fn (array $cta) => $this->safeCta($cta), $ctas)));
 
         return [
             'reply' => $reply,
-            'cta' => $this->safeCta($cta),
+            // The first, under its old name, for anything still reading it.
+            'cta' => $safe[0] ?? null,
+            'ctas' => $safe,
             'answered_by' => AssistantMessage::AI,
         ];
+    }
+
+    /**
+     * Pull every [[CTA:Label|/path]] marker out of an answer, at most two.
+     *
+     * More would be the model offering a menu instead of a next step, and the
+     * rule it is given says two. A third is dropped rather than shown.
+     *
+     * @return array{0: string, 1: array<int, array{label: string, url: string}>}
+     */
+    private function splitCtas(string $answer): array
+    {
+        preg_match_all('/\[\[CTA:\s*([^|\]]+)\|\s*([^\]]+)\]\]/u', $answer, $found, PREG_SET_ORDER);
+
+        $reply = $answer;
+        $ctas = [];
+
+        foreach ($found as $marker) {
+            $reply = str_replace($marker[0], '', $reply);
+
+            if (count($ctas) < self::MAX_CTAS) {
+                $ctas[] = ['label' => trim($marker[1]), 'url' => trim($marker[2])];
+            }
+        }
+
+        return [trim(preg_replace("/\n{3,}/", "\n\n", $reply) ?? $reply), $ctas];
     }
 
     /**
@@ -330,7 +399,7 @@ class AssistantReply
         $path = '/'.ltrim(strtok($cta['url'], '#') ?: '/', '/');
         $path = $path === '//' ? '/' : rtrim($path, '/');
 
-        if (! array_key_exists($path === '' ? '/' : $path, PlatformContext::PAGES)) {
+        if (! PlatformContext::allowsPath($path === '' ? '/' : $path)) {
             return null;
         }
 

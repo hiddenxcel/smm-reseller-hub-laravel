@@ -75,7 +75,7 @@ class PublicPageController extends Controller
     {
         return [
             'demoNumber' => config('services.demo_whatsapp_number'),
-            'assistantEnabled' => AssistantKey::isReady(),
+            'assistantEnabled' => AssistantKey::widgetEnabled(),
         ];
     }
 

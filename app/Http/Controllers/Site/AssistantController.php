@@ -40,6 +40,9 @@ class AssistantController extends Controller
             'message' => ['required', 'string', 'max:500'],
             'token' => ['nullable', 'uuid'],
             'page' => ['nullable', 'string', 'max:200'],
+            // The language the visitor picked, if they did. Unknown codes are
+            // ignored rather than rejected: a stale client must still work.
+            'lang' => ['nullable', 'string', 'max:8'],
         ]);
 
         $page = $this->safePage($validated['page'] ?? null);
@@ -50,7 +53,12 @@ class AssistantController extends Controller
             $page,
         );
 
-        $answer = $this->replies->answer($conversation, trim($validated['message']), $page);
+        $answer = $this->replies->answer(
+            $conversation,
+            trim($validated['message']),
+            $page,
+            $validated['lang'] ?? null,
+        );
 
         return response()->json([
             ...$answer,

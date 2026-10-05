@@ -46,7 +46,7 @@ class DeepSeekClient
      *                                                                     earlier turns, oldest first, for follow-up questions
      * @return string|null null on any failure — unreachable, refused, or empty
      */
-    public function ask(string $system, string $question, array $history = []): ?string
+    public function ask(string $system, string $question, array $history = [], ?int $maxTokens = null): ?string
     {
         if ($this->apiKey === '') {
             return null;
@@ -62,7 +62,7 @@ class DeepSeekClient
                         ...$history,
                         ['role' => 'user', 'content' => $question],
                     ],
-                    'max_tokens' => self::MAX_TOKENS,
+                    'max_tokens' => $maxTokens ?? self::MAX_TOKENS,
                     'temperature' => self::TEMPERATURE,
                     'stream' => false,
                 ]);

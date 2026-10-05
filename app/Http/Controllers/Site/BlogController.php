@@ -26,7 +26,7 @@ class BlogController extends Controller
         return Inertia::render('Public/Blog/Index', [
             'posts' => $posts,
             'demoNumber' => config('services.demo_whatsapp_number'),
-            'assistantEnabled' => AssistantKey::isReady(),
+            'assistantEnabled' => AssistantKey::widgetEnabled(),
         ]);
     }
 
@@ -58,7 +58,7 @@ class BlogController extends Controller
                     'published_at' => $other->published_at?->toDateString(),
                 ]),
             'demoNumber' => config('services.demo_whatsapp_number'),
-            'assistantEnabled' => AssistantKey::isReady(),
+            'assistantEnabled' => AssistantKey::widgetEnabled(),
         ]);
     }
 }
