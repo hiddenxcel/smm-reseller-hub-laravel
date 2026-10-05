@@ -13,6 +13,7 @@ import {
     LucideIcon,
     Megaphone,
     PenLine,
+    Smartphone,
     Menu,
     Moon,
     Package,
@@ -83,6 +84,10 @@ const SECTIONS: NavSection[] = [
             // The price list sits with what it prices, not under System: it is
             // changed for commercial reasons, not administrative ones.
             { label: 'Plans', icon: Tags, routeName: 'admin.plans.index' },
+            // The numbers those plans' customers rent. Next to Plans because
+            // the price of a number is set here, and who holds it is a
+            // commercial question more than a technical one.
+            { label: 'Numbers', icon: Smartphone, routeName: 'admin.numbers.index' },
             // Two ticket queues that must never be confused. "Customer" is a
             // reseller's own WhatsApp conversations, which we only read;
             // "Help desk" is resellers writing to us, which we answer.

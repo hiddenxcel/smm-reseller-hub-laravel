@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\BotsController;
 use App\Http\Controllers\Admin\CatalogueController;
 use App\Http\Controllers\Admin\ImpersonationController;
+use App\Http\Controllers\Admin\NumbersController;
 use App\Http\Controllers\Admin\PaymentsController;
 use App\Http\Controllers\Admin\PlansController;
 use App\Http\Controllers\Admin\ReportsController;
@@ -74,6 +75,18 @@ Route::middleware(['auth:superadmin', 'admin'])->group(function () {
         ->whereIn('action', ['suspend', 'activate', 'credit', 'password'])
         ->whereNumber('tenant')
         ->name('tenants.act');
+
+    // Numbers — the pool resellers rent from. Declared with a literal `verify`
+    // before the `{number}` routes so it is never read as a number's id.
+    Route::get('numbers', [NumbersController::class, 'index'])->name('numbers.index');
+    Route::post('numbers', [NumbersController::class, 'store'])->name('numbers.store');
+    Route::post('numbers/verify', [NumbersController::class, 'verify'])->name('numbers.verify');
+    Route::patch('numbers/{number}', [NumbersController::class, 'update'])->whereNumber('number')->name('numbers.update');
+    Route::delete('numbers/{number}', [NumbersController::class, 'destroy'])->whereNumber('number')->name('numbers.destroy');
+    Route::post('numbers/{number}/{action}', [NumbersController::class, 'act'])
+        ->whereNumber('number')
+        ->whereIn('action', ['suspend', 'restore', 'release'])
+        ->name('numbers.act');
 
     // Plans — the price list. No delete route: retiring keeps the row that the
     // payment and subscription history points at.
