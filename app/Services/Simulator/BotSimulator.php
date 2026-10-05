@@ -63,28 +63,36 @@ class BotSimulator
         ];
     }
 
-    public static function phoneFor(Tenant $tenant): string
+    /**
+     * The pretend customer's number. The same for everyone: a customer is only
+     * ever looked up inside one tenant, and inside one transaction.
+     */
+    public static function phoneFor(?Tenant $tenant = null): string
     {
-        return 'sim:'.$tenant->id;
+        return 'sim:you';
     }
 
     /**
+     * @param  Tenant|null  $tenant  null for a visitor with no account: the shop
+     *                               is then made up inside the transaction, so
+     *                               not even that row survives
      * @param  array<string, mixed>  $state  what the last call returned
      * @return array{events: array<int, array>, state: array<string, mixed>, sample: bool}
      */
-    public function send(Tenant $tenant, string $bot, string $text, array $state): array
+    public function send(?Tenant $tenant, string $bot, string $text, array $state, string $shopName = 'Your Shop'): array
     {
         if (! in_array($bot, self::BOTS, true)) {
             throw new \InvalidArgumentException("Unknown bot '{$bot}'");
         }
 
         $state = array_replace(self::freshState(), $state);
-        $phone = self::phoneFor($tenant);
+        $phone = self::phoneFor();
         $messenger = new WebSimMessenger($phone);
 
         DB::beginTransaction();
 
         try {
+            $tenant ??= $this->makeUpShop($shopName);
             $sample = $this->ensureServices($tenant);
             $customer = $this->restoreCustomer($tenant, $phone, $state);
             $this->restoreOrders($tenant, $customer, $state['orders']);
@@ -100,6 +108,16 @@ class BotSimulator
         }
 
         return ['events' => $messenger->events(), 'state' => $state, 'sample' => $sample];
+    }
+
+    /** A shop that exists only until the transaction rolls back. */
+    private function makeUpShop(string $name): Tenant
+    {
+        return Tenant::create([
+            'business_name' => $name,
+            'email' => 'visitor-'.bin2hex(random_bytes(6)).'@try.invalid',
+            'password_hash' => bin2hex(random_bytes(16)),
+        ]);
     }
 
     /**

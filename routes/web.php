@@ -27,6 +27,7 @@ use App\Http\Controllers\Site\BlogController;
 use App\Http\Controllers\Site\ContactController;
 use App\Http\Controllers\Site\PublicPageController;
 use App\Http\Controllers\Site\SitemapController;
+use App\Http\Controllers\Site\TryController;
 use App\Http\Controllers\SupportBotController;
 use App\Http\Controllers\SupportBotInboxController;
 use App\Http\Controllers\SupportBotTicketsController;
@@ -61,6 +62,15 @@ Route::get('/contact', [PublicPageController::class, 'contact'])->name('contact'
 Route::post('/contact', [ContactController::class, 'store'])
     ->middleware('throttle:5,10')
     ->name('contact.store');
+
+// The practice chat, for someone with no account. It is the page most likely
+// to be opened by a stranger and the one that does the most work per request,
+// so it is the one with a daily ceiling as well as a per-minute one — see the
+// 'try-bot' limiter.
+Route::get('/try', [TryController::class, 'show'])->name('try');
+Route::post('/try/send', [TryController::class, 'send'])
+    ->middleware('throttle:try-bot')
+    ->name('try.send');
 
 Route::get('/blog', [BlogController::class, 'index'])->name('blog');
 Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');

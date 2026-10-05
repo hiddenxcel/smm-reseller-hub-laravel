@@ -20,6 +20,8 @@ export type SimulatorConfig = {
     business: string;
     bots: string[];
     startingBalance: string;
+    /** Visitors name their own shop; signed-in resellers already have one. */
+    sendBusiness?: boolean;
 };
 
 type BotKey = 'order' | 'support';
@@ -108,7 +110,12 @@ export default function WhatsAppSimulator({
                         Accept: 'application/json',
                         'X-XSRF-TOKEN': csrf(),
                     },
-                    body: JSON.stringify({ bot: selected, text, ...extra }),
+                    body: JSON.stringify({
+                        bot: selected,
+                        text,
+                        ...extra,
+                        ...(config.sendBusiness ? { business: config.business } : {}),
+                    }),
                 });
 
                 if (! response.ok) {
@@ -136,7 +143,7 @@ export default function WhatsAppSimulator({
                 setBusy(false);
             }
         },
-        [config.endpoint, push],
+        [config.endpoint, config.sendBusiness, config.business, push],
     );
 
     // Open (and re-open on switching bots) with the menu, as a customer would.

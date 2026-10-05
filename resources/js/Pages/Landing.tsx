@@ -334,14 +334,14 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                                             Start free
                                         </Link>
                                     </Button>
-                                    {/* Points at the demo rather than the price
+                                    {/* Points at the real bot rather than the price
                                         list: someone who is not sure yet wants to
                                         see it work, not to find out what it costs. */}
                                     <Button size="lg" variant="outline" className="w-full sm:w-auto" asChild>
-                                        <a href="#demo">
+                                        <Link href={route('try')}>
                                             <PlayCircle className="size-4" />
-                                            See it work
-                                        </a>
+                                            Try the real bot
+                                        </Link>
                                     </Button>
                                 </div>
 
@@ -520,6 +520,25 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                     />
 
                     <InteractiveDemo />
+
+                    {/* The demo above is a recording of the flow. This is the
+                        flow itself, for anyone who wants to type their own. */}
+                    <Reveal>
+                        <div className="mx-auto mt-10 flex max-w-2xl flex-col items-center gap-4 rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/10 to-primary/5 p-6 text-center sm:flex-row sm:text-left">
+                            <div className="flex-1">
+                                <p className="font-heading font-bold">Rather type it yourself?</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Chat with the actual bot on a WhatsApp screen. No signup, nothing is saved.
+                                </p>
+                            </div>
+                            <Button asChild>
+                                <Link href={route('try')}>
+                                    <PlayCircle className="size-4" />
+                                    Open the practice chat
+                                </Link>
+                            </Button>
+                        </div>
+                    </Reveal>
                 </Section>
 
                 {/* ---- how it works ---- */}
@@ -657,10 +676,10 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                                         className="w-full border-white/30 bg-transparent sm:w-auto text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
                                         asChild
                                     >
-                                        <a href="#demo">
+                                        <Link href={route('try')}>
                                             <PlayCircle className="size-4" />
                                             Try it first
-                                        </a>
+                                        </Link>
                                     </Button>
                                 </div>
 

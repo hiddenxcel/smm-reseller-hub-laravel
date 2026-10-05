@@ -23,6 +23,7 @@ class SitemapController extends Controller
         $pages = [
             ['loc' => route('home'), 'priority' => '1.0', 'freq' => 'weekly'],
             ['loc' => route('features'), 'priority' => '0.9', 'freq' => 'monthly'],
+            ['loc' => route('try'), 'priority' => '0.8', 'freq' => 'monthly'],
             ['loc' => route('what-we-do'), 'priority' => '0.8', 'freq' => 'monthly'],
             ['loc' => route('pricing'), 'priority' => '0.9', 'freq' => 'monthly'],
             ['loc' => route('api-docs'), 'priority' => '0.7', 'freq' => 'monthly'],
