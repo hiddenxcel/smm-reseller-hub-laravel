@@ -261,7 +261,7 @@ export default function WhatsAppSimulator({
                         {sample ? 'sample services' : 'your services'} · nothing is charged or sent
                     </p>
 
-                    <div ref={scroller} className="flex-1 space-y-2 overflow-y-auto px-3 py-4">
+                    <div ref={scroller} className="no-scrollbar flex-1 space-y-2 overflow-y-auto px-3 py-4">
                         {messages.map((message) =>
                             message.from === 'me' ? (
                                 <div key={message.key} className="flex justify-end">
@@ -299,7 +299,7 @@ export default function WhatsAppSimulator({
                     </div>
 
                     {/* quick starters */}
-                    <div className="flex gap-1.5 overflow-x-auto px-3 pb-2">
+                    <div className="no-scrollbar flex gap-1.5 overflow-x-auto px-3 pb-2">
                         {SUGGESTIONS[bot].map((text) => (
                             <button
                                 key={text}
@@ -337,7 +337,7 @@ export default function WhatsAppSimulator({
                     {openList && (
                         <div className="absolute inset-0 z-10 flex flex-col justify-end bg-black/50" onClick={() => setOpenList(null)}>
                             <div
-                                className="max-h-[78%] overflow-y-auto rounded-t-2xl bg-[#111b21] pb-2"
+                                className="no-scrollbar max-h-[78%] overflow-y-auto rounded-t-2xl bg-[#111b21] pb-2"
                                 onClick={(event) => event.stopPropagation()}
                             >
                                 <div className="sticky top-0 flex items-center justify-between bg-[#111b21] px-4 py-3">

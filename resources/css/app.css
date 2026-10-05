@@ -251,6 +251,17 @@
     box-shadow: var(--shadow-soft-lg);
   }
 
+  /* Scrolls, but draws no bar. A real phone shows none until you drag, and a
+     bar down the side of the demo screen is what gives it away as a web page. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   .soft-inset {
     box-shadow: var(--shadow-inset);
   }

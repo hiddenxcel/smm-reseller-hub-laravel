@@ -128,7 +128,7 @@ export default function PhoneDemo() {
                     that failed to load rather than one about to start. */}
                 <div
                     ref={chatRef}
-                    className="flex h-[22rem] flex-col justify-end space-y-2 overflow-y-auto bg-[#0b141a] px-3 py-4 sm:h-[26rem]"
+                    className="flex h-[22rem] no-scrollbar flex-col justify-end space-y-2 overflow-y-auto bg-[#0b141a] px-3 py-4 sm:h-[26rem]"
                     aria-live="polite"
                     aria-label="Example conversation with the order bot"
                 >
