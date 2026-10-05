@@ -67,6 +67,10 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
     // Whether the list should follow new content down. True until the visitor
     // scrolls up to re-read something, and true again when they send.
     const stick = useRef(true);
+
+    // Read inside the observer below, which outlives any one render.
+    const startedRef = useRef(false);
+    startedRef.current = started;
     const answered = useRef(0);
 
     // The panel must not exist in the server-rendered HTML at all: it reads
@@ -82,10 +86,10 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
         // ancestor too, and on a page behind the panel it moves the page.
         const box = scroller.current;
 
-        if (box && stick.current) {
+        if (box && stick.current && started) {
             box.scrollTo({ top: box.scrollHeight, behavior: pending ? 'auto' : 'smooth' });
         }
-    }, [turns, pending, suggestions]);
+    }, [turns, pending, suggestions, started]);
 
     // An answer is revealed a few words at a time, so its height keeps growing
     // after the turn that added it. Scrolling only on a new turn left the last
@@ -100,7 +104,10 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
         }
 
         const observer = new ResizeObserver(() => {
-            if (stick.current) {
+            // Only once there is a conversation. The welcome screen reads from
+            // the top; following its height down hid the greeting whenever the
+            // language changed and the cards re-wrapped.
+            if (stick.current && startedRef.current) {
                 box.scrollTop = box.scrollHeight;
             }
         });
@@ -211,15 +218,16 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
                 )}
             >
                 {/* ---- header: a quiet gradient, not a banner ---- */}
-                <header className="relative flex shrink-0 items-center gap-3 overflow-hidden bg-gradient-to-br from-primary to-primary/70 px-4 py-3.5 text-primary-foreground">
-                    <span
-                        aria-hidden
-                        className="pointer-events-none absolute -end-10 -top-12 size-36 rounded-full bg-white/15 blur-2xl"
-                    />
-                    <span
-                        aria-hidden
-                        className="pointer-events-none absolute -bottom-14 start-6 size-28 rounded-full bg-black/10 blur-2xl"
-                    />
+                {/* No overflow-hidden on the header itself: the language menu hangs
+                    below it, and a clipped header cut the menu to a sliver, so
+                    tapping "AUTO" appeared to do nothing. The glow is clipped
+                    in a layer of its own instead. z-30 so the menu sits above
+                    the messages, not under them. */}
+                <header className="relative z-30 flex shrink-0 items-center gap-3 bg-gradient-to-br from-primary to-primary/70 px-4 py-3.5 text-primary-foreground">
+                    <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+                        <span className="absolute -end-10 -top-12 size-36 rounded-full bg-white/15 blur-2xl" />
+                        <span className="absolute -bottom-14 start-6 size-28 rounded-full bg-black/10 blur-2xl" />
+                    </span>
 
                     <span className="relative flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/25 backdrop-blur">
                         <Sparkles className="size-5" />

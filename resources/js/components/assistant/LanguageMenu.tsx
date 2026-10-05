@@ -74,7 +74,7 @@ export default function LanguageMenu({
                 <div
                     role="listbox"
                     aria-label={copy.language}
-                    className="absolute end-0 top-full z-20 mt-2 max-h-72 w-52 animate-in overflow-y-auto rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-xl fade-in zoom-in-95 duration-150"
+                    className="absolute end-0 top-full z-20 mt-2 max-h-[min(18rem,60dvh)] w-52 max-w-[calc(100vw-2rem)] animate-in overflow-y-auto rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-xl fade-in zoom-in-95 duration-150"
                 >
                     {[{ code: 'auto', name: copy.autoDetect }, ...LANGUAGES].map((language) => {
                         const selected = choice === language.code;
