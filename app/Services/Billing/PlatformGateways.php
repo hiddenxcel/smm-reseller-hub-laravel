@@ -5,6 +5,7 @@ namespace App\Services\Billing;
 use App\Models\PlatformGatewayCredential;
 use App\Services\Payments\BinancePayClient;
 use App\Services\Payments\CryptomusClient;
+use App\Services\Payments\FimipayClient;
 use App\Services\Payments\HeleketClient;
 use App\Services\Payments\NowPaymentsClient;
 use App\Services\Payments\PaymentGateway;
@@ -38,6 +39,7 @@ class PlatformGateways
                 'code' => $code,
                 'label' => $gateway['label'],
                 'type' => $gateway['type'],
+                'needsPhone' => self::needsPhone($code),
             ])
             ->values()
             ->all();
@@ -47,8 +49,12 @@ class PlatformGateways
     {
         $keys = self::keys($code);
 
+        if (FimipayClient::isFimipay($code)) {
+            return filled(Arr::get($keys, 'api_key'));
+        }
+
         return match ($code) {
-            'snippe' => filled(Arr::get($keys, 'api_key')),
+            'snippe', 'snippe_ke', 'snippe_ug' => filled(Arr::get($keys, 'api_key')),
             'nowpayments' => filled(Arr::get($keys, 'api_key')),
             'cryptomus', 'heleket' => filled(Arr::get($keys, 'api_key'))
                 && filled(Arr::get($keys, 'merchant_id')),
@@ -144,7 +150,10 @@ class PlatformGateways
     /** Mobile money pushes a prompt to a handset, so it must ask for a number. */
     public static function needsPhone(string $code): bool
     {
-        return config("billing.gateways.{$code}.type") === 'mobile';
+        return (bool) config(
+            "billing.gateways.{$code}.needs_phone",
+            config("billing.gateways.{$code}.type") === 'mobile',
+        );
     }
 
     /**
@@ -184,10 +193,23 @@ class PlatformGateways
     {
         $keys = self::keys($code);
 
-        return match ($code) {
-            'snippe' => new SnippeClient(
+        if (FimipayClient::isFimipay($code)) {
+            return new FimipayClient(
                 (string) Arr::get($keys, 'api_key'),
                 (string) Arr::get($keys, 'webhook_secret'),
+                $code,
+            );
+        }
+
+        return match ($code) {
+            'snippe', 'snippe_ke', 'snippe_ug' => new SnippeClient(
+                (string) Arr::get($keys, 'api_key'),
+                (string) Arr::get($keys, 'webhook_secret'),
+                match ($code) {
+                    'snippe_ke' => 'KES',
+                    'snippe_ug' => 'UGX',
+                    default => 'TZS',
+                },
             ),
             'nowpayments' => new NowPaymentsClient(
                 (string) Arr::get($keys, 'api_key'),

@@ -8,8 +8,10 @@ use App\Services\Billing\ActivatePurchase;
 use App\Services\Billing\PlatformGateways;
 use App\Services\Payments\BinancePayClient;
 use App\Services\Payments\CryptomusClient;
+use App\Services\Payments\FimipayClient;
 use App\Services\Payments\NowPaymentsClient;
 use App\Services\Payments\SnippeClient;
+use App\Services\Payments\StatusCheckable;
 use App\Services\Payments\WebhookVerifier;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -60,6 +62,17 @@ class BillingWebhookController extends Controller
             ]);
 
             return $this->ack('unknown reference');
+        }
+
+        // FimiPay's notification is only a nudge: nothing on it is believed,
+        // and FimiPay itself is asked whether the order was paid. Already
+        // settled orders are not looked up again.
+        if (FimipayClient::isFimipay($gateway)) {
+            if ($payment->status === 'pending' && $this->fimipayConfirms($gateway, $payment)) {
+                $this->activate->apply($payment);
+            }
+
+            return $this->ack('ok');
         }
 
         if (! $this->verified($gateway, $request)) {
@@ -194,7 +207,7 @@ class BillingWebhookController extends Controller
         // Snippe says "payment.completed" and "completed", neither of which is in
         // the shared lists below, so it is read on its own terms. Without this a
         // paid Snippe subscription was acknowledged and then never activated.
-        if ($gateway === 'snippe') {
+        if (str_starts_with($gateway, 'snippe')) {
             return SnippeClient::isCompleted($payload);
         }
 
@@ -241,6 +254,14 @@ class BillingWebhookController extends Controller
                 'paid',
             ], true),
         };
+    }
+
+    private function fimipayConfirms(string $gateway, SubscriptionPayment $payment): bool
+    {
+        $client = PlatformGateways::make($gateway);
+
+        return $client instanceof StatusCheckable
+            && $client->checkStatus($payment->transaction_ref) === 'completed';
     }
 
     private function ack(string $reason): Response

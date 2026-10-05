@@ -68,6 +68,79 @@ return [
                 ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret', 'required' => true],
             ],
         ],
+        // Kenya and Uganda run on the same Snippe account as Tanzania; the
+        // reseller pays on Snippe's hosted page, so no phone is asked for here.
+        'snippe_ke' => [
+            'label' => 'M-Pesa & cards (Kenya)',
+            'type' => 'redirect',
+            'help' => 'Snippe Kenya, on the hosted checkout page. Same API key and webhook secret as the Snippe account above.',
+            'fields' => [
+                ['name' => 'api_key', 'label' => 'API key', 'store' => 'api_key', 'required' => true],
+                ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret', 'required' => true],
+            ],
+        ],
+        'snippe_ug' => [
+            'label' => 'Mobile Money (Uganda)',
+            'type' => 'redirect',
+            'help' => 'Snippe Uganda (MTN, Airtel), on the hosted checkout page. Same API key and webhook secret as the Snippe account above.',
+            'fields' => [
+                ['name' => 'api_key', 'label' => 'API key', 'store' => 'api_key', 'required' => true],
+                ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret', 'required' => true],
+            ],
+        ],
+        // FimiPay, one gateway per market. Paid orders are confirmed by asking
+        // FimiPay, so the webhook secret is optional. FimiPay wants a phone in
+        // every market, cards included.
+        'fimipay_ng' => [
+            'label' => 'Bank transfer (Nigeria)',
+            'type' => 'redirect',
+            'needs_phone' => true,
+            'help' => 'FimiPay Nigeria, charged in NGN.',
+            'fields' => [
+                ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key', 'required' => true],
+                ['name' => 'webhook_secret', 'label' => 'Webhook secret (optional)', 'store' => 'webhook_secret', 'required' => false],
+            ],
+        ],
+        'fimipay_gh' => [
+            'label' => 'Mobile Money (Ghana)',
+            'type' => 'redirect',
+            'needs_phone' => true,
+            'help' => 'FimiPay Ghana, charged in GHS.',
+            'fields' => [
+                ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key', 'required' => true],
+                ['name' => 'webhook_secret', 'label' => 'Webhook secret (optional)', 'store' => 'webhook_secret', 'required' => false],
+            ],
+        ],
+        'fimipay_cm' => [
+            'label' => 'Mobile Money (Cameroon)',
+            'type' => 'redirect',
+            'needs_phone' => true,
+            'help' => 'FimiPay Cameroon, charged in XAF.',
+            'fields' => [
+                ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key', 'required' => true],
+                ['name' => 'webhook_secret', 'label' => 'Webhook secret (optional)', 'store' => 'webhook_secret', 'required' => false],
+            ],
+        ],
+        'fimipay_za' => [
+            'label' => 'Card (South Africa)',
+            'type' => 'redirect',
+            'needs_phone' => true,
+            'help' => 'FimiPay South Africa, charged in ZAR.',
+            'fields' => [
+                ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key', 'required' => true],
+                ['name' => 'webhook_secret', 'label' => 'Webhook secret (optional)', 'store' => 'webhook_secret', 'required' => false],
+            ],
+        ],
+        'fimipay_usd' => [
+            'label' => 'Card (International)',
+            'type' => 'redirect',
+            'needs_phone' => true,
+            'help' => 'FimiPay international cards, charged in USD.',
+            'fields' => [
+                ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key', 'required' => true],
+                ['name' => 'webhook_secret', 'label' => 'Webhook secret (optional)', 'store' => 'webhook_secret', 'required' => false],
+            ],
+        ],
         'cryptomus' => [
             'label' => 'Crypto (Cryptomus)',
             'type' => 'crypto',
