@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Services\Billing\StartSandbox;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -44,6 +45,10 @@ class RegisteredUserController extends Controller
             'phone' => $request->phone,
             'password_hash' => Hash::make($request->password),
         ]);
+
+        // The bots start in sandbox, so the reseller's own test numbers get
+        // answers before anything is paid for.
+        app(StartSandbox::class)($tenant);
 
         event(new Registered($tenant));
 
