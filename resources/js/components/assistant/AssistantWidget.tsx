@@ -44,6 +44,7 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
         pending,
         escalate,
         failed,
+        rateLimited,
         locale,
         choice,
         setChoice,
@@ -59,7 +60,13 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
     const rtl = isRtl(locale);
 
     const bottom = useRef<HTMLDivElement>(null);
+    const scroller = useRef<HTMLDivElement>(null);
+    const content = useRef<HTMLDivElement>(null);
     const input = useRef<HTMLTextAreaElement>(null);
+
+    // Whether the list should follow new content down. True until the visitor
+    // scrolls up to re-read something, and true again when they send.
+    const stick = useRef(true);
     const answered = useRef(0);
 
     // The panel must not exist in the server-rendered HTML at all: it reads
@@ -71,8 +78,37 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
     // arriving, so a long answer does not scroll for the length of its own
     // reveal.
     useEffect(() => {
-        bottom.current?.scrollIntoView({ behavior: pending ? 'auto' : 'smooth' });
+        // Scrolls the list itself, never scrollIntoView: that one scrolls every
+        // ancestor too, and on a page behind the panel it moves the page.
+        const box = scroller.current;
+
+        if (box && stick.current) {
+            box.scrollTo({ top: box.scrollHeight, behavior: pending ? 'auto' : 'smooth' });
+        }
     }, [turns, pending, suggestions]);
+
+    // An answer is revealed a few words at a time, so its height keeps growing
+    // after the turn that added it. Scrolling only on a new turn left the last
+    // line cut off under the composer; watching the height itself keeps the
+    // end in view for as long as the visitor has not scrolled away from it.
+    useEffect(() => {
+        const list = content.current;
+        const box = scroller.current;
+
+        if (!list || !box || typeof ResizeObserver === 'undefined') {
+            return;
+        }
+
+        const observer = new ResizeObserver(() => {
+            if (stick.current) {
+                box.scrollTop = box.scrollHeight;
+            }
+        });
+
+        observer.observe(list);
+
+        return () => observer.disconnect();
+    }, [mounted, open, started, leaving]);
 
     // Grows with what is typed, up to a few lines.
     useEffect(() => {
@@ -118,6 +154,7 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
     }
 
     function send(text: string) {
+        stick.current = true;
         setDraft('');
         setLeaving(false);
         void ask(text);
@@ -160,18 +197,21 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
                     // short of the top so the page behind stays visible —
                     // covering everything reads as having navigated away.
                     'inset-x-0 bottom-0 top-14 rounded-t-3xl border-t',
-                    // Desktop: a panel in the corner that grows with the
-                    // conversation instead of standing at full height from the
-                    // first word. A tall box holding two lines and a wall of
-                    // empty space looks broken, which is what it was doing.
-                    'sm:inset-auto sm:right-6 sm:bottom-6 sm:top-auto sm:max-h-[min(40rem,calc(100dvh-6rem))] sm:w-[26.5rem] sm:rounded-3xl sm:border',
+                    // Desktop: a corner panel with a fixed height, not one that
+                    // grows with the conversation. An auto-height flex column
+                    // has no height for its scroller to fill, so as the chat
+                    // got longer the header, the answers and the composer all
+                    // shrank together — the header cropped to a sliver and the
+                    // text squeezed. A definite height gives the message list
+                    // something to scroll inside, and nothing else moves.
+                    'sm:inset-auto sm:right-6 sm:bottom-6 sm:top-auto sm:h-[min(38rem,calc(100dvh-6rem))] sm:w-[26.5rem] sm:rounded-3xl sm:border',
                     open
                         ? 'translate-y-0 opacity-100 sm:scale-100'
                         : 'pointer-events-none translate-y-4 opacity-0 sm:origin-bottom-right sm:translate-y-0 sm:scale-95',
                 )}
             >
                 {/* ---- header: a quiet gradient, not a banner ---- */}
-                <header className="relative flex items-center gap-3 overflow-hidden bg-gradient-to-br from-primary to-primary/70 px-4 py-3.5 text-primary-foreground">
+                <header className="relative flex shrink-0 items-center gap-3 overflow-hidden bg-gradient-to-br from-primary to-primary/70 px-4 py-3.5 text-primary-foreground">
                     <span
                         aria-hidden
                         className="pointer-events-none absolute -end-10 -top-12 size-36 rounded-full bg-white/15 blur-2xl"
@@ -240,7 +280,16 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
                             scroll; flex-1 alone makes a flex child refuse to
                             go under its natural height, which pushed the
                             composer off the bottom of a short panel. */}
-                        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-gradient-to-b from-muted/40 to-transparent">
+                        <div
+                            ref={scroller}
+                            onScroll={(event) => {
+                                const box = event.currentTarget;
+
+                                stick.current = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+                            }}
+                            className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-gradient-to-b from-muted/40 to-transparent"
+                        >
+                          <div ref={content}>
                             {!started ? (
                                 <AssistantWelcome page={page} locale={locale} onPick={send} />
                             ) : (
@@ -256,7 +305,9 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
                                         instead of typing it out twice. */}
                                     {failed && (
                                         <div className="rounded-xl bg-muted px-4 py-3 text-sm">
-                                            <p className="text-muted-foreground">{copy.failed}</p>
+                                            <p className="text-muted-foreground">
+                                                {rateLimited ? copy.slowDown : copy.failed}
+                                            </p>
 
                                             <button
                                                 type="button"
@@ -286,13 +337,14 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
                             )}
 
                             <div ref={bottom} />
+                          </div>
                         </div>
 
                         {/* Offered once the assistant has had a fair go, or the
                             moment it admits it cannot help — never before the
                             visitor has asked anything. */}
                         {escalate && (
-                            <div className="flex flex-wrap items-center gap-2 border-t border-border/60 bg-muted/30 px-4 py-2.5">
+                            <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border/60 bg-muted/30 px-4 py-2.5">
                                 <span className="text-xs text-muted-foreground">{copy.needPerson}</span>
 
                                 {whatsapp && (
@@ -318,7 +370,7 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
                             </div>
                         )}
 
-                        <div className="border-t border-border/60 bg-card px-3 pt-3 pb-2.5">
+                        <div className="shrink-0 border-t border-border/60 bg-card px-3 pt-3 pb-2.5">
                             <div className="flex items-end gap-1.5 rounded-2xl border border-border bg-background px-2 py-1.5 transition-shadow focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/40">
                                 <textarea
                                     ref={input}

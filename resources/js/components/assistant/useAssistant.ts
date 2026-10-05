@@ -109,6 +109,9 @@ export function useAssistant(page: string) {
     /** The question that did not go through, so it can be offered back. */
     const [failed, setFailed] = useState<string | null>(null);
 
+    /** Whether it failed because they are asking faster than a person types. */
+    const [rateLimited, setRateLimited] = useState(false);
+
     /**
      * What language the conversation is in, as the server last judged it.
      *
@@ -188,6 +191,7 @@ export function useAssistant(page: string) {
             const turnId = nextId.current++;
 
             setFailed(null);
+            setRateLimited(false);
             setSuggestions([]);
             setPending(true);
             setTurns((current) => [...current, { id: turnId, role: 'user', text }]);
@@ -211,6 +215,10 @@ export function useAssistant(page: string) {
                 });
 
                 if (!response.ok) {
+                    // Told apart because the advice differs: "try again in a
+                    // moment" is wrong for a network drop and right for this.
+                    setRateLimited(response.status === 429);
+
                     throw new Error(String(response.status));
                 }
 
@@ -275,6 +283,7 @@ export function useAssistant(page: string) {
         pending,
         escalate,
         failed,
+        rateLimited,
         // What the widget's own wording speaks: the visitor's pick when they
         // made one, otherwise whatever the conversation turned out to be in.
         locale: choice === 'auto' ? detected : choice,
