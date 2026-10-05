@@ -48,7 +48,7 @@ export default function Contact({ demoNumber, assistantEnabled }: Props) {
         >
             <Seo
                 title="Contact"
-                description="Questions before signing up, or something not working? Write to the Resellers Hub team and we will answer by email — or reach us on WhatsApp for anything urgent."
+                description="Questions before signing up, or something not working? Write to the Auto Resellers Hub team and we will answer by email — or reach us on WhatsApp for anything urgent."
             />
 
             <Section className="pt-0">

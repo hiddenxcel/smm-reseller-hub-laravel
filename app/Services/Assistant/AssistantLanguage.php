@@ -439,7 +439,7 @@ class AssistantLanguage
     public static function fallback(string $locale): string
     {
         return $locale === 'sw'
-            ? 'Samahani, sina taarifa hiyo kwenye knowledge base ya ResellersHub, na sitaki kukupa jibu ambalo si sahihi. Ungependa kuzungumza na mtu wa timu yetu?'
-            : 'I do not have that in the ResellersHub knowledge base, and I would rather not guess at it. Would you like to put the question to someone on our team?';
+            ? 'Samahani, sina taarifa hiyo kwenye knowledge base ya Auto Resellers Hub, na sitaki kukupa jibu ambalo si sahihi. Ungependa kuzungumza na mtu wa timu yetu?'
+            : 'I do not have that in the Auto Resellers Hub knowledge base, and I would rather not guess at it. Would you like to put the question to someone on our team?';
     }
 }

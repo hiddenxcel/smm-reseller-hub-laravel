@@ -45,7 +45,7 @@ class SupportTicketReplied extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
-        $company = (string) PlatformSetting::get('company_name', 'Resellers Hub');
+        $company = (string) PlatformSetting::get('company_name', 'Auto Resellers Hub');
 
         return (new MailMessage)
             ->subject("[{$this->ticket->reference}] We have replied — {$this->ticket->subject}")

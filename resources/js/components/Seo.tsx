@@ -21,7 +21,7 @@ export default function Seo({
     description: string;
     image?: string;
 }) {
-    const fullTitle = `${title} — Resellers Hub`;
+    const fullTitle = `${title} — Auto Resellers Hub`;
 
     // Spelled out rather than left to Blade. Blade's copy is only written when
     // the page is not server-rendered — under SSR these keyed tags are the

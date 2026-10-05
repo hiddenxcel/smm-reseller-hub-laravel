@@ -119,7 +119,7 @@ export default function PublicFooter({
                             className="font-heading flex items-center gap-2 text-lg font-extrabold"
                         >
                             <AppLogo className="size-7" />
-                            Resellers Hub
+                            Auto Resellers Hub
                         </Link>
 
                         <p className="mt-3 max-w-xs text-sm text-pretty text-muted-foreground">
@@ -159,7 +159,7 @@ export default function PublicFooter({
                 </div>
 
                 <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border/60 pt-6 text-sm text-muted-foreground sm:flex-row">
-                    <p>© {new Date().getFullYear()} Resellers Hub</p>
+                    <p>© {new Date().getFullYear()} Auto Resellers Hub</p>
 
                     <p className="text-center sm:text-right">
                         Built for SMM resellers

@@ -175,7 +175,7 @@ class DemoAccountTest extends TestCase
 
         $this->actingAs($admin, 'superadmin')
             ->post(route('admin.settings.save'), [
-                'company_name' => 'Resellers Hub',
+                'company_name' => 'Auto Resellers Hub',
                 'support_email' => 'help@example.com',
             ])
             ->assertRedirect();

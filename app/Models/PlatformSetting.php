@@ -41,7 +41,7 @@ class PlatformSetting extends Model
      * behaves like a configured one.
      */
     public const DEFAULTS = [
-        'company_name' => 'Resellers Hub',
+        'company_name' => 'Auto Resellers Hub',
         'support_email' => '',
         'support_whatsapp' => '',
         'website_url' => '',

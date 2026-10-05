@@ -167,7 +167,7 @@ export default function ApiDocs({ baseUrl, demoNumber, assistantEnabled }: Props
         >
             <Seo
                 title="API docs"
-                description="The Resellers Hub API: one endpoint speaking the standard SMM API v2, so anything already written against a panel works unchanged. Place orders, check status and request refills from your own site."
+                description="The Auto Resellers Hub API: one endpoint speaking the standard SMM API v2, so anything already written against a panel works unchanged. Place orders, check status and request refills from your own site."
             />
 
             {/* ---- getting started ---- */}

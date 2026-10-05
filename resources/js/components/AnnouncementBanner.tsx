@@ -165,7 +165,7 @@ function AnnouncementDialog({
                     </DialogTitle>
 
                     <DialogDescription className="sr-only">
-                        A notice from Resellers Hub
+                        A notice from Auto Resellers Hub
                     </DialogDescription>
                 </DialogHeader>
 

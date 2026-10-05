@@ -184,7 +184,7 @@ class SeoTest extends TestCase
             public function dispatch(array $page): ?Response
             {
                 return new Response(
-                    head: '<title inertia>A Page - Resellers Hub</title>'
+                    head: '<title inertia>A Page - Auto Resellers Hub</title>'
                         .'<meta name="description" content="The page\'s own." inertia="description">',
                     body: '<div id="app"><h1>A Page</h1></div>',
                 );
@@ -206,7 +206,7 @@ class SeoTest extends TestCase
         );
 
         // The page's own, not the generic default it would otherwise sit under.
-        $this->assertStringContainsString('A Page - Resellers Hub', $body);
+        $this->assertStringContainsString('A Page - Auto Resellers Hub', $body);
     }
 
     /** Malformed JSON-LD is not an error anywhere — it is simply ignored. */

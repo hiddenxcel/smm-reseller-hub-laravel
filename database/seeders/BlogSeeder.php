@@ -35,7 +35,7 @@ class BlogSeeder extends Seeder
                 'slug' => 'why-whatsapp-bans-smm-panel-numbers',
                 'title' => 'Why WhatsApp bans SMM panel numbers — and how to avoid it',
                 'excerpt' => 'Most WhatsApp automation for SMM shops runs on QR-code scraping. Meta detects it, and the number goes with it. Here is what actually happens, and the route that does not risk your account.',
-                'author' => 'Resellers Hub',
+                'author' => 'Auto Resellers Hub',
                 'published_at' => now()->subDays(21),
                 'body' => <<<'BODY'
 If you sell SMM services and you have automated WhatsApp, you have probably met one of two outcomes: a number that works fine for months, or a number that disappears overnight with every customer conversation in it.
@@ -85,7 +85,7 @@ BODY,
                 'slug' => 'connect-smm-panel-to-whatsapp',
                 'title' => 'How to connect your SMM panel to WhatsApp',
                 'excerpt' => 'Your panel already has an API. This is what it takes to put it behind a WhatsApp bot that sells, charges and delivers — without replacing anything you already run.',
-                'author' => 'Resellers Hub',
+                'author' => 'Auto Resellers Hub',
                 'published_at' => now()->subDays(14),
                 'body' => <<<'BODY'
 Almost every SMM panel speaks the same API. That is the quiet fact that makes this possible: Perfect Panel, Apex, Glycon and most of the scripts in circulation all implement the standard SMM API v2, and a tool written against one works against the others.
@@ -132,7 +132,7 @@ BODY,
                 'slug' => 'accepting-mobile-money-and-crypto',
                 'title' => 'Taking mobile money and crypto for SMM orders',
                 'excerpt' => 'Card payments fail for most of the people buying SMM services. Here is how wallets, mobile money and stablecoins actually work for a reseller shop — and why the money should never pass through your platform.',
-                'author' => 'Resellers Hub',
+                'author' => 'Auto Resellers Hub',
                 'published_at' => now()->subDays(7),
                 'body' => <<<'BODY'
 If you sell SMM services outside of North America and Europe, you have already discovered that a card checkout does not work. Most of your buyers do not have a card. The ones who do often find it declined on a cross-border transaction.
@@ -182,7 +182,7 @@ BODY,
                 'slug' => 'start-without-meta-business-account',
                 'title' => 'Starting a WhatsApp bot without a Meta Business account',
                 'excerpt' => 'The Cloud API needs a verified Meta Business account, and approval takes days. Here is what the wait actually involves — and how to be selling before it finishes.',
-                'author' => 'Resellers Hub',
+                'author' => 'Auto Resellers Hub',
                 'published_at' => now()->subDays(2),
                 'body' => <<<'BODY'
 Everyone who sets out to build a WhatsApp bot the right way hits the same wall: the Cloud API needs a Meta Business account, and getting one is not instant.
@@ -232,7 +232,7 @@ BODY,
                 'slug' => 'smm-panel-mpesa-payments-kenya-tanzania',
                 'title' => 'Accepting M-Pesa for SMM panel orders in Kenya and Tanzania',
                 'excerpt' => 'Card checkouts fail for most East African buyers, and manual M-Pesa confirmation does not survive the tenth order. Here is how mobile money works for an SMM reseller, and where shops lose money doing it by hand.',
-                'author' => 'Resellers Hub',
+                'author' => 'Auto Resellers Hub',
                 'published_at' => now()->subDays(14),
                 'body' => <<<'BODY'
 If you sell SMM services in Kenya, Tanzania or Uganda, you already know that a card checkout is not the answer. Most of your buyers do not hold a card. The ones who do often watch it decline on a cross-border charge.
@@ -283,7 +283,7 @@ BODY,
                 'slug' => 'swahili-whatsapp-bot-smm-reseller',
                 'title' => 'Running your SMM bot in Kiswahili — and why it sells more',
                 'excerpt' => 'Most SMM bots answer in English only. In East Africa that quietly costs you the customers who would rather buy in Kiswahili, and it is a setting rather than a rebuild.',
-                'author' => 'Resellers Hub',
+                'author' => 'Auto Resellers Hub',
                 'published_at' => now()->subDays(9),
                 'body' => <<<'BODY'
 Most SMM automation speaks English and nothing else. In Nairobi or Dar es Salaam that is not a blocker — plenty of buyers read English fine — but it is a filter, and filters cost money quietly.
@@ -320,7 +320,7 @@ The second is support. A customer who can describe a problem in their own langua
 
 ## The practical setup
 
-If you are on Resellers Hub, the bot speaks English, French, Kiswahili, Turkish or Hindi, chosen per customer rather than per shop. It is a setting, not a rebuild.
+If you are on Auto Resellers Hub, the bot speaks English, French, Kiswahili, Turkish or Hindi, chosen per customer rather than per shop. It is a setting, not a rebuild.
 
 If you are building your own, the thing to get right early is that the language belongs to the customer record, not to a global config. Retrofitting that later means touching every message you send.
 BODY,
@@ -335,7 +335,7 @@ BODY,
                 'slug' => 'paystack-flutterwave-smm-panel-nigeria',
                 'title' => 'Paystack or Flutterwave for an SMM panel in Nigeria',
                 'excerpt' => 'Both take Nigerian payments; they are not interchangeable for a reseller shop. What matters is settlement, webhooks and who holds the money — not the checkout page.',
-                'author' => 'Resellers Hub',
+                'author' => 'Auto Resellers Hub',
                 'published_at' => now()->subDays(6),
                 'body' => <<<'BODY'
 Nigeria is the largest SMM reseller market in Africa, and the question every new shop asks is the same one: Paystack or Flutterwave?
@@ -390,7 +390,7 @@ BODY,
                 'slug' => 'start-smm-reseller-business-with-no-capital',
                 'title' => 'Starting an SMM reseller business with almost no capital',
                 'excerpt' => 'The honest version: what you actually have to pay for on day one, what can wait, and the two mistakes that cost beginners the most money.',
-                'author' => 'Resellers Hub',
+                'author' => 'Auto Resellers Hub',
                 'published_at' => now()->subDays(3),
                 'body' => <<<'BODY'
 Most guides to starting an SMM reseller business are written by people selling you something. Here is the version with the costs left in.
@@ -452,7 +452,7 @@ BODY,
                 'slug' => 'whatsapp-bot-vs-telegram-bot-smm-panel',
                 'title' => 'WhatsApp or Telegram for your SMM bot?',
                 'excerpt' => 'Telegram is easier to build on and free to run. That is not the same as being the right place to sell — and for most reseller shops it is not.',
-                'author' => 'Resellers Hub',
+                'author' => 'Auto Resellers Hub',
                 'published_at' => now()->subDays(2),
                 'body' => <<<'BODY'
 Telegram bots are easier. The API is free, the setup takes an afternoon, and there is no business verification standing between you and a working bot.
@@ -501,7 +501,7 @@ BODY,
                 'slug' => 'smm-panel-api-integration-guide',
                 'title' => 'What the standard SMM panel API actually looks like',
                 'excerpt' => 'Nearly every panel speaks the same four actions. Once you know the shape, connecting one — or ten — stops being a per-panel integration project.',
-                'author' => 'Resellers Hub',
+                'author' => 'Auto Resellers Hub',
                 'published_at' => now()->subDay(),
                 'body' => <<<'BODY'
 Almost every SMM panel in existence exposes the same API. Not similar — the same, down to the parameter names, because they nearly all descend from the same original script.

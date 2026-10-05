@@ -26,7 +26,7 @@ export default function ComparisonTable() {
         <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border">
             <table className="w-full text-left text-sm">
                 <caption className="sr-only">
-                    Handling your shop manually compared with Resellers Hub
+                    Handling your shop manually compared with Auto Resellers Hub
                 </caption>
 
                 <thead>
@@ -38,7 +38,7 @@ export default function ComparisonTable() {
                             By hand
                         </th>
                         <th scope="col" className="bg-primary/5 px-4 py-3 font-semibold text-primary">
-                            Resellers Hub
+                            Auto Resellers Hub
                         </th>
                     </tr>
                 </thead>

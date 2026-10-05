@@ -106,7 +106,7 @@ export default function LandingNav() {
                     className="font-heading flex shrink-0 items-center gap-2 pl-1 text-lg font-extrabold"
                 >
                     <AppLogo className="size-7" />
-                    Resellers Hub
+                    Auto Resellers Hub
                 </Link>
 
                 {/* ---- desktop links ---- */}

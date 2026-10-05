@@ -32,7 +32,7 @@ export default function Guest({
                     className="font-heading flex items-center gap-2 self-start text-lg font-extrabold"
                 >
                     <AppLogo />
-                    Resellers Hub
+                    Auto Resellers Hub
                 </Link>
 
                 <div className="flex flex-1 items-center justify-center py-10">
@@ -55,7 +55,7 @@ export default function Guest({
                 </div>
 
                 <p className="text-center text-xs text-muted-foreground lg:text-left">
-                    © {new Date().getFullYear()} Resellers Hub
+                    © {new Date().getFullYear()} Auto Resellers Hub
                 </p>
             </div>
 
