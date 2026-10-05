@@ -57,6 +57,10 @@ Route::get('/pricing', [PublicPageController::class, 'pricing'])->name('pricing'
 Route::get('/api-docs', [PublicPageController::class, 'apiDocs'])->name('api-docs');
 Route::get('/contact', [PublicPageController::class, 'contact'])->name('contact');
 
+// Where a payment gateway returns a customer to. See the controller: it claims
+// nothing about the payment, only sends them back to the chat.
+Route::get('/payment/thanks', [PublicPageController::class, 'paymentThanks'])->name('payment.thanks');
+
 // Throttled: the form sends mail, so an unthrottled endpoint is a way to
 // bill us for someone else's spam run.
 Route::post('/contact', [ContactController::class, 'store'])

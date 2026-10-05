@@ -29,12 +29,100 @@
 
 return [
 
+    // ---- Snippe: one account, three markets ----
+    //
+    // Tanzania is a direct USSD push to the customer's phone. Kenya and Uganda
+    // go through Snippe's hosted checkout page, which collects the number
+    // itself — so the bot does not ask for one. All three charge in TZS under
+    // the hood and convert for the payer; see SnippeClient.
+
     'snippe' => [
-        'label' => 'Snippe (Mobile Money)',
+        'label' => 'Snippe (Tanzania — TZS)',
         'type' => 'mobile',
         'ready' => true,
         'fields' => [
             ['name' => 'api_key', 'label' => 'API key', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret'],
+        ],
+    ],
+
+    'snippe_ke' => [
+        'label' => 'Snippe (Kenya — KES)',
+        'type' => 'card',
+        'ready' => true,
+        // A hosted checkout, not a push: the customer is sent a link.
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'API key', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret'],
+        ],
+    ],
+
+    'snippe_ug' => [
+        'label' => 'Snippe (Uganda — UGX)',
+        'type' => 'card',
+        'ready' => true,
+        // A hosted checkout, not a push: the customer is sent a link.
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'API key', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret'],
+        ],
+    ],
+
+    // ---- FimiPay: one gateway per market ----
+    //
+    // Each market is its own gateway because what differs between them — the
+    // currency, the country code a phone number is completed with, and how the
+    // customer pays on FimiPay's page — is decided by which one they pick, not
+    // guessed. All five run on the one FimipayClient. FimiPay takes a phone for
+    // every market; where the bot does not ask for one (cards) it uses the
+    // number the customer is already chatting from.
+
+    'fimipay_ng' => [
+        'label' => 'FimiPay (Nigeria — NGN)',
+        'type' => 'mobile',
+        'ready' => true,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret'],
+        ],
+    ],
+
+    'fimipay_gh' => [
+        'label' => 'FimiPay (Ghana — GHS)',
+        'type' => 'mobile',
+        'ready' => true,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret'],
+        ],
+    ],
+
+    'fimipay_cm' => [
+        'label' => 'FimiPay (Cameroon — XAF)',
+        'type' => 'mobile',
+        'ready' => true,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret'],
+        ],
+    ],
+
+    'fimipay_za' => [
+        'label' => 'FimiPay (South Africa — ZAR)',
+        'type' => 'card',
+        'ready' => true,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret'],
+        ],
+    ],
+
+    'fimipay_usd' => [
+        'label' => 'FimiPay (International card — USD)',
+        'type' => 'card',
+        'ready' => true,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'Secret key (sk_live_… or sk_test_…)', 'store' => 'api_key'],
             ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret'],
         ],
     ],

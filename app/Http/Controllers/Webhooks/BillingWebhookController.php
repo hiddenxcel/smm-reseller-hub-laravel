@@ -9,6 +9,7 @@ use App\Services\Billing\PlatformGateways;
 use App\Services\Payments\BinancePayClient;
 use App\Services\Payments\CryptomusClient;
 use App\Services\Payments\NowPaymentsClient;
+use App\Services\Payments\SnippeClient;
 use App\Services\Payments\WebhookVerifier;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -96,6 +97,10 @@ class BillingWebhookController extends Controller
 
         $candidates = [
             'reference',
+            // Echoed back from the request's metadata; Snippe's own
+            // `data.reference` below is its id, not ours.
+            'data.metadata.order_id',
+            'metadata.order_id',
             'order_id',
             'orderId',
             'merchant_order_id',
@@ -185,6 +190,13 @@ class BillingWebhookController extends Controller
     private function reportsSuccess(string $gateway, Request $request): bool
     {
         $payload = $this->flatten($request->all());
+
+        // Snippe says "payment.completed" and "completed", neither of which is in
+        // the shared lists below, so it is read on its own terms. Without this a
+        // paid Snippe subscription was acknowledged and then never activated.
+        if ($gateway === 'snippe') {
+            return SnippeClient::isCompleted($payload);
+        }
 
         // Binance Pay before anything else. Its envelope carries a top-level
         // `status` of "SUCCESS" meaning only that the notification itself was

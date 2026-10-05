@@ -71,9 +71,18 @@ class StartTopup
             amount: $amount,
             currency: $currency,
             webhookUrl: route('webhooks.payment', $credentials->gateway),
-            phone: $phone,
+            // A gateway the bot did not ask a number for (a card checkout, a
+            // hosted page) still sometimes wants one on file, and the customer
+            // is already talking to us from theirs.
+            phone: $phone !== '' ? $phone : preg_replace('/\D/', '', (string) $customer->phone),
             customerName: $customer->name ?: 'Customer',
         ));
+
+        // Remembered so the webhook can find this payment by the id the gateway
+        // knows it by, when that is all the webhook carries.
+        if ($initiation->started && filled($initiation->reference)) {
+            $payment->update(['gateway_reference' => $initiation->reference]);
+        }
 
         if (! $initiation->started) {
             $payment->update(['status' => 'failed']);

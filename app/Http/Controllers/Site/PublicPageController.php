@@ -55,6 +55,20 @@ class PublicPageController extends Controller
         ]);
     }
 
+    /**
+     * Where a gateway sends a customer back to after they pay.
+     *
+     * Static and public: it can say nothing about the payment (arriving here only
+     * proves they left the gateway's page), so it points them back to the chat,
+     * where the bot reports the real outcome.
+     */
+    public function paymentThanks(): Response
+    {
+        return Inertia::render('Public/PaymentThanks', [
+            ...$this->chrome(),
+        ]);
+    }
+
     public function contact(): Response
     {
         return Inertia::render('Public/Contact', [

@@ -8,10 +8,12 @@ use App\Models\BotPayment;
 use App\Models\TenantPaymentGateway;
 use App\Services\Payments\BinancePayClient;
 use App\Services\Payments\CryptomusClient;
+use App\Services\Payments\FimipayClient;
 use App\Services\Payments\Gateway;
 use App\Services\Payments\GatewayFactory;
 use App\Services\Payments\NowPaymentsClient;
 use App\Services\Payments\PayPalClient;
+use App\Services\Payments\SnippeClient;
 use App\Services\Payments\StatusCheckable;
 use App\Services\Payments\WebhookVerifier;
 use Illuminate\Http\Request;
@@ -47,20 +49,31 @@ class PaymentWebhookController extends Controller
             return $this->ack('unknown gateway');
         }
 
-        $reference = $this->reference($request);
+        $references = $this->references($request);
 
-        if ($reference === null) {
+        if ($references === []) {
             return $this->ack('no reference');
         }
 
-        $payment = BotPayment::findByRefAnyTenant($reference);
+        // Every id the payload carries, not just the first. A gateway's own id
+        // and ours can both be in there, and which is the one we recognise
+        // depends on the gateway.
+        $payment = null;
+
+        foreach ($references as $reference) {
+            $payment = BotPayment::findByRefAnyTenant($reference);
+
+            if ($payment !== null) {
+                break;
+            }
+        }
 
         // A reference we never issued, or one belonging to another gateway —
         // acknowledged so it stops being retried, but nothing is credited.
         if ($payment === null || $payment->gateway !== $gateway) {
             Log::warning('Payment webhook for an unknown reference', [
                 'gateway' => $gateway,
-                'reference' => $reference,
+                'references' => $references,
             ]);
 
             return $this->ack('unknown reference');
@@ -116,12 +129,21 @@ class PaymentWebhookController extends Controller
      * Each names it differently, and some nest it — checking the known spots
      * beats a per-gateway parser for a single string.
      */
-    private function reference(Request $request): ?string
+    /**
+     * Every id in the payload that could be ours, in the order to try them.
+     *
+     * @return array<int, string>
+     */
+    private function references(Request $request): array
     {
         $payload = $this->flatten($request->all());
 
         $candidates = [
             'reference',
+            // What we put in the request's metadata, echoed back. Snippe's own
+            // `data.reference` is its id, not ours, so this has to be tried too.
+            'data.metadata.order_id',
+            'metadata.order_id',
             'order_id',
             'orderId',
             'merchant_order_id',
@@ -150,15 +172,17 @@ class PaymentWebhookController extends Controller
             'merchantTradeNo',
         ];
 
+        $found = [];
+
         foreach ($candidates as $key) {
             $value = data_get($payload, $key);
 
             if (is_string($value) && $value !== '') {
-                return $value;
+                $found[] = $value;
             }
         }
 
-        return null;
+        return array_values(array_unique($found));
     }
 
     /**
@@ -258,6 +282,17 @@ class PaymentWebhookController extends Controller
     private function reportsSuccess(string $gateway, Request $request): bool
     {
         $payload = $this->flatten($request->all());
+
+        // Gateways with a reading of their own, before the generic one: their
+        // success words and event names are not in the shared lists, and
+        // adding them there would change what every other gateway credits.
+        if (str_starts_with($gateway, 'snippe')) {
+            return SnippeClient::isCompleted($payload);
+        }
+
+        if (FimipayClient::isFimipay($gateway)) {
+            return FimipayClient::isCompleted($payload);
+        }
 
         // Binance Pay before anything else. Its envelope carries a top-level
         // `status` of "SUCCESS" meaning only that the notification itself was

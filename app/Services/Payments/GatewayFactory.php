@@ -29,7 +29,15 @@ class GatewayFactory
         $extra = (string) $credentials->extra_enc;
 
         return match ($credentials->gateway) {
-            'snippe' => new SnippeClient($apiKey, $secret),
+            // One Snippe account, three markets. Each is its own gateway, so a
+            // customer picks "Kenya" or "Uganda" explicitly and the client
+            // never has to guess the market from a number.
+            'snippe' => new SnippeClient($apiKey, $secret, 'TZS'),
+            'snippe_ke' => new SnippeClient($apiKey, $secret, 'KES'),
+            'snippe_ug' => new SnippeClient($apiKey, $secret, 'UGX'),
+            // FimiPay likewise: one class, a market per gateway.
+            'fimipay_ng', 'fimipay_gh', 'fimipay_cm', 'fimipay_za', 'fimipay_usd'
+                => new FimipayClient($apiKey, $secret, $credentials->gateway),
             'nowpayments' => new NowPaymentsClient($apiKey, $secret),
             'binance' => new BinancePayClient($apiKey, $secret),
             // Cryptomus and Heleket have no webhook secret of their own, so

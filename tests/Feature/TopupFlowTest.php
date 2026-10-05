@@ -95,15 +95,34 @@ class TopupFlowTest extends TestCase
         );
     }
 
-    /** Snippe's scheme: HMAC over "{timestamp}.{body}". */
+    /**
+     * Snippe's scheme: HMAC over "{timestamp}.{body}", sent as the
+     * X-Webhook-Signature and X-Webhook-Timestamp headers.
+     */
     private function signedHeaders(string $body, string $secret = 'shhh'): array
     {
         $timestamp = (string) time();
 
         return [
-            'signature' => hash_hmac('sha256', "{$timestamp}.{$body}", $secret),
-            'timestamp' => $timestamp,
+            'X-Webhook-Signature' => hash_hmac('sha256', "{$timestamp}.{$body}", $secret),
+            'X-Webhook-Timestamp' => $timestamp,
         ];
+    }
+
+    /**
+     * What Snippe really sends when a payment clears: its own id in
+     * data.reference, ours only in the metadata we gave it.
+     */
+    private function snippePaid(string $ourReference): string
+    {
+        return json_encode([
+            'type' => 'payment.completed',
+            'data' => [
+                'reference' => 'SN'.strtoupper(substr(md5($ourReference), 0, 10)),
+                'status' => 'completed',
+                'metadata' => ['order_id' => $ourReference],
+            ],
+        ]);
     }
 
     public function test_it_records_the_payment_before_calling_the_gateway(): void
@@ -221,7 +240,7 @@ class TopupFlowTest extends TestCase
 
         $payment = $this->startTopup('25.00')->payment;
 
-        $body = json_encode(['reference' => $payment->transaction_ref, 'status' => 'success']);
+        $body = $this->snippePaid($payment->transaction_ref);
 
         $this->call(
             'POST',
@@ -287,7 +306,7 @@ class TopupFlowTest extends TestCase
 
         $payment = $this->startTopup('25.00')->payment;
 
-        $body = json_encode(['reference' => $payment->transaction_ref, 'status' => 'success']);
+        $body = $this->snippePaid($payment->transaction_ref);
         $headers = $this->serverHeaders($this->signedHeaders($body));
 
         $this->call('POST', route('webhooks.payment', 'snippe'), [], [], [], $headers, $body)

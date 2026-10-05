@@ -23,6 +23,7 @@ class BotPayment extends Model
         'order_id',
         'gateway',
         'transaction_ref',
+        'gateway_reference',
         'amount',
         'status',
         'binance_order_id',
@@ -45,10 +46,19 @@ class BotPayment extends Model
         return $this->belongsTo(BotOrder::class, 'order_id');
     }
 
-    /** Webhook lookup: no session, reference is unique per tenant+ref. */
+    /**
+     * Webhook lookup: no session, reference is unique per tenant+ref.
+     *
+     * By our own reference first, then by the one the gateway issued. Gateways
+     * disagree about which of the two they send back — some echo ours, others
+     * (Snippe's "SN…", M-Pesa's CheckoutRequestID) send only their own — and a
+     * payment that cannot be found when it clears is a customer who paid for
+     * nothing.
+     */
     public static function findByRefAnyTenant(string $ref): ?self
     {
-        return static::withoutTenantScope()->where('transaction_ref', $ref)->first();
+        return static::withoutTenantScope()->where('transaction_ref', $ref)->first()
+            ?? static::withoutTenantScope()->where('gateway_reference', $ref)->first();
     }
 
     /**
