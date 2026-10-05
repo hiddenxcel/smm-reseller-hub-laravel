@@ -41,7 +41,7 @@ class PanelDetector
         }
 
         return PanelDetection::failed(
-            'Could not connect. Check the panel URL and your admin API key.'
+            'Could not connect. Check the panel URL and your API key.'
         );
     }
 

@@ -202,7 +202,7 @@ function ConnectPanelCard({ hasPanel }: { hasPanel: boolean }) {
                 </div>
 
                 <div>
-                    <Label htmlFor="api_key">Admin API key</Label>
+                    <Label htmlFor="api_key">API key</Label>
                     <Input
                         id="api_key"
                         type="password"
@@ -212,8 +212,8 @@ function ConnectPanelCard({ hasPanel }: { hasPanel: boolean }) {
                         required
                     />
                     <p className="mt-1.5 text-xs text-muted-foreground">
-                        Find it in your panel under API settings. It is encrypted before we
-                        store it.
+                        Your panel&rsquo;s API key &mdash; usually under Account &rarr; API. It is
+                        encrypted before we store it.
                     </p>
                     <FieldError message={errors.api_key} />
                 </div>

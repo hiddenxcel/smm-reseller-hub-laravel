@@ -38,7 +38,7 @@ enum OnboardingStep: string
     {
         return match ($this) {
             self::TryBot => 'Chat with a sample shop on a WhatsApp screen — nothing to set up.',
-            self::ConnectPanel => 'Paste your panel URL and admin API key — we work out the rest.',
+            self::ConnectPanel => 'Paste your panel URL and API key — we work out the rest.',
             self::ImportServices => 'Pull in your services and set your own prices.',
             self::ConnectWhatsApp => 'Use your own Meta number, or rent one from us.',
             self::SetupPayments => 'Add a gateway so your customers can top up their wallets.',

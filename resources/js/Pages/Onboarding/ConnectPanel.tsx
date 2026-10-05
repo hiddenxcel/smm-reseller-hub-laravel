@@ -31,7 +31,7 @@ export default function ConnectPanel({ step, steps, completed, canSkip }: Props)
             <div className="max-w-lg">
                 <h1 className="font-heading text-2xl font-extrabold">Connect your panel</h1>
                 <p className="mt-2 text-muted-foreground">
-                    Paste your panel address and admin API key. We will work out the rest —
+                    Paste your panel address and API key. We will work out the rest —
                     its name, which API version it speaks, and how it wants the key sent.
                 </p>
 
@@ -54,7 +54,7 @@ export default function ConnectPanel({ step, steps, completed, canSkip }: Props)
                     </div>
 
                     <div>
-                        <Label htmlFor="api_key">Admin API key</Label>
+                        <Label htmlFor="api_key">API key</Label>
                         <Input
                             id="api_key"
                             type="password"
@@ -64,8 +64,8 @@ export default function ConnectPanel({ step, steps, completed, canSkip }: Props)
                             required
                         />
                         <p className="mt-1.5 text-xs text-muted-foreground">
-                            Find it in your panel under API settings. It is encrypted before we
-                            store it.
+                            Your panel&rsquo;s API key &mdash; usually under Account &rarr; API. It is
+                            encrypted before we store it.
                         </p>
                         <FieldError message={errors.api_key} />
                     </div>

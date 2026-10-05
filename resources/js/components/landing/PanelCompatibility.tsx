@@ -51,8 +51,8 @@ const STEPS = [
     },
     {
         icon: KeyRound,
-        title: 'Paste the admin key',
-        body: 'Encrypted before we store it, and only ever used to reach your panel.',
+        title: 'Paste your API key',
+        body: "The one on your panel's API page. Encrypted before we store it, and only ever used to reach your panel.",
     },
     {
         icon: Wand2,
@@ -111,7 +111,7 @@ export default function PanelCompatibility() {
                         </span>
 
                         <p className="font-heading mt-3 text-center text-sm font-bold">
-                            Resellers Hub
+                            Auto Resellers Hub
                         </p>
                         <p className="text-center text-xs text-muted-foreground">
                             Sits on top
