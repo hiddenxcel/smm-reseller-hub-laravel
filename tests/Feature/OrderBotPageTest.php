@@ -275,6 +275,61 @@ class OrderBotPageTest extends TestCase
         $this->assertSame(['255700000002'], $saved['staff']['numbers']);
     }
 
+    private function saveShop(array $overrides = [])
+    {
+        return $this->actingAs($this->tenant)->post(route('order-bot.settings'), [
+            'staff' => [],
+            'testNumbers' => [],
+            'currency' => 'USD',
+            'lang' => 'en',
+            'minTopup' => 1,
+            'referralPercent' => 0,
+            'showProviderName' => false,
+            'detailedStatus' => true,
+            ...$overrides,
+        ]);
+    }
+
+    public function test_the_settings_tab_offers_every_currency_that_has_a_rate(): void
+    {
+        $this->actingAs($this->tenant)
+            ->get(route('order-bot', 'settings'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('currencies', 10)
+                ->where('currencies.0.code', 'USD')
+                ->where('currencies.0.perUsd', 1)
+                ->where('currencies.0.name', 'US dollar')
+                ->where('currencies', fn ($list) => collect($list)->pluck('code')->contains('TZS')
+                    && collect($list)->every(fn ($row) => $row['perUsd'] > 0)));
+    }
+
+    public function test_it_rejects_a_currency_with_no_exchange_rate(): void
+    {
+        // Three letters, but nothing can convert to it, so no gateway could
+        // charge in it.
+        $this->saveShop(['currency' => 'ABC'])->assertSessionHasErrors('currency');
+        $this->saveShop(['currency' => 'TZSS'])->assertSessionHasErrors('currency');
+
+        $this->assertNotSame('ABC', BotSettings::for($this->tenant->id, 'order')['shop']['currency']);
+    }
+
+    public function test_an_old_unsupported_currency_does_not_block_saving_other_settings(): void
+    {
+        $settings = BotSettings::for($this->tenant->id, 'order');
+        $settings['shop']['currency'] = 'INR';
+        BotSettings::save($this->tenant->id, 'order', $settings);
+
+        // Kept as it is: the form sends back what it was given.
+        $this->saveShop(['currency' => 'INR', 'minTopup' => 3])->assertSessionHasNoErrors();
+
+        $saved = BotSettings::for($this->tenant->id, 'order');
+        $this->assertSame('INR', $saved['shop']['currency']);
+        $this->assertEquals(3, $saved['shop']['min_topup']);
+
+        // But another unsupported one cannot be newly chosen.
+        $this->saveShop(['currency' => 'EGP'])->assertSessionHasErrors('currency');
+    }
+
     public function test_it_rejects_an_unsupported_language(): void
     {
         $this->actingAs($this->tenant)

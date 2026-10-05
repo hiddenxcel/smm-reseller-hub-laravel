@@ -17,6 +17,7 @@ import {
     Star,
     Tags,
     Trash2,
+    Upload,
     Wand2,
     X,
 } from 'lucide-react';
@@ -33,7 +34,7 @@ import BulkPricingDialog from './BulkPricingDialog';
 import FilterBar from './FilterBar';
 import ImportDialog from './ImportDialog';
 import KpiRow from './KpiRow';
-import PlatformSidebar from './PlatformSidebar';
+import PlatformSidebar, { PlatformChips } from './PlatformSidebar';
 import RulesDialog from './RulesDialog';
 import ServiceDrawer from './ServiceDrawer';
 import ServiceForm from './ServiceForm';
@@ -206,18 +207,20 @@ export default function Services({
         <AuthenticatedLayout bleed>
             <Head title="Services" />
 
-            <div className="sticky top-0 z-30 border-b border-border bg-background/95 px-4 pb-3 pt-5 backdrop-blur sm:px-8">
-                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                        <h1 className="font-heading text-2xl font-extrabold tracking-tight">
+            <div className="space-y-4 px-4 pt-5 sm:px-8">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <h1 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">
                             Services
                         </h1>
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        <p className="mt-0.5 hidden text-sm text-muted-foreground sm:block">
                             What your bot sells, and what you earn on it.
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    {/* Four helpers shrink to icons on a phone, leaving the one
+                        action that matters — Add — as the only labelled button. */}
+                    <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                         {busy && (
                             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <Loader2 className="size-3.5 animate-spin" aria-hidden />
@@ -230,9 +233,10 @@ export default function Services({
                             variant="outline"
                             className="h-9"
                             onClick={() => setRulesOpen(true)}
+                            aria-label="Pricing rules"
                         >
                             <Wand2 className="size-3.5" />
-                            Rules
+                            <span className="hidden sm:inline">Rules</span>
                             {rules.filter((rule) => rule.active).length > 0 && (
                                 <span className="font-data ms-1 rounded-full bg-primary/10 px-1.5 text-[0.7rem] text-primary tabular-nums">
                                     {rules.filter((rule) => rule.active).length}
@@ -247,21 +251,30 @@ export default function Services({
                             disabled={acting || panels.length === 0}
                             title={panels.length === 0 ? 'Connect a panel first' : undefined}
                             onClick={syncPanel}
+                            aria-label="Sync with panel"
                         >
                             <RefreshCw className="size-3.5" />
-                            Sync
+                            <span className="hidden sm:inline">Sync</span>
                         </Button>
 
                         <a
                             href={route('services.export', currentQuery())}
                             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm transition-colors hover:bg-accent"
+                            aria-label="Export services"
                         >
                             <Download className="size-3.5" aria-hidden />
-                            Export
+                            <span className="hidden sm:inline">Export</span>
                         </a>
 
-                        <Button size="sm" variant="outline" className="h-9" onClick={() => setImportOpen(true)}>
-                            Import
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-9"
+                            onClick={() => setImportOpen(true)}
+                            aria-label="Import services"
+                        >
+                            <Upload className="size-3.5" />
+                            <span className="hidden sm:inline">Import</span>
                         </Button>
 
                         <Button
@@ -273,7 +286,7 @@ export default function Services({
                             }}
                         >
                             <Plus className="size-3.5" />
-                            Add service
+                            Add<span className="hidden sm:inline"> service</span>
                         </Button>
                     </div>
                 </div>
@@ -282,17 +295,19 @@ export default function Services({
                     kpis={kpis}
                     onFilterUnderwater={() => apply({ margin: 'loss', page: 1 })}
                 />
+            </div>
 
-                <div className="mt-4">
-                    <FilterBar
-                        filters={filters}
-                        tabCounts={tabCounts}
-                        panels={panels}
-                        isFiltered={isFiltered}
-                        onApply={apply}
-                        onReset={reset}
-                    />
-                </div>
+            {/* Only this stays in view while the list scrolls: search and the
+                filters are what a reseller reaches for, the totals are not. */}
+            <div className="sticky top-0 z-30 mt-4 border-b border-border bg-background/95 px-4 pb-3 pt-2 backdrop-blur sm:px-8">
+                <FilterBar
+                    filters={filters}
+                    tabCounts={tabCounts}
+                    panels={panels}
+                    isFiltered={isFiltered}
+                    onApply={apply}
+                    onReset={reset}
+                />
             </div>
 
             <div className="px-4 pb-24 pt-4 sm:px-8">
@@ -300,7 +315,21 @@ export default function Services({
                     {/* The sidebar is the fastest way into a catalogue of
                         thousands, so it holds its own column on wide screens
                         and folds above the table on narrow ones. */}
-                    <aside className="mb-4 lg:mb-0">
+                    <aside className="mb-3 lg:mb-0">
+                        <div className="lg:hidden">
+                            <PlatformChips
+                                platforms={platforms}
+                                categories={categories}
+                                selectedPlatform={filters.platform}
+                                selectedCategory={filters.category}
+                                total={kpis?.total ?? meta.total}
+                                onSelect={(platform, category) =>
+                                    apply({ platform, category: category ?? null, page: 1 })
+                                }
+                            />
+                        </div>
+
+                        <div className="hidden lg:block">
                         <PlatformSidebar
                             platforms={platforms}
                             categories={categories}
@@ -311,6 +340,7 @@ export default function Services({
                                 apply({ platform, category: category ?? null, page: 1 })
                             }
                         />
+                        </div>
                     </aside>
 
                     <div className="min-w-0">
@@ -323,7 +353,7 @@ export default function Services({
                             />
                         ) : (
                             <>
-                                <div className="space-y-2 md:hidden">
+                                <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card md:hidden">
                                     {rows.map((service) => (
                                         <MobileCard
                                             key={service.id}
@@ -595,47 +625,46 @@ function MobileCard({
         <div
             onClick={() => onOpen(service.id)}
             className={[
-                'cursor-pointer rounded-xl border p-3 transition-colors',
-                selected ? 'border-primary/40 bg-primary/5' : 'border-border',
+                'flex cursor-pointer items-center gap-3 p-3.5 transition-colors',
+                selected ? 'bg-primary/5' : '',
                 service.status === 'hidden' ? 'opacity-60' : '',
             ].join(' ')}
         >
-            <div className="flex items-start gap-3">
-                <div onClick={(event) => event.stopPropagation()} className="pt-0.5">
-                    <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => onToggle(service.id)}
-                        aria-label={`Select ${service.name}`}
-                        className="size-4 cursor-pointer rounded border-border accent-primary"
-                    />
-                </div>
+            <div onClick={(event) => event.stopPropagation()}>
+                <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={() => onToggle(service.id)}
+                    aria-label={`Select ${service.name}`}
+                    className="size-4 cursor-pointer rounded border-border accent-primary"
+                />
+            </div>
 
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                        <FeaturedStar featured={service.featured} />
-                        <p className="truncate font-medium">{service.name}</p>
-                    </div>
-                    <p className="truncate text-xs text-muted-foreground">
-                        {service.platform}
-                        {service.category && ` · ${service.category}`}
-                    </p>
-                    <div className="mt-2">
+            <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                    <FeaturedStar featured={service.featured} />
+                    <p className="truncate font-medium">{service.name}</p>
+                </div>
+                <p className="truncate text-xs text-muted-foreground">
+                    {service.platform}
+                    {service.category && ` · ${service.category}`}
+                </p>
+                {/* "Active" is the normal state and says nothing; only a
+                    service that is off, or auto-paused, earns a label. */}
+                {service.status !== 'active' && (
+                    <div className="mt-1.5">
                         <StatusBadge status={service.status} autoPaused={service.autoPaused} />
                     </div>
-                </div>
+                )}
+            </div>
 
-                <div className="shrink-0 text-right">
-                    <p className="font-data text-sm font-semibold tabular-nums">
-                        {price(service.price)}
-                    </p>
-                    <p className="font-data text-xs text-muted-foreground tabular-nums">
-                        cost {price(service.cost)}
-                    </p>
-                    <p className="font-data mt-1 text-xs tabular-nums">
-                        <MarginCell margin={service.margin} underwater={service.underwater} />
-                    </p>
-                </div>
+            <div className="shrink-0 text-right">
+                <p className="font-data text-sm font-semibold tabular-nums">
+                    {price(service.price)}
+                </p>
+                <p className="font-data text-xs tabular-nums">
+                    <MarginCell margin={service.margin} underwater={service.underwater} />
+                </p>
             </div>
         </div>
     );

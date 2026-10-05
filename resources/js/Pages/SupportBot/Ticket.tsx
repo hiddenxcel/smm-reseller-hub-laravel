@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ArrowLeft, Bot, Send, UserCheck } from 'lucide-react';
+import { Fragment, ReactNode } from 'react';
 import { clockTime, dayLabel } from '../OrderBot/inbox-bits';
 import { TicketDetail } from './types';
 
@@ -48,18 +49,21 @@ export default function SupportBotTicket({ ticket }: { ticket: TicketDetail }) {
           : null;
 
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        <Link
-                            href={route('support-bot.tickets')}
-                            className="mb-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                        >
-                            <ArrowLeft className="size-3.5" aria-hidden />
-                            All tickets
-                        </Link>
-                        <h1 className="font-heading truncate text-xl font-bold">
+        <AuthenticatedLayout>
+            <Head title={`Ticket #${ticket.id} — Support Bot`} />
+
+            <div className="mx-auto max-w-3xl space-y-4">
+                <header className="space-y-3">
+                    <Link
+                        href={route('support-bot.tickets')}
+                        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                        <ArrowLeft className="size-3.5" aria-hidden />
+                        All tickets
+                    </Link>
+
+                    <div>
+                        <h1 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">
                             {ticket.subject ?? 'Support request'}
                         </h1>
                         <p className="font-data mt-0.5 text-sm text-muted-foreground">
@@ -68,151 +72,208 @@ export default function SupportBotTicket({ ticket }: { ticket: TicketDetail }) {
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                        <select
-                            className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm"
-                            value={ticket.status}
-                            onChange={(event) => patch({ status: event.target.value })}
-                            aria-label="Ticket status"
-                        >
-                            <option value="open">Open</option>
-                            <option value="pending">Pending</option>
-                            <option value="resolved">Resolved</option>
-                            <option value="closed">Closed</option>
-                        </select>
+                    {/* Status and priority side by side, each labelled — two
+                        bare dropdowns do not say which is which. */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <label className="block">
+                            <span className="mb-1 block text-xs text-muted-foreground">Status</span>
+                            <select
+                                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
+                                value={ticket.status}
+                                onChange={(event) => patch({ status: event.target.value })}
+                            >
+                                <option value="open">Open</option>
+                                <option value="pending">Pending</option>
+                                <option value="resolved">Resolved</option>
+                                <option value="closed">Closed</option>
+                            </select>
+                        </label>
 
-                        <select
-                            className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm"
-                            value={ticket.priority}
-                            onChange={(event) => patch({ priority: event.target.value })}
-                            aria-label="Ticket priority"
-                        >
-                            <option value="low">Low</option>
-                            <option value="normal">Normal</option>
-                            <option value="high">High</option>
-                        </select>
-                    </div>
-                </div>
-            }
-        >
-            <Head title={`Ticket #${ticket.id} — Support Bot`} />
-
-            <div className="mx-auto flex max-w-3xl flex-col rounded-xl border border-border bg-card">
-                {ticket.handedOver && (
-                    <div className="flex flex-wrap items-center gap-3 border-b border-border bg-primary/5 px-4 py-2.5">
-                        <UserCheck className="size-4 shrink-0 text-primary" aria-hidden />
-                        <p className="min-w-0 flex-1 text-xs">
-                            <span className="font-medium">You are answering this customer.</span>{' '}
-                            <span className="text-muted-foreground">
-                                The bot stays silent until you hand it back.
+                        <label className="block">
+                            <span className="mb-1 block text-xs text-muted-foreground">
+                                Priority
                             </span>
-                        </p>
-                        <button
-                            type="button"
-                            onClick={() => patch({ handedOver: false })}
-                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-input bg-background px-2.5 py-1 text-xs font-medium"
-                        >
-                            <Bot className="size-3.5" aria-hidden />
-                            Return to bot
-                        </button>
+                            <select
+                                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
+                                value={ticket.priority}
+                                onChange={(event) => patch({ priority: event.target.value })}
+                            >
+                                <option value="low">Low</option>
+                                <option value="normal">Normal</option>
+                                <option value="high">High</option>
+                            </select>
+                        </label>
                     </div>
-                )}
+                </header>
 
-                <div className="scroll-slim max-h-[calc(100dvh-24rem)] flex-1 space-y-3 overflow-y-auto p-4">
-                    {ticket.messages.length === 0 ? (
-                        <p className="py-8 text-center text-sm text-muted-foreground">
-                            Nothing has been said on this ticket yet.
-                        </p>
-                    ) : (
-                        ticket.messages.map((message, index) => {
-                            const previous = ticket.messages[index - 1];
-                            const mine = message.sender !== 'customer';
-
-                            const showDay =
-                                message.at !== null &&
-                                (previous?.at == null ||
-                                    dayLabel(previous.at) !== dayLabel(message.at));
-
-                            return (
-                                <div key={message.id}>
-                                    {showDay && message.at && (
-                                        <p className="pb-2 text-center text-xs text-muted-foreground">
-                                            {dayLabel(message.at)}
-                                        </p>
-                                    )}
-
-                                    <div className={mine ? 'flex justify-end' : 'flex justify-start'}>
-                                        <div
-                                            className={[
-                                                'max-w-[85%] rounded-2xl px-3 py-2 sm:max-w-[70%]',
-                                                message.sender === 'staff'
-                                                    ? 'bg-primary/15'
-                                                    : message.sender === 'ai'
-                                                      ? 'bg-primary/5'
-                                                      : 'bg-muted',
-                                            ].join(' ')}
-                                        >
-                                            <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                {SENDER_LABELS[message.sender] ?? message.sender}
-                                            </p>
-                                            <p className="whitespace-pre-wrap break-words text-sm">
-                                                {message.message}
-                                            </p>
-                                            <p className="mt-0.5 text-right text-[10px] text-muted-foreground">
-                                                {clockTime(message.at)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-
-                <footer className="border-t border-border p-4">
-                    {blocked !== null ? (
-                        <p className="text-xs text-muted-foreground">{blocked}</p>
-                    ) : (
-                        <>
-                            <div className="flex items-end gap-2">
-                                <textarea
-                                    value={form.data.message}
-                                    onChange={(event) =>
-                                        form.setData('message', event.target.value)
-                                    }
-                                    onKeyDown={(event) => {
-                                        if (event.key === 'Enter' && !event.shiftKey) {
-                                            event.preventDefault();
-                                            send();
-                                        }
-                                    }}
-                                    rows={2}
-                                    maxLength={4000}
-                                    placeholder="Write a reply…"
-                                    aria-label="Reply to this ticket"
-                                    className="scroll-slim max-h-32 min-h-11 flex-1 resize-y rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-                                />
-
-                                <button
-                                    type="button"
-                                    onClick={send}
-                                    disabled={form.processing || form.data.message.trim() === ''}
-                                    className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-60"
-                                >
-                                    <Send className="size-4" aria-hidden />
-                                    {form.processing ? 'Sending…' : 'Send'}
-                                </button>
-                            </div>
-
-                            <p className="mt-2 text-xs text-muted-foreground">
-                                Sent to the customer over WhatsApp.
-                                {!ticket.handedOver &&
-                                    ' Replying also takes this conversation off the bot.'}
+                <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
+                    {ticket.handedOver && (
+                        <div className="flex items-center gap-3 border-b border-border bg-primary/5 px-4 py-2.5">
+                            <UserCheck className="size-4 shrink-0 text-primary" aria-hidden />
+                            <p className="min-w-0 flex-1 text-xs">
+                                <span className="font-medium">You are answering.</span>{' '}
+                                <span className="text-muted-foreground">The bot stays silent.</span>
                             </p>
-                        </>
+                            <button
+                                type="button"
+                                onClick={() => patch({ handedOver: false })}
+                                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-input bg-background px-3 py-1.5 text-xs font-medium"
+                            >
+                                <Bot className="size-3.5" aria-hidden />
+                                Hand back
+                            </button>
+                        </div>
                     )}
-                </footer>
+
+                    <div className="scroll-slim max-h-[calc(100dvh-26rem)] min-h-64 flex-1 overflow-y-auto bg-muted/30 px-3 py-4 sm:px-5">
+                        {ticket.messages.length === 0 ? (
+                            <p className="py-8 text-center text-sm text-muted-foreground">
+                                Nothing has been said on this ticket yet.
+                            </p>
+                        ) : (
+                            <div className="space-y-1.5">
+                                {ticket.messages.map((message, index) => {
+                                    const previous = ticket.messages[index - 1];
+                                    const mine = message.sender !== 'customer';
+                                    const staff = message.sender === 'staff';
+
+                                    const showDay =
+                                        message.at !== null &&
+                                        (previous?.at == null ||
+                                            dayLabel(previous.at) !== dayLabel(message.at));
+
+                                    const startsRun =
+                                        previous?.sender !== message.sender || showDay;
+
+                                    return (
+                                        <Fragment key={message.id}>
+                                            {showDay && message.at && (
+                                                <div className="flex justify-center py-2">
+                                                    <span className="rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground shadow-sm">
+                                                        {dayLabel(message.at)}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            <div
+                                                className={[
+                                                    'flex',
+                                                    mine ? 'justify-end' : 'justify-start',
+                                                    startsRun ? 'pt-1.5' : '',
+                                                ].join(' ')}
+                                            >
+                                                <div
+                                                    className={[
+                                                        'max-w-[85%] rounded-2xl px-3.5 py-2 shadow-sm sm:max-w-[75%]',
+                                                        staff
+                                                            ? 'bg-primary text-primary-foreground'
+                                                            : mine
+                                                              ? 'border border-primary/20 bg-primary/10'
+                                                              : 'border border-border bg-card',
+                                                        startsRun
+                                                            ? mine
+                                                                ? 'rounded-tr-md'
+                                                                : 'rounded-tl-md'
+                                                            : '',
+                                                    ].join(' ')}
+                                                >
+                                                    {startsRun && (
+                                                        <p
+                                                            className={[
+                                                                'mb-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                                                                staff
+                                                                    ? 'text-primary-foreground/70'
+                                                                    : 'text-muted-foreground',
+                                                            ].join(' ')}
+                                                        >
+                                                            {SENDER_LABELS[message.sender] ??
+                                                                message.sender}
+                                                        </p>
+                                                    )}
+                                                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                                                        {formatChat(message.message)}
+                                                    </p>
+                                                    <p
+                                                        className={[
+                                                            'mt-1 text-right text-[10px]',
+                                                            staff
+                                                                ? 'text-primary-foreground/70'
+                                                                : 'text-muted-foreground',
+                                                        ].join(' ')}
+                                                    >
+                                                        {clockTime(message.at)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </Fragment>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    <footer className="border-t border-border px-3 py-3 sm:px-4">
+                        {blocked !== null ? (
+                            <p className="text-center text-xs text-muted-foreground">{blocked}</p>
+                        ) : (
+                            <>
+                                <div className="flex items-end gap-2">
+                                    <textarea
+                                        value={form.data.message}
+                                        onChange={(event) =>
+                                            form.setData('message', event.target.value)
+                                        }
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter' && !event.shiftKey) {
+                                                event.preventDefault();
+                                                send();
+                                            }
+                                        }}
+                                        rows={1}
+                                        maxLength={4000}
+                                        placeholder="Write a reply…"
+                                        aria-label="Reply to this ticket"
+                                        className="scroll-slim max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-input bg-background px-4 py-2.5 text-sm focus:border-ring focus:outline-none focus:ring-[3px] focus:ring-ring/30"
+                                    />
+
+                                    <button
+                                        type="button"
+                                        onClick={send}
+                                        disabled={
+                                            form.processing || form.data.message.trim() === ''
+                                        }
+                                        className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-50"
+                                        aria-label={form.processing ? 'Sending' : 'Send reply'}
+                                    >
+                                        <Send className="size-4" aria-hidden />
+                                    </button>
+                                </div>
+
+                                <p className="mt-2 text-center text-xs text-muted-foreground">
+                                    Sent to the customer over WhatsApp.
+                                    {!ticket.handedOver &&
+                                        ' Replying also takes this conversation off the bot.'}
+                                </p>
+                            </>
+                        )}
+                    </footer>
+                </div>
             </div>
         </AuthenticatedLayout>
+    );
+}
+
+/** WhatsApp's own *bold* markup, shown as bold rather than as asterisks. */
+function formatChat(text: string | null): ReactNode {
+    if (text === null) {
+        return '—';
+    }
+
+    return text.split(/(\*[^*\n]+\*)/g).map((part, index) =>
+        part.length > 2 && part.startsWith('*') && part.endsWith('*') ? (
+            <strong key={index}>{part.slice(1, -1)}</strong>
+        ) : (
+            <Fragment key={index}>{part}</Fragment>
+        ),
     );
 }

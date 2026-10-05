@@ -1,22 +1,17 @@
-import {
-    CircleDot,
-    Layers,
-    LucideIcon,
-    Percent,
-    Package,
-    RefreshCw,
-    TriangleAlert,
-} from 'lucide-react';
+import { TriangleAlert } from 'lucide-react';
 import { compact, price, relativeTime } from './bits';
 import { Kpis } from './types';
 
 /**
- * The headline figures for the catalogue.
+ * The headline figures for the catalogue, in one card.
  *
- * Five are counts and one is a warning. `underwater` was not asked for, but it
- * is the only number here that costs a reseller money while they are not
- * looking — every order on those services loses them the difference — so it
- * takes a tile and turns red when it is above zero.
+ * The fourth cell is the only warning on the page. `underwater` was not asked
+ * for, but it is the only number here that costs a reseller money while they
+ * are not looking — every order on those services loses them the difference —
+ * so it turns red when above zero, and is a button that filters to them.
+ *
+ * Active and Platforms are left out: the tabs and the platform list already
+ * carry those counts.
  */
 export default function KpiRow({
     kpis,
@@ -25,10 +20,13 @@ export default function KpiRow({
     kpis?: Kpis;
     onFilterUnderwater: () => void;
 }) {
+    const shell =
+        'grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border lg:grid-cols-4';
+
     if (!kpis) {
         return (
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-                {Array.from({ length: 6 }).map((_, index) => (
+            <div className={shell}>
+                {Array.from({ length: 4 }).map((_, index) => (
                     <Skeleton key={index} />
                 ))}
             </div>
@@ -36,47 +34,39 @@ export default function KpiRow({
     }
 
     return (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-            <Tile label="Services" value={compact(kpis.total)} icon={Package} />
-            <Tile
-                label="Active"
-                value={compact(kpis.active)}
-                icon={CircleDot}
-                sub={`${compact(kpis.hidden)} hidden · ${compact(kpis.paused)} paused`}
-            />
-            <Tile label="Platforms" value={compact(kpis.platforms)} icon={Layers} />
+        <div className={shell}>
+            <Tile label="Services" value={compact(kpis.total)} sub={`${compact(kpis.active)} active`} />
             <Tile
                 label="Avg profit"
                 value={kpis.avgProfit === null ? '—' : price(kpis.avgProfit)}
-                icon={Percent}
                 sub={kpis.avgProfit === null ? 'No costs known' : 'per 1,000'}
             />
             <Tile
                 label="Avg margin"
                 value={kpis.avgMargin === null ? '—' : `${kpis.avgMargin.toFixed(1)}%`}
-                icon={Percent}
             />
 
             {kpis.underwater > 0 ? (
                 <button
                     type="button"
                     onClick={onFilterUnderwater}
-                    className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-left transition-colors hover:border-destructive/50"
+                    className="bg-card text-left"
                 >
-                    <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs font-medium text-destructive">Losing money</p>
-                        <TriangleAlert className="size-4 shrink-0 text-destructive" aria-hidden />
-                    </div>
-                    <p className="font-data mt-2 text-2xl font-semibold tabular-nums tracking-tight text-destructive">
+                    <span className="block h-full bg-destructive/5 p-4 transition-colors hover:bg-destructive/10">
+                    <p className="flex items-center gap-1.5 text-xs text-destructive sm:text-sm">
+                        <TriangleAlert className="size-3.5 shrink-0" aria-hidden />
+                        Losing money
+                    </p>
+                    <p className="font-heading mt-1 text-2xl font-extrabold tracking-tight text-destructive">
                         {compact(kpis.underwater)}
                     </p>
-                    <p className="mt-1 text-xs text-destructive/80">Priced below cost — review</p>
+                    <p className="mt-1 truncate text-xs text-destructive/80">Priced below cost</p>
+                    </span>
                 </button>
             ) : (
                 <Tile
                     label="Last sync"
                     value={kpis.lastSyncedAt ? relativeTime(kpis.lastSyncedAt) : 'Never'}
-                    icon={RefreshCw}
                     sub={kpis.lastSyncedAt ? undefined : 'Sync to refresh costs'}
                 />
             )}
@@ -84,41 +74,22 @@ export default function KpiRow({
     );
 }
 
-function Tile({
-    label,
-    value,
-    icon: Icon,
-    sub,
-}: {
-    label: string;
-    value: string;
-    icon: LucideIcon;
-    sub?: string;
-}) {
+function Tile({ label, value, sub }: { label: string; value: string; sub?: string }) {
     return (
-        <div className="group rounded-xl border border-border bg-card p-4 transition-colors hover:border-foreground/15">
-            <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-medium text-muted-foreground">{label}</p>
-                <Icon
-                    className="size-4 shrink-0 text-muted-foreground/60 transition-colors group-hover:text-muted-foreground"
-                    aria-hidden
-                />
-            </div>
-            <p className="font-data mt-2 truncate text-2xl font-semibold tabular-nums tracking-tight">
+        <div className="bg-card p-4">
+            <p className="text-xs text-muted-foreground sm:text-sm">{label}</p>
+            <p className="font-heading mt-1 truncate text-2xl font-extrabold tracking-tight">
                 {value}
             </p>
-            {sub && <p className="mt-1 truncate text-xs text-muted-foreground">{sub}</p>}
+            <p className="mt-1 min-h-4 truncate text-xs text-muted-foreground">{sub}</p>
         </div>
     );
 }
 
 function Skeleton() {
     return (
-        <div className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-start justify-between gap-2">
-                <div className="h-3 w-16 animate-pulse rounded bg-muted" />
-                <div className="size-4 animate-pulse rounded bg-muted" />
-            </div>
+        <div className="bg-card p-4">
+            <div className="h-3 w-16 animate-pulse rounded bg-muted" />
             <div className="mt-2.5 h-7 w-14 animate-pulse rounded bg-muted" />
             <div className="mt-2 h-3 w-20 animate-pulse rounded bg-muted" />
         </div>

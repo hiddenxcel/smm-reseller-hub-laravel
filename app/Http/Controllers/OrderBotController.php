@@ -10,6 +10,7 @@ use App\Models\TenantPanel;
 use App\Models\TenantWhatsApp;
 use App\Services\Bots\BotLang;
 use App\Services\Bots\BotSettings;
+use App\Services\Payments\ExchangeRates;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -51,7 +52,13 @@ class OrderBotController extends Controller
             ...match ($tab) {
                 'commands' => ['commands' => Arr::get($settings, 'commands', []), 'spam' => Arr::get($settings, 'spam', [])],
                 'logs' => ['logs' => $this->logs($request, $tenantId)],
-                'settings' => ['settings' => $this->settingsPayload($settings), 'languages' => $this->languages()],
+                'settings' => [
+                    'settings' => $this->settingsPayload($settings),
+                    'languages' => $this->languages(),
+                    // The shop's currency is picked, not typed: only these have a
+                    // rate, so only these can be charged through a gateway.
+                    'currencies' => ExchangeRates::catalogue(),
+                ],
                 default => [
                     'setup' => $this->setup($tenantId, $settings),
                     'languages' => $this->languages(),
@@ -274,20 +281,34 @@ class OrderBotController extends Controller
 
     public function updateSettings(Request $request): RedirectResponse
     {
+        $settings = BotSettings::for((int) $request->user()->id, self::BOT);
+
+        // Case does not matter to the person choosing; it does to the lookup.
+        if (is_string($request->input('currency'))) {
+            $request->merge(['currency' => strtoupper(trim($request->input('currency')))]);
+        }
+
+        // What the shop already has stays valid. A currency saved back when the
+        // field was free text may not be one we can convert — rejecting it
+        // would block every other setting from being saved until it was
+        // changed, which punishes the reseller for an old choice.
+        $allowedCurrencies = array_unique([
+            ...array_column(ExchangeRates::catalogue(), 'code'),
+            (string) Arr::get($settings, 'shop.currency', 'USD'),
+        ]);
+
         $data = $request->validate([
             'staff' => ['array'],
             'staff.*' => ['string', 'max:20'],
             'testNumbers' => ['array'],
             'testNumbers.*' => ['string', 'max:20'],
-            'currency' => ['required', 'string', 'size:3'],
+            'currency' => ['required', 'string', Rule::in($allowedCurrencies)],
             'lang' => ['required', Rule::in(BotLang::SUPPORTED)],
             'minTopup' => ['required', 'numeric', 'min:0'],
             'referralPercent' => ['required', 'numeric', 'min:0', 'max:100'],
             'showProviderName' => ['required', 'boolean'],
             'detailedStatus' => ['required', 'boolean'],
         ]);
-
-        $settings = BotSettings::for((int) $request->user()->id, self::BOT);
 
         // Written key by key rather than as one nested array: `shop` also holds
         // gateway ids and support links this form never sees, and assigning the

@@ -1,5 +1,7 @@
+import SegmentedTabs from '@/components/SegmentedTabs';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
+import { LayoutGrid, MessageSquareText, Settings2, ShieldCheck } from 'lucide-react';
 import { StatusPill } from '../OrderBot/bits';
 import { OverviewTab } from './OverviewTab';
 import { RulesTab } from './RulesTab';
@@ -7,12 +9,12 @@ import { SettingsTab } from './SettingsTab';
 import { TemplatesTab } from './TemplatesTab';
 import { SupportBotPageProps } from './types';
 
-const TAB_LABELS: Record<string, string> = {
-    overview: 'Overview',
-    rules: 'Guarantee rules',
-    templates: 'Templates',
-    settings: 'Settings',
-};
+const TABS = {
+    overview: { label: 'Overview', icon: LayoutGrid },
+    rules: { label: 'Rules', icon: ShieldCheck },
+    templates: { label: 'Wording', icon: MessageSquareText },
+    settings: { label: 'Settings', icon: Settings2 },
+} as const;
 
 /**
  * The support bot's console.
@@ -26,59 +28,53 @@ export default function SupportBotIndex(props: SupportBotPageProps) {
     const { tab, tabs, status } = props;
 
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h1 className="font-heading text-xl font-bold">Support Bot</h1>
-                        <p className="text-sm text-muted-foreground">
-                            After-sales — refills, order status, and handing over to a person.
-                        </p>
+        <AuthenticatedLayout>
+            <Head title="Support Bot" />
+
+            <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
+                <header className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <h1 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">
+                            Support Bot
+                        </h1>
+                        {status.number && (
+                            <p className="font-data mt-0.5 text-sm text-muted-foreground">
+                                {status.number}
+                            </p>
+                        )}
                     </div>
 
                     <StatusPill status={status} />
-                </div>
-            }
-        >
-            <Head title="Support Bot" />
+                </header>
 
-            <nav
-                className="scroll-slim -mx-1 mb-6 flex gap-1 overflow-x-auto border-b border-border px-1"
-                aria-label="Support bot sections"
-            >
-                {tabs.map((name) => {
-                    const isCurrent = name === tab;
+                <SegmentedTabs
+                    label="Support bot sections"
+                    current={tab}
+                    tabs={tabs.map((name) => {
+                        const meta = TABS[name as keyof typeof TABS] ?? TABS.overview;
 
-                    return (
-                        <Link
-                            key={name}
-                            href={route('support-bot', name)}
-                            className={[
-                                'whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors',
-                                isCurrent
-                                    ? 'border-primary font-semibold text-foreground'
-                                    : 'border-transparent text-muted-foreground hover:text-foreground',
-                            ].join(' ')}
-                            aria-current={isCurrent ? 'page' : undefined}
-                        >
-                            {TAB_LABELS[name] ?? name}
-                        </Link>
-                    );
-                })}
-            </nav>
+                        return {
+                            key: name,
+                            label: meta.label,
+                            icon: meta.icon,
+                            href: route('support-bot', name),
+                        };
+                    })}
+                />
 
-            {tab === 'overview' && props.overview && (
-                <OverviewTab data={props.overview} status={status} />
-            )}
-            {tab === 'rules' && props.rules && (
-                <RulesTab rules={props.rules} panels={props.panels ?? []} />
-            )}
-            {tab === 'templates' && props.templates && (
-                <TemplatesTab data={props.templates} languages={props.languages ?? []} />
-            )}
-            {tab === 'settings' && props.settings && (
-                <SettingsTab settings={props.settings} languages={props.languages ?? []} />
-            )}
+                {tab === 'overview' && props.overview && (
+                    <OverviewTab data={props.overview} status={status} />
+                )}
+                {tab === 'rules' && props.rules && (
+                    <RulesTab rules={props.rules} panels={props.panels ?? []} />
+                )}
+                {tab === 'templates' && props.templates && (
+                    <TemplatesTab data={props.templates} languages={props.languages ?? []} />
+                )}
+                {tab === 'settings' && props.settings && (
+                    <SettingsTab settings={props.settings} languages={props.languages ?? []} />
+                )}
+            </div>
         </AuthenticatedLayout>
     );
 }

@@ -14,7 +14,7 @@ import { Card, Field, inputClass } from './bits';
  * Failure comes back on the URL field, since a wrong address is the usual
  * cause and that is where the eye goes.
  */
-export function AddProviderForm() {
+export function AddProviderForm({ onCancel }: { onCancel?: () => void }) {
     const form = useForm({ name: '', api_url: '', api_key: '' });
 
     return (
@@ -68,16 +68,29 @@ export function AddProviderForm() {
                     />
                 </Field>
 
-                <Button type="submit" className="w-full" disabled={form.processing}>
-                    {form.processing ? (
-                        'Checking the panel…'
-                    ) : (
-                        <>
-                            <Search className="size-4" />
-                            Detect and connect
-                        </>
+                <div className="flex flex-col gap-2 sm:flex-row-reverse">
+                    <Button type="submit" className="w-full sm:w-auto" disabled={form.processing}>
+                        {form.processing ? (
+                            'Checking the panel…'
+                        ) : (
+                            <>
+                                <Search className="size-4" />
+                                Detect and connect
+                            </>
+                        )}
+                    </Button>
+
+                    {onCancel && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            className="w-full sm:w-auto"
+                            onClick={onCancel}
+                        >
+                            Cancel
+                        </Button>
                     )}
-                </Button>
+                </div>
 
                 <p className="text-xs text-muted-foreground">
                     We call your panel once to confirm the key works and read your balance.

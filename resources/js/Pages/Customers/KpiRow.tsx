@@ -1,13 +1,11 @@
 import {
     CircleDollarSign,
-    Crown,
     LucideIcon,
     TrendingDown,
     TrendingUp,
     UserPlus,
     Users,
     Wallet,
-    Zap,
 } from 'lucide-react';
 import { compact, money } from './bits';
 import { CustomersPageProps, Kpi } from './types';
@@ -32,12 +30,12 @@ type Tile = {
     tone?: 'money';
 };
 
+// VIP and Active are left out: the tabs under this row carry the same counts,
+// and six tiles on a phone is a screen of numbers before the first customer.
 const TILES: Tile[] = [
-    { key: 'total', label: 'Total customers', icon: Users, format: compact },
+    { key: 'total', label: 'Customers', icon: Users, format: compact },
     { key: 'newToday', label: 'New today', icon: UserPlus, format: compact },
-    { key: 'vip', label: 'VIP', icon: Crown, format: compact },
-    { key: 'active', label: 'Active (30d)', icon: Zap, format: compact },
-    { key: 'wallets', label: 'Wallet balances', icon: Wallet, format: money, tone: 'money' },
+    { key: 'wallets', label: 'In wallets', icon: Wallet, format: money, tone: 'money' },
     {
         key: 'lifetime',
         label: 'Lifetime revenue',
@@ -49,38 +47,31 @@ const TILES: Tile[] = [
 
 export default function KpiRow({ kpis }: { kpis?: CustomersPageProps['kpis'] }) {
     return (
-        <section aria-label="Customer totals">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-                {TILES.map((tile) =>
-                    kpis ? (
-                        <KpiCard key={tile.key} tile={tile} kpi={kpis[tile.key]} />
-                    ) : (
-                        <KpiSkeleton key={tile.key} />
-                    ),
-                )}
-            </div>
+        <section
+            aria-label="Customer totals"
+            className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border lg:grid-cols-4"
+        >
+            {TILES.map((tile) =>
+                kpis ? (
+                    <KpiCard key={tile.key} tile={tile} kpi={kpis[tile.key]} />
+                ) : (
+                    <KpiSkeleton key={tile.key} />
+                ),
+            )}
         </section>
     );
 }
 
 function KpiCard({ tile, kpi }: { tile: Tile; kpi: Kpi }) {
-    const Icon = tile.icon;
-
     return (
-        <div className="group rounded-xl border border-border bg-card p-4 transition-colors hover:border-foreground/15">
-            <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-medium text-muted-foreground">{tile.label}</p>
-                <Icon
-                    className="size-4 shrink-0 text-muted-foreground/60 transition-colors group-hover:text-muted-foreground"
-                    aria-hidden
-                />
-            </div>
+        <div className="bg-card p-4">
+            <p className="text-xs text-muted-foreground sm:text-sm">{tile.label}</p>
 
-            <p className="font-data mt-2 text-2xl font-semibold tabular-nums tracking-tight">
+            <p className="font-heading mt-1 truncate text-2xl font-extrabold tracking-tight">
                 {tile.format(kpi.value)}
             </p>
 
-            {kpi.delta !== null && <Delta value={kpi.delta} />}
+            <div className="mt-1 min-h-4">{kpi.delta !== null && <Delta value={kpi.delta} />}</div>
         </div>
     );
 }
@@ -102,18 +93,15 @@ function Delta({ value }: { value: number }) {
             <Icon className="size-3" aria-hidden />
             {rising ? '+' : ''}
             {value}%
-            <span className="font-normal text-muted-foreground">vs before</span>
+            <span className="hidden font-normal text-muted-foreground sm:inline">vs before</span>
         </p>
     );
 }
 
 function KpiSkeleton() {
     return (
-        <div className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-start justify-between gap-2">
-                <div className="h-3 w-20 animate-pulse rounded bg-muted" />
-                <div className="size-4 animate-pulse rounded bg-muted" />
-            </div>
+        <div className="bg-card p-4">
+            <div className="h-3 w-20 animate-pulse rounded bg-muted" />
             <div className="mt-2.5 h-7 w-16 animate-pulse rounded bg-muted" />
             <div className="mt-2 h-3 w-24 animate-pulse rounded bg-muted" />
         </div>

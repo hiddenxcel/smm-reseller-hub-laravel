@@ -141,12 +141,20 @@ export type Settings = {
  * Only the current tab's data is sent, so every tab payload is optional —
  * the page checks before rendering rather than trusting it is there.
  */
+export type CurrencyOption = {
+    code: string;
+    name: string;
+    /** Units of this currency one US dollar buys. */
+    perUsd: number;
+};
+
 export type OrderBotPageProps = {
     tab: string;
     tabs: string[];
     status: BotStatus;
     setup?: Setup;
     languages?: Language[];
+    currencies?: CurrencyOption[];
     commands?: Commands;
     spam?: Spam;
     logs?: Logs;

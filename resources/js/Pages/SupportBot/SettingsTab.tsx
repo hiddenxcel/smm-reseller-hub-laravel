@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { FormEvent } from 'react';
-import { Card, Field, Toggle, inputClass } from '../OrderBot/bits';
+import { Card, Field, SaveBar, Toggle, inputClass } from '../OrderBot/bits';
 import { PhoneList } from '../OrderBot/PhoneList';
 import { Language, SupportSettings } from './types';
 
@@ -20,7 +20,7 @@ export function SettingsTab({
     languages: Language[];
 }) {
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             <MainForm settings={settings} languages={languages} />
             <TestNumbersForm testNumbers={settings.testNumbers} />
         </div>
@@ -53,141 +53,139 @@ function MainForm({
         form.setData('spam', { ...form.data.spam, [key]: value });
 
     return (
-        <form onSubmit={submit} className="space-y-6">
+        <form onSubmit={submit} className="space-y-4 sm:space-y-6">
             <Card
                 title="Menu options"
                 description="Switch off what you cannot service. The others stay on the menu."
             >
-                <Toggle
-                    label="Order status"
-                    description="Looks the order up on your panel."
-                    checked={form.data.commands.status}
-                    onChange={(value) => setCommand('status', value)}
-                />
-                <Toggle
-                    label="Refill"
-                    description="Submitted only when a guarantee rule allows it."
-                    checked={form.data.commands.refill}
-                    onChange={(value) => setCommand('refill', value)}
-                />
-                <Toggle
-                    label="Cancel"
-                    description="Logs a cancellation request for your team."
-                    checked={form.data.commands.cancel}
-                    onChange={(value) => setCommand('cancel', value)}
-                />
-                <Toggle
-                    label="Speed up"
-                    description="Logs a request to prioritise the order."
-                    checked={form.data.commands.speedup}
-                    onChange={(value) => setCommand('speedup', value)}
-                />
+                <div className="-my-3 divide-y divide-border">
+                    <Toggle
+                        label="Order status"
+                        description="Looks the order up on your panel."
+                        checked={form.data.commands.status}
+                        onChange={(value) => setCommand('status', value)}
+                    />
+                    <Toggle
+                        label="Refill"
+                        description="Only when a guarantee rule allows it."
+                        checked={form.data.commands.refill}
+                        onChange={(value) => setCommand('refill', value)}
+                    />
+                    <Toggle
+                        label="Cancel"
+                        description="Logs a cancellation request for your team."
+                        checked={form.data.commands.cancel}
+                        onChange={(value) => setCommand('cancel', value)}
+                    />
+                    <Toggle
+                        label="Speed up"
+                        description="Logs a request to prioritise the order."
+                        checked={form.data.commands.speedup}
+                        onChange={(value) => setCommand('speedup', value)}
+                    />
+                </div>
 
-                <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
-                    “Talk to a human”, top-up help and FAQ cannot be switched off — a
-                    customer must always be able to reach a person.
+                <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">
+                    “Talk to a human”, top-up help and FAQ cannot be switched off — a customer
+                    must always be able to reach a person.
                 </p>
             </Card>
 
-            <Card
-                title="Anti-spam"
-                description="Stops one number flooding the bot. Your staff numbers are exempt."
-            >
-                <Toggle
-                    label="Enabled"
-                    checked={form.data.spam.enabled}
-                    onChange={(value) => setSpam('enabled', value)}
-                />
-
-                <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                    <Field
-                        label="Messages allowed"
-                        hint="Before blocking."
-                        error={form.errors['spam.repeat_threshold']}
-                    >
-                        <input
-                            type="number"
-                            min={2}
-                            max={20}
-                            className={inputClass}
-                            value={form.data.spam.repeat_threshold}
-                            onChange={(event) =>
-                                setSpam('repeat_threshold', Number(event.target.value))
-                            }
-                        />
-                    </Field>
-
-                    <Field
-                        label="Within (minutes)"
-                        error={form.errors['spam.window_minutes']}
-                    >
-                        <input
-                            type="number"
-                            min={1}
-                            max={120}
-                            className={inputClass}
-                            value={form.data.spam.window_minutes}
-                            onChange={(event) =>
-                                setSpam('window_minutes', Number(event.target.value))
-                            }
-                        />
-                    </Field>
-
-                    <Field
-                        label="Blocked for (minutes)"
-                        error={form.errors['spam.disable_minutes']}
-                    >
-                        <input
-                            type="number"
-                            min={1}
-                            max={1440}
-                            className={inputClass}
-                            value={form.data.spam.disable_minutes}
-                            onChange={(event) =>
-                                setSpam('disable_minutes', Number(event.target.value))
-                            }
-                        />
-                    </Field>
+            <Card title="Anti-spam" description="Staff numbers are never blocked.">
+                <div className="-mt-3">
+                    <Toggle
+                        label="Block repeated messages"
+                        checked={form.data.spam.enabled}
+                        onChange={(value) => setSpam('enabled', value)}
+                    />
                 </div>
+
+                {form.data.spam.enabled && (
+                    <div className="mt-2 grid grid-cols-3 gap-3">
+                        <Field
+                            label="After"
+                            hint="messages"
+                            error={form.errors['spam.repeat_threshold']}
+                        >
+                            <input
+                                type="number"
+                                min={2}
+                                max={20}
+                                className={inputClass}
+                                value={form.data.spam.repeat_threshold}
+                                onChange={(event) =>
+                                    setSpam('repeat_threshold', Number(event.target.value))
+                                }
+                            />
+                        </Field>
+
+                        <Field
+                            label="Within"
+                            hint="minutes"
+                            error={form.errors['spam.window_minutes']}
+                        >
+                            <input
+                                type="number"
+                                min={1}
+                                max={120}
+                                className={inputClass}
+                                value={form.data.spam.window_minutes}
+                                onChange={(event) =>
+                                    setSpam('window_minutes', Number(event.target.value))
+                                }
+                            />
+                        </Field>
+
+                        <Field
+                            label="Block for"
+                            hint="minutes"
+                            error={form.errors['spam.disable_minutes']}
+                        >
+                            <input
+                                type="number"
+                                min={1}
+                                max={1440}
+                                className={inputClass}
+                                value={form.data.spam.disable_minutes}
+                                onChange={(event) =>
+                                    setSpam('disable_minutes', Number(event.target.value))
+                                }
+                            />
+                        </Field>
+                    </div>
+                )}
             </Card>
 
             <Card
                 title="Language"
-                description="What the bot speaks, and which template overrides it looks for."
+                description="What the bot speaks. Your wording overrides are kept per language."
             >
-                <Field label="Bot language">
-                    <select
-                        className={inputClass}
-                        value={form.data.lang}
-                        onChange={(event) => form.setData('lang', event.target.value)}
-                    >
-                        {languages.map((language) => (
-                            <option key={language.code} value={language.code}>
-                                {language.name}
-                            </option>
-                        ))}
-                    </select>
-                </Field>
+                <select
+                    className={inputClass}
+                    value={form.data.lang}
+                    onChange={(event) => form.setData('lang', event.target.value)}
+                    aria-label="Bot language"
+                >
+                    {languages.map((language) => (
+                        <option key={language.code} value={language.code}>
+                            {language.name}
+                        </option>
+                    ))}
+                </select>
             </Card>
 
             <Card
                 title="Staff numbers"
-                description="They get notified when a customer asks for a person, and skip anti-spam."
+                description="They are told when a customer asks for a person, and skip anti-spam."
             >
                 <PhoneList
                     numbers={form.data.staff}
                     onChange={(numbers) => form.setData('staff', numbers)}
-                    empty="No staff numbers yet — nobody is notified when a customer asks for help."
+                    empty="No staff numbers yet — nobody is told when a customer asks for help."
                 />
             </Card>
 
-            <button
-                type="submit"
-                disabled={form.processing}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
-            >
-                {form.processing ? 'Saving…' : 'Save settings'}
-            </button>
+            <SaveBar processing={form.processing} dirty={form.isDirty} />
         </form>
     );
 }
@@ -204,12 +202,12 @@ function TestNumbersForm({ testNumbers }: { testNumbers: string[] }) {
         >
             <Card
                 title="Test numbers"
-                description="While the subscription is in sandbox, these are the only numbers the bot answers."
+                description="In test mode, these are the only numbers the bot answers."
                 footer={
                     <button
                         type="submit"
-                        disabled={form.processing}
-                        className="rounded-lg border border-input px-4 py-2 text-sm font-medium disabled:opacity-60"
+                        disabled={form.processing || !form.isDirty}
+                        className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium disabled:opacity-50"
                     >
                         {form.processing ? 'Saving…' : 'Save test numbers'}
                     </button>

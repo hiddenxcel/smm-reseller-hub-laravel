@@ -183,18 +183,18 @@ export default function Customers({
         <AuthenticatedLayout bleed>
             <Head title="Customers" />
 
-            <div className="sticky top-0 z-30 border-b border-border bg-background/95 px-4 pb-3 pt-5 backdrop-blur sm:px-8">
-                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                        <h1 className="font-heading text-2xl font-extrabold tracking-tight">
+            <div className="space-y-4 px-4 pt-5 sm:px-8">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <h1 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">
                             Customers
                         </h1>
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        <p className="mt-0.5 hidden text-sm text-muted-foreground sm:block">
                             Everyone who has messaged your Order Bot or Support Bot.
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                         {busy && (
                             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <Loader2 className="size-3.5 animate-spin" aria-hidden />
@@ -205,9 +205,10 @@ export default function Customers({
                         <a
                             href={route('customers.export', currentQuery())}
                             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm transition-colors hover:bg-accent"
+                            aria-label="Export customers"
                         >
                             <Download className="size-3.5" aria-hidden />
-                            Export
+                            <span className="hidden sm:inline">Export</span>
                         </a>
 
                         <Button
@@ -219,23 +220,25 @@ export default function Customers({
                             }}
                         >
                             <Plus className="size-3.5" />
-                            Add customer
+                            Add<span className="hidden sm:inline"> customer</span>
                         </Button>
                     </div>
                 </div>
 
                 <KpiRow kpis={kpis} />
+            </div>
 
-                <div className="mt-4">
-                    <FilterBar
-                        filters={filters}
-                        tabCounts={tabCounts}
-                        options={options}
-                        isFiltered={isFiltered}
-                        onApply={apply}
-                        onReset={reset}
-                    />
-                </div>
+            {/* Only this stays in view while the list scrolls: search and the
+                filters are what a reseller reaches for, the totals are not. */}
+            <div className="sticky top-0 z-30 mt-4 border-b border-border bg-background/95 px-4 pb-3 pt-2 backdrop-blur sm:px-8">
+                <FilterBar
+                    filters={filters}
+                    tabCounts={tabCounts}
+                    options={options}
+                    isFiltered={isFiltered}
+                    onApply={apply}
+                    onReset={reset}
+                />
             </div>
 
             <div className="px-4 pb-24 pt-4 sm:px-8">
@@ -245,7 +248,7 @@ export default function Customers({
                     <>
                         {/* Below `md` the table becomes cards: nine columns on a
                             phone is a horizontal scroll nobody reads. */}
-                        <div className="space-y-2 md:hidden">
+                        <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card md:hidden">
                             {rows.map((customer) => (
                                 <MobileCard
                                     key={customer.id}
@@ -477,47 +480,40 @@ function MobileCard({
         <div
             onClick={() => onOpen(customer.id)}
             className={[
-                'cursor-pointer rounded-xl border p-3 transition-colors',
-                selected ? 'border-primary/40 bg-primary/5' : 'border-border',
+                'flex cursor-pointer items-center gap-3 p-3.5 transition-colors',
+                selected ? 'bg-primary/5' : '',
                 customer.blocked ? 'opacity-60' : '',
             ].join(' ')}
         >
-            <div className="flex items-start gap-3">
-                <div onClick={(event) => event.stopPropagation()} className="pt-0.5">
-                    <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => onToggle(customer.id)}
-                        aria-label={`Select ${customer.name ?? customer.phone}`}
-                        className="size-4 cursor-pointer rounded border-border accent-primary"
-                    />
-                </div>
+            <div onClick={(event) => event.stopPropagation()}>
+                <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={() => onToggle(customer.id)}
+                    aria-label={`Select ${customer.name ?? customer.phone}`}
+                    className="size-4 cursor-pointer rounded border-border accent-primary"
+                />
+            </div>
 
-                <Avatar name={customer.name} phone={customer.phone} />
+            <Avatar name={customer.name} phone={customer.phone} />
 
-                <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
                     <p className="truncate font-medium">{customer.name ?? 'Unnamed'}</p>
-                    <p className="font-data truncate text-xs text-muted-foreground">
-                        {prettyPhone(customer.phone)}
-                    </p>
-
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <SegmentChips segments={customer.segments} limit={2} />
-                        <BotChips bots={customer.bots} />
-                    </div>
+                    <SegmentChips segments={customer.segments} limit={1} />
                 </div>
+                <p className="font-data truncate text-xs text-muted-foreground">
+                    {prettyPhone(customer.phone)} · {relativeTime(customer.lastSeenAt)}
+                </p>
+            </div>
 
-                <div className="shrink-0 text-right">
-                    <p className="font-data text-sm font-semibold tabular-nums">
-                        {money(customer.balance)}
-                    </p>
-                    <p className="font-data text-xs text-muted-foreground tabular-nums">
-                        {compact(customer.orders)} orders
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                        {relativeTime(customer.lastSeenAt)}
-                    </p>
-                </div>
+            <div className="shrink-0 text-right">
+                <p className="font-data text-sm font-semibold tabular-nums">
+                    {money(customer.balance)}
+                </p>
+                <p className="font-data text-xs text-muted-foreground tabular-nums">
+                    {compact(customer.orders)} {customer.orders === 1 ? 'order' : 'orders'}
+                </p>
             </div>
         </div>
     );

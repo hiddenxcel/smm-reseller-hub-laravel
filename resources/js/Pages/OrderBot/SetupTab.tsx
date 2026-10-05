@@ -4,142 +4,158 @@ import {
     Bot,
     CircleCheck,
     CircleMinus,
+    Copy,
+    ExternalLink,
     FlaskConical,
     Headset,
-    Languages,
     Lock,
-    Plug,
     TriangleAlert,
 } from 'lucide-react';
-import { ReactNode } from 'react';
-import { Card, Field, inputClass } from './bits';
+import { ReactNode, useState } from 'react';
+import { Card, Field, SaveBar, inputClass } from './bits';
 import { PhoneList } from './PhoneList';
-import { BotStatus, Language, Setup } from './types';
+import { BotStatus, Setup } from './types';
 
 /**
- * Bot setup: what is still missing, and how the bot talks.
+ * Bot setup: what is still missing, and how customers reach and get help from
+ * the bot.
  *
- * The readiness row leads because it answers the only question that matters
- * before anything else — can this bot actually sell yet? Each check names the
- * thing that is missing and links straight to where it is fixed.
+ * The first card leads because it answers the only questions that matter
+ * before anything else — can this bot sell yet, and how does a customer reach
+ * it? Whatever is missing is named and links to where it is fixed.
  *
- * The cards below save independently. They were one form once, and saving the
- * spam card would quietly write back whatever the language card happened to be
- * holding; separate posts mean each card owns only its own fields.
+ * Language lives under Settings, with the rest of the shop's defaults, rather
+ * than being asked twice. The two forms save independently: they were one form
+ * once, and saving one card would quietly write back whatever another happened
+ * to be holding.
  */
-export function SetupTab({
-    data,
-    status,
-    languages,
-}: {
-    data: Setup;
-    status: BotStatus;
-    languages: Language[];
-}) {
+export function SetupTab({ data, status }: { data: Setup; status: BotStatus }) {
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             {data.sandbox && <SandboxBanner />}
 
-            <Card
-                title="How the bot sells"
-                description="A customer messages your number, picks a service, pays from their balance, and the order goes to your panel — all in chat."
-            >
-                <div className="grid gap-3 sm:grid-cols-3">
-                    <Check
-                        ok={data.checks.subscription}
-                        icon={Bot}
-                        label="Subscription"
-                        fixLabel="Get it"
-                        href={route('onboarding')}
-                    />
-                    <Check
-                        ok={data.checks.panel}
-                        icon={Plug}
-                        label="Panel"
-                        fixLabel="Connect"
-                        href={route('onboarding')}
-                    />
-                    <Check
-                        ok={data.checks.whatsapp}
-                        icon={Headset}
-                        label="WhatsApp number"
-                        fixLabel="Connect"
-                        href={route('onboarding')}
-                    />
-                </div>
-            </Card>
+            <BotCard data={data} status={status} />
 
             {data.sandbox && (
                 <TestNumbersCard numbers={data.testNumbers} botNumber={status.number} />
             )}
 
-            <LanguageAndSupportCard data={data} languages={languages} />
+            <HelpForm data={data} />
         </div>
+    );
+}
+
+/** Where the bot lives, and whether it is ready to sell. */
+function BotCard({ data, status }: { data: Setup; status: BotStatus }) {
+    const [copied, setCopied] = useState(false);
+
+    // wa.me wants digits only: "+255 712 345 678" becomes 255712345678.
+    const digits = (status.number ?? '').replace(/\D/g, '');
+    const link = digits === '' ? null : `https://wa.me/${digits}`;
+
+    const missing = [
+        !data.checks.subscription && { label: 'Subscription', fix: 'Get it' },
+        !data.checks.panel && { label: 'Panel', fix: 'Connect' },
+        !data.checks.whatsapp && { label: 'WhatsApp number', fix: 'Connect' },
+    ].filter(Boolean) as Array<{ label: string; fix: string }>;
+
+    return (
+        <Card title="Your bot">
+            {link ? (
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2.5">
+                        <code className="font-data min-w-0 flex-1 truncate text-sm">{link}</code>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                                navigator.clipboard?.writeText(link);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 1500);
+                            }}
+                            aria-label="Copy the bot's WhatsApp link"
+                        >
+                            {copied ? 'Copied' : <Copy className="size-3.5" />}
+                        </Button>
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                        <Button asChild>
+                            <a href={link} target="_blank" rel="noreferrer">
+                                <ExternalLink className="size-4" />
+                                Open in WhatsApp
+                            </a>
+                        </Button>
+                        <Button variant="outline" asChild>
+                            <Link href={route('onboarding.step', 'test')}>Practice chat</Link>
+                        </Button>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                        Share this link — a customer taps it and lands in a chat with your bot.
+                    </p>
+                </div>
+            ) : (
+                <p className="text-sm text-muted-foreground">
+                    Connect a WhatsApp number and your bot&rsquo;s link appears here.
+                </p>
+            )}
+
+            {/* Only what is missing: three green ticks would say nothing a
+                glance at "Online" has not already said. */}
+            {missing.length > 0 ? (
+                <ul className="mt-4 space-y-2 border-t border-border pt-4">
+                    {missing.map((item) => (
+                        <li
+                            key={item.label}
+                            className="flex items-center justify-between gap-3 text-sm"
+                        >
+                            <span className="flex items-center gap-2">
+                                <CircleMinus
+                                    className="size-4 shrink-0 text-muted-foreground"
+                                    aria-label="Not done"
+                                />
+                                {item.label}
+                            </span>
+                            <Link
+                                href={route('onboarding')}
+                                className="shrink-0 text-xs font-semibold text-primary"
+                            >
+                                {item.fix}
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <p className="mt-4 flex items-center gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
+                    <CircleCheck className="size-4 shrink-0 text-primary" aria-hidden />
+                    Subscription, panel and number are all in place.
+                </p>
+            )}
+        </Card>
     );
 }
 
 function SandboxBanner() {
     return (
-        <div className="flex flex-wrap items-start gap-3 rounded-xl bg-[oklch(0.77_0.16_70/0.12)] p-4 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-[oklch(0.77_0.16_70/0.12)] p-4 text-sm">
             <FlaskConical
-                className="mt-0.5 size-4 shrink-0 text-[oklch(0.55_0.13_70)]"
+                className="size-4 shrink-0 text-[oklch(0.55_0.13_70)]"
                 aria-hidden
             />
-            <div className="min-w-0 flex-1">
-                <p className="font-semibold">Sandbox — not live yet</p>
-                <p className="mt-0.5 text-muted-foreground">
-                    Set the bot up and try it from your own test numbers. Real customers
-                    will not get replies until you go live.
-                </p>
-            </div>
+            <p className="min-w-0 flex-1">
+                <span className="font-semibold">Test mode.</span>{' '}
+                <span className="text-muted-foreground">
+                    Only your test numbers get replies until you go live.
+                </span>
+            </p>
             <Link
                 href={route('onboarding')}
                 className="shrink-0 rounded-lg bg-foreground px-3 py-1.5 text-xs font-medium text-background"
             >
                 Go live
             </Link>
-        </div>
-    );
-}
-
-function Check({
-    ok,
-    icon: Icon,
-    label,
-    fixLabel,
-    href,
-}: {
-    ok: boolean;
-    icon: typeof Bot;
-    label: string;
-    fixLabel: string;
-    href: string;
-}) {
-    return (
-        <div className="flex items-center gap-2.5 rounded-xl border border-border p-3">
-            {/* The icon repeats what the text says rather than replacing it —
-                a tick alone is unreadable in greyscale or to a screen reader. */}
-            {ok ? (
-                <CircleCheck className="size-4 shrink-0 text-primary" aria-label="Done" />
-            ) : (
-                <CircleMinus
-                    className="size-4 shrink-0 text-muted-foreground"
-                    aria-label="Not done"
-                />
-            )}
-
-            <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1.5 text-sm font-medium">
-                    <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                    {label}
-                </span>
-            </span>
-
-            {!ok && (
-                <Link href={href} className="shrink-0 text-xs font-medium text-primary">
-                    {fixLabel}
-                </Link>
-            )}
         </div>
     );
 }
@@ -154,10 +170,7 @@ function TestNumbersCard({
     const form = useForm({ testNumbers: numbers });
 
     return (
-        <Card
-            title="Try it first"
-            description="While you are in sandbox, only these numbers get replies."
-        >
+        <Card title="Test numbers" description="In test mode, only these numbers get replies.">
             <form
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -172,32 +185,27 @@ function TestNumbersCard({
                 />
 
                 {form.data.testNumbers.length > 0 && (
-                    <p className="rounded-lg bg-primary/10 p-3 text-sm text-primary">
+                    <p className="rounded-xl bg-primary/10 p-3 text-sm text-primary">
                         Message{' '}
                         <span className="font-data font-semibold">
                             {botNumber ?? 'your bot number'}
                         </span>{' '}
-                        from one of those numbers to try the bot.
+                        from one of them to try the bot.
                     </p>
                 )}
 
-                <div className="flex justify-end">
-                    <Button type="submit" size="sm" disabled={form.processing}>
-                        {form.processing ? 'Saving…' : 'Save test numbers'}
-                    </Button>
-                </div>
+                <Button type="submit" className="w-full sm:w-auto" disabled={form.processing}>
+                    {form.processing ? 'Saving…' : 'Save test numbers'}
+                </Button>
             </form>
         </Card>
     );
 }
 
-function LanguageAndSupportCard({
-    data,
-    languages,
-}: {
-    data: Setup;
-    languages: Language[];
-}) {
+/** Links to share, and who handles a question the bot cannot answer. */
+function HelpForm({ data }: { data: Setup }) {
+    // `lang` rides along unchanged: it is edited under Settings, but this
+    // endpoint saves it with the rest, so it must be sent back as it was.
     const form = useForm({
         lang: data.lang,
         groupUrl: data.groupUrl,
@@ -212,68 +220,35 @@ function LanguageAndSupportCard({
                 event.preventDefault();
                 form.post(route('order-bot.setup'), { preserveScroll: true });
             }}
-            className="space-y-6"
+            className="space-y-4 sm:space-y-6"
         >
-            <Card
-                title="Language & links"
-                description="What the bot speaks, and where it points customers."
-            >
-                <div className="space-y-4">
-                    <Field
-                        label="Bot language"
-                        hint="Used until a customer picks their own"
-                        error={form.errors.lang}
-                    >
-                        <div className="relative">
-                            <Languages
-                                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                                aria-hidden
-                            />
-                            <select
-                                value={form.data.lang}
-                                onChange={(event) => form.setData('lang', event.target.value)}
-                                className={`${inputClass} pl-9`}
-                            >
-                                {languages.map((language) => (
-                                    <option key={language.code} value={language.code}>
-                                        {language.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+            <Card title="Links" description="Where the bot points customers. Both are optional.">
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Group link" error={form.errors.groupUrl}>
+                        <input
+                            type="url"
+                            value={form.data.groupUrl}
+                            onChange={(event) => form.setData('groupUrl', event.target.value)}
+                            placeholder="https://chat.whatsapp.com/…"
+                            className={inputClass}
+                        />
                     </Field>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <Field label="Group link" error={form.errors.groupUrl}>
-                            <input
-                                type="url"
-                                value={form.data.groupUrl}
-                                onChange={(event) =>
-                                    form.setData('groupUrl', event.target.value)
-                                }
-                                placeholder="https://chat.whatsapp.com/…"
-                                className={inputClass}
-                            />
-                        </Field>
-
-                        <Field label="Website" error={form.errors.websiteUrl}>
-                            <input
-                                type="url"
-                                value={form.data.websiteUrl}
-                                onChange={(event) =>
-                                    form.setData('websiteUrl', event.target.value)
-                                }
-                                placeholder="https://…"
-                                className={inputClass}
-                            />
-                        </Field>
-                    </div>
+                    <Field label="Website" error={form.errors.websiteUrl}>
+                        <input
+                            type="url"
+                            value={form.data.websiteUrl}
+                            onChange={(event) => form.setData('websiteUrl', event.target.value)}
+                            placeholder="https://…"
+                            className={inputClass}
+                        />
+                    </Field>
                 </div>
             </Card>
 
             <Card
                 title="When a customer needs help"
-                description="The order bot sells. This is what happens when someone asks it something it cannot answer."
+                description="What happens when someone asks something the bot cannot answer."
             >
                 <div className="grid gap-3 sm:grid-cols-2">
                     <SupportOption
@@ -281,7 +256,7 @@ function LanguageAndSupportCard({
                         onSelect={() => form.setData('supportMode', 'admin')}
                         icon={Headset}
                         title="Send it to you"
-                        description="The bot hands the conversation to your staff numbers below."
+                        description="Your staff numbers get the conversation."
                     />
 
                     <SupportOption
@@ -290,17 +265,16 @@ function LanguageAndSupportCard({
                         icon={Bot}
                         title="AI answers"
                         badge="$5/mo"
-                        description="An AI add-on replies for you, using your own catalogue and rules."
+                        description="An AI add-on replies from your catalogue and rules."
                     >
                         {form.data.supportMode === 'ai' && <AiState ai={data.ai} />}
                     </SupportOption>
                 </div>
 
-                <div className="mt-4">
+                <div className="mt-5">
                     <p className="text-sm font-medium">Staff numbers</p>
                     <p className="mb-2 text-xs text-muted-foreground">
-                        These get handed the conversation, and are never blocked by
-                        anti-spam.
+                        They get handed the conversation and are never blocked by anti-spam.
                     </p>
                     <PhoneList
                         numbers={form.data.staff}
@@ -310,11 +284,7 @@ function LanguageAndSupportCard({
                 </div>
             </Card>
 
-            <div className="flex justify-end">
-                <Button type="submit" disabled={form.processing}>
-                    {form.processing ? 'Saving…' : 'Save changes'}
-                </Button>
-            </div>
+            <SaveBar processing={form.processing} dirty={form.isDirty} />
         </form>
     );
 }
@@ -355,8 +325,8 @@ function AiState({
                 never see that invoice — this is the only place they can see
                 what their bot has been doing on their key. */}
             <p className="text-xs text-muted-foreground">
-                {ai.answersToday} answered today · {ai.answersTotal} in total.
-                Your DeepSeek key is billed for each one.
+                {ai.answersToday} answered today · {ai.answersTotal} in total. Your DeepSeek key is
+                billed for each one.
             </p>
         </div>
     );

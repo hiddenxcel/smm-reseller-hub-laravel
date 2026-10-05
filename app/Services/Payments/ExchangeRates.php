@@ -23,6 +23,34 @@ class ExchangeRates
         return is_numeric($rate) && (float) $rate > 0 ? (float) $rate : null;
     }
 
+    /**
+     * Every currency a shop can be priced in, for a picker: the ones with a
+     * rate, in the order they are configured, each with its name.
+     *
+     * @return array<int, array{code: string, name: string, perUsd: float}>
+     */
+    public static function catalogue(): array
+    {
+        $names = (array) config('currency.names', []);
+        $list = [];
+
+        foreach (array_keys((array) config('currency.usd_to', [])) as $code) {
+            $rate = self::perUsd((string) $code);
+
+            if ($rate === null) {
+                continue;
+            }
+
+            $list[] = [
+                'code' => (string) $code,
+                'name' => (string) ($names[$code] ?? $code),
+                'perUsd' => $rate,
+            ];
+        }
+
+        return $list;
+    }
+
     public static function supports(string $currency): bool
     {
         return self::perUsd($currency) !== null;

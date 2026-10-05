@@ -1,96 +1,115 @@
-import InputError from '@/components/InputError';
-import InputLabel from '@/components/InputLabel';
-import PrimaryButton from '@/components/PrimaryButton';
-import TextInput from '@/components/TextInput';
-import { Transition } from '@headlessui/react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useForm, usePage } from '@inertiajs/react';
+import { Check, Loader2 } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
 /**
  * Tenants have no email verification — there is no email_verified_at column
  * on the table, so the Breeze verification block was removed rather than left
  * to read a field that does not exist.
+ *
+ * The Save button appears only once something has changed, and the confirmation
+ * stays put after it saves — so there is never a button to press with nothing
+ * to save, or a doubt about whether it worked.
  */
-export default function UpdateProfileInformation({
-    className = '',
-}: {
-    className?: string;
-}) {
+export default function UpdateProfileInformation() {
     const user = usePage().props.auth.user;
 
-    const { data, setData, patch, errors, processing, recentlySuccessful } =
-        useForm({
-            business_name: user.business_name,
-            email: user.email,
-        });
+    const { data, setData, patch, errors, processing, recentlySuccessful, isDirty } = useForm({
+        business_name: user.business_name,
+        email: user.email,
+        phone: user.phone ?? '',
+    });
 
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
+    const submit: FormEventHandler = (event) => {
+        event.preventDefault();
 
-        patch(route('profile.update'));
+        patch(route('profile.update'), { preserveScroll: true });
     };
 
     return (
-        <section className={className}>
-            <header>
-                <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                    Profile Information
-                </h2>
+        <form onSubmit={submit} className="space-y-4">
+            <Field label="Business name" error={errors.business_name} htmlFor="business_name">
+                <Input
+                    id="business_name"
+                    className="h-10"
+                    value={data.business_name}
+                    onChange={(event) => setData('business_name', event.target.value)}
+                    required
+                    autoComplete="organization"
+                />
+            </Field>
 
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Update your account's profile information and email address.
-                </p>
-            </header>
+            <Field label="Email" error={errors.email} htmlFor="email">
+                <Input
+                    id="email"
+                    type="email"
+                    className="h-10"
+                    value={data.email}
+                    onChange={(event) => setData('email', event.target.value)}
+                    required
+                    autoComplete="username"
+                />
+            </Field>
 
-            <form onSubmit={submit} className="mt-6 space-y-6">
-                <div>
-                    <InputLabel htmlFor="business_name" value="Business name" />
+            <Field
+                label="Phone"
+                hint="Optional — only our team sees it."
+                error={errors.phone}
+                htmlFor="phone"
+            >
+                <Input
+                    id="phone"
+                    type="tel"
+                    inputMode="tel"
+                    className="h-10"
+                    value={data.phone}
+                    onChange={(event) => setData('phone', event.target.value)}
+                    placeholder="+255 712 345 678"
+                    autoComplete="tel"
+                />
+            </Field>
 
-                    <TextInput
-                        id="business_name"
-                        className="mt-1 block w-full"
-                        value={data.business_name}
-                        onChange={(e) => setData('business_name', e.target.value)}
-                        required
-                        isFocused
-                        autoComplete="organization"
-                    />
+            <div className="flex items-center gap-3">
+                {isDirty && (
+                    <Button type="submit" className="w-full sm:w-auto" disabled={processing}>
+                        {processing && <Loader2 className="size-4 animate-spin" />}
+                        Save changes
+                    </Button>
+                )}
 
-                    <InputError className="mt-2" message={errors.business_name} />
-                </div>
+                {!isDirty && recentlySuccessful && (
+                    <p className="flex items-center gap-1.5 text-sm text-primary">
+                        <Check className="size-4" aria-hidden />
+                        Saved
+                    </p>
+                )}
+            </div>
+        </form>
+    );
+}
 
-                <div>
-                    <InputLabel htmlFor="email" value="Email" />
-
-                    <TextInput
-                        id="email"
-                        type="email"
-                        className="mt-1 block w-full"
-                        value={data.email}
-                        onChange={(e) => setData('email', e.target.value)}
-                        required
-                        autoComplete="username"
-                    />
-
-                    <InputError className="mt-2" message={errors.email} />
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <PrimaryButton disabled={processing}>Save</PrimaryButton>
-
-                    <Transition
-                        show={recentlySuccessful}
-                        enter="transition ease-in-out"
-                        enterFrom="opacity-0"
-                        leave="transition ease-in-out"
-                        leaveTo="opacity-0"
-                    >
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Saved.
-                        </p>
-                    </Transition>
-                </div>
-            </form>
-        </section>
+function Field({
+    label,
+    hint,
+    error,
+    htmlFor,
+    children,
+}: {
+    label: string;
+    hint?: string;
+    error?: string;
+    htmlFor: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div>
+            <Label htmlFor={htmlFor}>{label}</Label>
+            {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+            <div className="mt-1.5">{children}</div>
+            {error && <p className="mt-1.5 text-sm text-destructive">{error}</p>}
+        </div>
     );
 }

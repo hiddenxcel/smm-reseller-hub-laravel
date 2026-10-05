@@ -40,4 +40,23 @@ return [
         'GBP' => (float) env('CURRENCY_USD_TO_GBP', 0.79),
     ],
 
+    /*
+    | What each currency is called, for the picker a reseller chooses their
+    | shop's currency from. A currency needs an entry in BOTH lists: a rate
+    | without a name would show as a bare code, and a name without a rate would
+    | offer something no gateway can convert.
+    */
+    'names' => [
+        'USD' => 'US dollar',
+        'TZS' => 'Tanzanian shilling',
+        'KES' => 'Kenyan shilling',
+        'UGX' => 'Ugandan shilling',
+        'NGN' => 'Nigerian naira',
+        'GHS' => 'Ghanaian cedi',
+        'XAF' => 'Central African franc',
+        'ZAR' => 'South African rand',
+        'EUR' => 'Euro',
+        'GBP' => 'British pound',
+    ],
+
 ];

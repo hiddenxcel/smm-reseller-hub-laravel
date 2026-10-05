@@ -5,30 +5,42 @@ import { ReactNode } from 'react';
  * Pieces shared across the settings tabs.
  */
 
+/**
+ * The one container every settings block uses. The title sits in the card
+ * rather than over a rule, so a phone shows content sooner and the blocks read
+ * as quiet surfaces, not forms in boxes.
+ */
 export function Card({
     title,
     description,
     children,
     footer,
+    action,
 }: {
     title: string;
     description?: string;
     children: ReactNode;
     footer?: ReactNode;
+    action?: ReactNode;
 }) {
     return (
-        <section className="rounded-xl border border-border bg-card">
-            <div className="border-b border-border px-5 py-4">
-                <h2 className="font-heading text-base font-bold">{title}</h2>
-                {description && (
-                    <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-                )}
+        <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+            <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <h2 className="font-heading text-base font-bold">{title}</h2>
+                    {description && (
+                        <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+                    )}
+                </div>
+                {action}
             </div>
 
-            <div className="px-5 py-5">{children}</div>
+            {children}
 
             {footer && (
-                <div className="flex justify-end border-t border-border px-5 py-3">{footer}</div>
+                <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end *:w-full sm:*:w-auto">
+                    {footer}
+                </div>
             )}
         </section>
     );
@@ -67,7 +79,7 @@ export function NeedsAttention({
             : 'border-[oklch(0.77_0.16_70/0.35)] bg-[oklch(0.77_0.16_70/0.1)] text-[oklch(0.45_0.13_70)] dark:text-[oklch(0.82_0.15_70)]';
 
     return (
-        <div className={`flex items-start gap-2 rounded-lg border px-4 py-3 text-sm ${styles}`}>
+        <div className={`flex items-start gap-2 rounded-xl border px-4 py-3 text-sm ${styles}`}>
             <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
             <div>{children}</div>
         </div>
@@ -76,8 +88,29 @@ export function NeedsAttention({
 
 export function EmptyState({ children }: { children: ReactNode }) {
     return (
-        <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+        <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
             {children}
         </p>
+    );
+}
+
+/** A small status label: icon-free, so it reads the same at any size. */
+export function StatusBadge({
+    tone,
+    children,
+}: {
+    tone: 'good' | 'muted' | 'warn';
+    children: ReactNode;
+}) {
+    const styles = {
+        good: 'bg-primary/10 text-primary',
+        muted: 'bg-muted text-muted-foreground',
+        warn: 'bg-[oklch(0.77_0.16_70/0.15)] text-[oklch(0.45_0.13_70)] dark:text-[oklch(0.82_0.15_70)]',
+    }[tone];
+
+    return (
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${styles}`}>
+            {children}
+        </span>
     );
 }

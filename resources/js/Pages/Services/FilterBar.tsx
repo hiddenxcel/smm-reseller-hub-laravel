@@ -92,7 +92,7 @@ export default function FilterBar({
                 })}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
                 <div className="relative min-w-0 flex-1 sm:max-w-sm">
                     <Search
                         className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -102,7 +102,7 @@ export default function FilterBar({
                         type="search"
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Name, panel ID, platform, category…"
+                        placeholder="Search services"
                         aria-label="Search services"
                         className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-[3px] focus:ring-ring/30"
                     />
@@ -119,7 +119,7 @@ export default function FilterBar({
                         className={`size-3.5 ${filters.featured ? 'fill-current' : ''}`}
                         aria-hidden
                     />
-                    Featured
+                    <span className="hidden sm:inline">Featured</span>
                 </Button>
 
                 <Button
@@ -130,7 +130,7 @@ export default function FilterBar({
                     onClick={() => setAdvancedOpen((open) => !open)}
                 >
                     <SlidersHorizontal className="size-3.5" />
-                    Filters
+                    <span className="hidden sm:inline">Filters</span>
                     <ChevronDown
                         className={`size-3.5 transition-transform ${advancedOpen ? 'rotate-180' : ''}`}
                         aria-hidden

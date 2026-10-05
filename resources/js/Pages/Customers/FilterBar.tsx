@@ -56,7 +56,7 @@ export default function FilterBar({
     return (
         <div className="space-y-3">
             <div
-                className="-mb-px flex gap-1 overflow-x-auto"
+                className="scroll-slim -mb-px flex gap-0.5 overflow-x-auto"
                 role="tablist"
                 aria-label="Filter customers"
             >
@@ -80,7 +80,7 @@ export default function FilterBar({
                                 })
                             }
                             className={[
-                                'flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm transition-colors',
+                                'flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 py-2 text-sm transition-colors',
                                 isActive
                                     ? 'border-primary font-semibold text-foreground'
                                     : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -104,7 +104,7 @@ export default function FilterBar({
                 })}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
                 <div className="relative min-w-0 flex-1 sm:max-w-sm">
                     <Search
                         className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -114,7 +114,7 @@ export default function FilterBar({
                         type="search"
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Name, phone, email, referral code…"
+                        placeholder="Search name or phone"
                         aria-label="Search customers"
                         className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-[3px] focus:ring-ring/30"
                     />
@@ -128,7 +128,7 @@ export default function FilterBar({
                     className="h-9"
                 >
                     <SlidersHorizontal className="size-3.5" />
-                    Filters
+                    <span className="hidden sm:inline">Filters</span>
                     <ChevronDown
                         className={`size-3.5 transition-transform ${advancedOpen ? 'rotate-180' : ''}`}
                         aria-hidden

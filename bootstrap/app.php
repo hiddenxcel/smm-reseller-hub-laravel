@@ -5,6 +5,7 @@ use App\Http\Middleware\BlockListedIps;
 use App\Http\Middleware\EnsureAdminIsActive;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\LockDemoAccount;
+use App\Http\Middleware\RestrictTeamMember;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -64,6 +65,10 @@ return Application::configure(basePath: dirname(__DIR__))
             // post to. Group-wide, so a route added next month is locked
             // without anyone remembering to lock it.
             LockDemoAccount::class,
+            // Same again for a team member: they hold the owner's session, so
+            // every route they can reach is one their role has to be checked
+            // against. Group-wide, so a new route starts out closed to them.
+            RestrictTeamMember::class,
         ]);
 
         $middleware->alias([

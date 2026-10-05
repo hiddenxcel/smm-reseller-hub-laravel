@@ -1,4 +1,3 @@
-import StatTile from '@/components/charts/StatTile';
 import StatusMixBar from '@/components/charts/StatusMixBar';
 import TrendChart from '@/components/charts/TrendChart';
 import {
@@ -11,25 +10,22 @@ import {
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/components/ui/button';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
+    ArrowDownRight,
     ArrowRight,
-    Bot,
+    ArrowUpRight,
     CheckCircle2,
-    CircleDollarSign,
+    ChevronDown,
     Clock,
     LifeBuoy,
     LucideIcon,
-    MessageSquare,
     Package,
-    Settings,
     ShoppingBag,
     TriangleAlert,
-    UserPlus,
-    Wallet,
     XCircle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { ReactNode, useState } from 'react';
 
 type Kpi = {
     value: number;
@@ -167,6 +163,16 @@ const BOT_STATE: Record<
     },
 };
 
+const money = (value: number) => formatMoney(value);
+
+/**
+ * The dashboard, kept to what a reseller reads in ten seconds: is the shop
+ * healthy, how is money moving, and what needs attention. Everything else is
+ * one tap further down, not another card.
+ *
+ * Mobile is the baseline. Related figures share a card instead of each getting
+ * their own, so a phone scrolls past four or five blocks rather than fourteen.
+ */
 export default function Dashboard({
     businessName,
     kpis,
@@ -181,316 +187,184 @@ export default function Dashboard({
     openTickets,
     setup,
 }: Props) {
-    const revenuePoints = trend.map((day) => ({ date: day.date, value: day.revenue }));
-    const orderPoints = trend.map((day) => ({ date: day.date, value: day.orders }));
-
-    const setupIncomplete = setup.steps.filter((step) => !step.complete);
+    // The setup steps are the owner's to finish; a team member would only be
+    // sent to pages their role cannot open.
+    const isMember = usePage().props.auth.member !== null;
+    const setupIncomplete = isMember ? [] : setup.steps.filter((step) => !step.complete);
+    const showProfit = profit.summary.measuredOrders > 0 || profit.underwater.length > 0;
 
     return (
         <AuthenticatedLayout>
             <Head title="Dashboard" />
 
-            <div className="space-y-8">
+            <div className="space-y-4 sm:space-y-6">
                 {/* Platform notices, above everything: a maintenance window is
                     worth reading before the numbers underneath it. */}
                 <AnnouncementBanner />
 
-                <header className="flex flex-wrap items-end justify-between gap-4">
-                    <div>
-                        <h1 className="font-heading text-2xl font-extrabold tracking-tight">
+                <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="min-w-0">
+                        <h1 className="font-heading truncate text-xl font-extrabold tracking-tight sm:text-2xl">
                             {businessName}
                         </h1>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            Here is how your shop has been doing.
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                            How your shop has been doing
                         </p>
                     </div>
 
                     {/* Two bots, sold separately and often on separate
                         numbers — one combined light would call both healthy
                         when only one was. */}
-                    <div className="flex flex-wrap gap-2.5">
-                        <BotHealthPill
-                            name="Order bot"
-                            icon={ShoppingBag}
-                            health={botStatus.order}
-                        />
-                        <BotHealthPill
-                            name="Support bot"
-                            icon={LifeBuoy}
-                            health={botStatus.support}
-                        />
+                    <div className="flex flex-wrap gap-2">
+                        <BotChip name="Order bot" icon={ShoppingBag} health={botStatus.order} />
+                        <BotChip name="Support bot" icon={LifeBuoy} health={botStatus.support} />
                     </div>
                 </header>
 
                 {/* Setup stays visible after go-live: payments is optional, so a
                     reseller can be live with something still undone. */}
-                {setupIncomplete.length > 0 && (
-                    <SetupCard setup={setup} incomplete={setupIncomplete} />
-                )}
+                {setupIncomplete.length > 0 && <SetupBanner setup={setup} incomplete={setupIncomplete} />}
 
-                <section aria-label="Key figures">
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                        <StatTile
-                            label="Revenue"
-                            value={formatMoney(kpis.revenue.value)}
-                            delta={kpis.revenue.delta}
-                            icon={CircleDollarSign}
-                            sparkline={trend.map((day) => day.revenue)}
-                        />
-                        <StatTile
-                            label="Orders"
-                            value={formatCompact(kpis.orders.value)}
-                            delta={kpis.orders.delta}
-                            icon={ShoppingBag}
-                            sparkline={trend.map((day) => day.orders)}
-                        />
-                        <StatTile
-                            label="New customers"
-                            value={formatCompact(kpis.customers.value)}
-                            delta={kpis.customers.delta}
-                            icon={UserPlus}
-                            footer={
-                                <p className="text-xs text-muted-foreground">
-                                    {formatCompact(kpis.customers.total ?? 0)} in total
-                                </p>
-                            }
-                        />
-                        <StatTile
-                            label="Customer wallets"
-                            value={formatMoney(kpis.walletsHeld)}
-                            icon={Wallet}
-                            footer={
-                                <p className="text-xs text-muted-foreground">
-                                    Money your customers have not spent yet
-                                </p>
-                            }
-                        />
+                <Overview kpis={kpis} />
+
+                <Trends trend={trend} />
+
+                {showProfit && <ProfitCard profit={profit} />}
+
+                <Panel title="Last 30 days">
+                    <div className="grid gap-6 lg:grid-cols-5 lg:gap-8">
+                        <div className="lg:col-span-2">
+                            <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+                                Order outcomes
+                            </h3>
+                            <StatusMixBar counts={statusMix} />
+                        </div>
+
+                        <div className="lg:col-span-3">
+                            <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+                                Top services
+                            </h3>
+                            <TopServices services={topServices.slice(0, 5)} />
+                        </div>
                     </div>
-                </section>
+                </Panel>
 
-                {/* Directly under revenue, because it is the correction to it:
-                    turnover above, what is left of it here. */}
-                <ProfitSection profit={profit} />
-
-                <section className="grid gap-6 lg:grid-cols-2" aria-label="Trends">
-                    <ChartCard
-                        title="Revenue"
-                        subtitle="Successful payments, last 14 days"
-                        points={revenuePoints}
-                        formatValue={(value) => formatMoney(value)}
-                    >
-                        <TrendChart
-                            points={revenuePoints}
-                            variant="area"
-                            label="Revenue"
-                            formatValue={(value) => formatMoney(value)}
-                        />
-                    </ChartCard>
-
-                    <ChartCard
-                        title="Orders"
-                        subtitle="Orders placed, last 14 days"
-                        points={orderPoints}
-                        formatValue={(value) => Math.round(value).toLocaleString('en-US')}
-                    >
-                        <TrendChart
-                            points={orderPoints}
-                            variant="column"
-                            label="Orders"
-                            formatValue={(value) => Math.round(value).toLocaleString('en-US')}
-                        />
-                    </ChartCard>
-                </section>
-
-                <section className="grid gap-6 lg:grid-cols-3" aria-label="Breakdown">
-                    <Card title="Order outcomes" subtitle="Last 30 days">
-                        <StatusMixBar counts={statusMix} />
-                    </Card>
-
-                    <Card
-                        title="Top services"
-                        subtitle="By revenue, last 30 days"
-                        className="lg:col-span-2"
-                    >
-                        {topServices.length === 0 ? (
-                            <Empty>No orders yet — your best sellers will show up here.</Empty>
-                        ) : (
-                            <ul className="space-y-3">
-                                {topServices.map((service) => {
-                                    const share =
-                                        (service.revenue /
-                                            Math.max(topServices[0].revenue, 1)) *
-                                        100;
-
-                                    return (
-                                        <li key={service.name}>
-                                            <div className="flex items-baseline justify-between gap-3 text-sm">
-                                                <span className="min-w-0 truncate">
-                                                    {service.name}
-                                                </span>
-                                                <span className="shrink-0 text-muted-foreground [font-variant-numeric:tabular-nums]">
-                                                    {formatMoney(service.revenue)}
-                                                    <span className="ml-2 text-xs">
-                                                        {service.orders}{' '}
-                                                        {service.orders === 1 ? 'order' : 'orders'}
-                                                    </span>
-                                                </span>
-                                            </div>
-                                            <div className="mt-1.5 h-1.5 w-full rounded-full bg-muted">
-                                                <div
-                                                    className="h-full rounded-full"
-                                                    style={{
-                                                        width: `${share}%`,
-                                                        background: 'var(--color-chart-1)',
-                                                    }}
-                                                />
-                                            </div>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
-                    </Card>
-                </section>
-
-                <section className="grid gap-6 lg:grid-cols-3" aria-label="Activity">
-                    <Card
+                <div
+                    className={`grid gap-4 sm:gap-6 ${recentTickets.length > 0 ? 'lg:grid-cols-3' : ''}`}
+                >
+                    <Panel
                         title="Recent orders"
-                        subtitle="The last few that came through"
-                        className="lg:col-span-2"
-                        action={
-                            <Button variant="ghost" size="sm" disabled>
-                                All orders
-                                <ArrowRight className="size-3.5" />
-                            </Button>
-                        }
+                        className={recentTickets.length > 0 ? 'lg:col-span-2' : ''}
                     >
                         {recentOrders.length === 0 ? (
                             <Empty>
                                 Nothing yet. Orders your customers place will appear here.
                             </Empty>
                         ) : (
-                            <div className="scroll-slim overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                                            <th className="pb-2 font-medium">Service</th>
-                                            <th className="pb-2 font-medium">Customer</th>
-                                            <th className="pb-2 text-right font-medium">Amount</th>
-                                            <th className="pb-2 text-right font-medium">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {recentOrders.map((order) => (
-                                            <tr
-                                                key={order.id}
-                                                className="border-b border-border/60 last:border-0"
-                                            >
-                                                <td className="py-2.5 pr-3">
-                                                    <span className="block max-w-[16rem] truncate">
-                                                        {order.service ?? '—'}
-                                                    </span>
-                                                    {order.quantity && (
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {order.quantity.toLocaleString('en-US')}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="py-2.5 pr-3 text-muted-foreground">
-                                                    {order.customer}
-                                                </td>
-                                                <td className="py-2.5 pr-3 text-right [font-variant-numeric:tabular-nums]">
-                                                    {order.amount !== null
-                                                        ? formatMoney(order.amount)
-                                                        : '—'}
-                                                </td>
-                                                <td className="py-2.5 text-right">
-                                                    <StatusPill status={order.status} />
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </Card>
-
-                    <Card
-                        title="Support"
-                        subtitle={
-                            openTickets === 1
-                                ? '1 ticket needs an answer'
-                                : `${openTickets} tickets need an answer`
-                        }
-                        action={
-                            <Button variant="ghost" size="sm" disabled>
-                                Inbox
-                                <ArrowRight className="size-3.5" />
-                            </Button>
-                        }
-                    >
-                        {recentTickets.length === 0 ? (
-                            <Empty>No tickets. Quiet is good.</Empty>
-                        ) : (
-                            <ul className="space-y-3">
-                                {recentTickets.map((ticket) => (
-                                    <li key={ticket.id} className="flex items-start gap-2.5">
-                                        <LifeBuoy className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm">
-                                                {ticket.subject ?? 'No subject'}
+                            <ul className="-my-2 divide-y divide-border/60">
+                                {recentOrders.map((order, index) => (
+                                    <li
+                                        key={order.id}
+                                        className={`items-center justify-between gap-3 py-3 ${
+                                            index >= 5 ? 'hidden sm:flex' : 'flex'
+                                        }`}
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm">{order.service ?? '—'}</p>
+                                            <p className="truncate text-xs text-muted-foreground">
+                                                {order.customer}
+                                                {order.quantity
+                                                    ? ` · ${order.quantity.toLocaleString('en-US')}`
+                                                    : ''}
                                             </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {ticket.customer} · {ticket.status}
+                                        </div>
+                                        <div className="shrink-0 text-right">
+                                            <p className="text-sm [font-variant-numeric:tabular-nums]">
+                                                {order.amount !== null ? money(order.amount) : '—'}
                                             </p>
+                                            <StatusPill status={order.status} />
                                         </div>
                                     </li>
                                 ))}
                             </ul>
                         )}
-                    </Card>
-                </section>
+                    </Panel>
 
-                <section className="grid gap-6 lg:grid-cols-3" aria-label="Panels and actions">
-                    <Card
-                        title="Panels"
-                        subtitle="Where your orders are fulfilled"
-                        className="lg:col-span-2"
-                    >
-                        {panels.length === 0 ? (
-                            <Empty>No panel connected.</Empty>
-                        ) : (
-                            <ul className="space-y-3">
-                                {panels.map((panel) => (
-                                    <PanelRow key={panel.id} panel={panel} />
+                    {recentTickets.length > 0 && (
+                        <Panel
+                            title="Support"
+                            hint={
+                                openTickets === 1
+                                    ? '1 needs an answer'
+                                    : `${openTickets} need an answer`
+                            }
+                        >
+                            <ul className="-my-2 divide-y divide-border/60">
+                                {recentTickets.map((ticket) => (
+                                    <li key={ticket.id} className="py-3">
+                                        <p className="truncate text-sm">
+                                            {ticket.subject ?? 'No subject'}
+                                        </p>
+                                        <p className="truncate text-xs text-muted-foreground">
+                                            {ticket.customer} · {ticket.status}
+                                        </p>
+                                    </li>
                                 ))}
                             </ul>
-                        )}
-                    </Card>
+                        </Panel>
+                    )}
+                </div>
 
-                    <Card title="Quick actions" subtitle="The things you do most">
-                        <div className="grid gap-2">
-                            <QuickAction
-                                icon={Settings}
-                                label="Setup & payments"
-                                href={route('onboarding')}
-                            />
-                            <QuickAction icon={MessageSquare} label="Bot settings" disabled />
-                            <QuickAction icon={Package} label="Services & pricing" disabled />
-                            <QuickAction icon={Bot} label="Test your bot" href={route('onboarding.step', 'test')} />
-                        </div>
-                    </Card>
-                </section>
+                <Panel title="Panels" hint="Where your orders are fulfilled">
+                    {panels.length === 0 ? (
+                        <Empty>No panel connected.</Empty>
+                    ) : (
+                        <ul className="-my-2 divide-y divide-border/60">
+                            {panels.map((panel) => (
+                                <PanelRow key={panel.id} panel={panel} />
+                            ))}
+                        </ul>
+                    )}
+                </Panel>
             </div>
         </AuthenticatedLayout>
     );
 }
 
+/** The one container every block uses, so spacing and corners stay uniform. */
+function Panel({
+    title,
+    hint,
+    action,
+    className = '',
+    children,
+}: {
+    title: string;
+    hint?: string;
+    action?: ReactNode;
+    className?: string;
+    children: ReactNode;
+}) {
+    return (
+        <section className={`rounded-2xl border border-border bg-card p-4 sm:p-5 ${className}`}>
+            <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-baseline gap-2">
+                    <h2 className="font-heading shrink-0 font-bold">{title}</h2>
+                    {hint && <p className="truncate text-xs text-muted-foreground">{hint}</p>}
+                </div>
+                {action}
+            </div>
+            {children}
+        </section>
+    );
+}
+
 /**
- * One bot's health. The state colour is a status colour, so it is paired with
- * an icon and the state written out — never carried by hue alone.
+ * One bot's health, as a chip. The state colour is paired with an icon and the
+ * state written out — never carried by hue alone. Numbers and counts live in
+ * the tooltip rather than crowding a phone screen.
  */
-function BotHealthPill({
+function BotChip({
     name,
     icon: Icon,
     health,
@@ -501,104 +375,370 @@ function BotHealthPill({
 }) {
     const state = BOT_STATE[health.state];
     const StateIcon = state.icon;
-
     const numbers = health.numbers.map((number) => number.display).join(', ');
 
     return (
-        <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 py-2.5">
-            <Icon className="size-4 shrink-0 text-muted-foreground" />
-            <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-sm font-semibold">
-                    {name}
-                    <StateIcon className="size-3.5 shrink-0" style={{ color: state.color }} />
-                    <span className="font-normal">{state.label}</span>
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                    {health.numbersConnected === 0
-                        ? state.hint
-                        : `${numbers} · ${health.messagesToday} today`}
-                </p>
+        <div
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card py-1.5 pl-2.5 pr-3 text-xs sm:gap-2 sm:pl-3 sm:pr-3.5 sm:text-sm"
+            title={
+                health.numbersConnected === 0
+                    ? state.hint
+                    : `${numbers} · ${health.messagesToday} messages today`
+            }
+        >
+            <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="font-medium">{name}</span>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <StateIcon className="size-3.5 shrink-0" style={{ color: state.color }} />
+                {state.label}
+            </span>
+        </div>
+    );
+}
+
+/** What is left to set up: a slim banner, with the step list one tap away. */
+function SetupBanner({
+    setup,
+    incomplete,
+}: {
+    setup: Props['setup'];
+    incomplete: Props['setup']['steps'];
+}) {
+    const total = setup.steps.length;
+    const percent = Math.round((setup.completed / total) * 100);
+
+    return (
+        <section className="rounded-2xl border border-primary/25 bg-primary/5 p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                    <h2 className="font-heading font-bold">
+                        {setup.readyToGoLive ? 'Finish setting up' : 'Your shop is not live yet'}
+                    </h2>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                        {setup.readyToGoLive
+                            ? 'Everything required is done — only optional bits remain.'
+                            : `${incomplete.length} ${incomplete.length === 1 ? 'step' : 'steps'} left before customers can order.`}
+                    </p>
+                </div>
+
+                <Button asChild className="w-full sm:w-auto">
+                    <Link href={route('onboarding')}>
+                        Continue setup
+                        <ArrowRight className="size-4" />
+                    </Link>
+                </Button>
             </div>
+
+            {/* A meter, not a two-slice pie: one ratio against a limit. */}
+            <div className="mt-3 flex items-center gap-3">
+                <div className="h-1.5 flex-1 rounded-full bg-muted">
+                    <div
+                        className="h-full rounded-full bg-primary transition-all duration-500"
+                        style={{ width: `${percent}%` }}
+                        role="progressbar"
+                        aria-valuenow={setup.completed}
+                        aria-valuemin={0}
+                        aria-valuemax={total}
+                        aria-label="Setup progress"
+                    />
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground [font-variant-numeric:tabular-nums]">
+                    {setup.completed}/{total}
+                </span>
+            </div>
+
+            <details className="group mt-3">
+                <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+                    See the steps
+                    <ChevronDown className="size-3.5 transition-transform group-open:rotate-180" />
+                </summary>
+                <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {setup.steps.map((step) => (
+                        <li
+                            key={step.key}
+                            className="flex items-center gap-2 text-xs text-muted-foreground"
+                        >
+                            {step.complete ? (
+                                <CheckCircle2
+                                    className="size-3.5 shrink-0"
+                                    style={{ color: STATUS_COLORS.completed }}
+                                />
+                            ) : (
+                                <Clock className="size-3.5 shrink-0" />
+                            )}
+                            <span className="min-w-0 truncate">{step.title}</span>
+                            {step.skipped && !step.complete ? (
+                                <span className="opacity-70">(skipped)</span>
+                            ) : (
+                                !step.required &&
+                                !step.complete && <span className="opacity-70">(optional)</span>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            </details>
+        </section>
+    );
+}
+
+/**
+ * The four headline numbers in one card. Hairline dividers (a 1px gap over a
+ * border-coloured ground) rather than four boxes, so it reads as one summary
+ * and sits as a tidy 2×2 on a phone.
+ */
+function Overview({ kpis }: { kpis: Props['kpis'] }) {
+    return (
+        <section
+            aria-label="Key figures"
+            className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border lg:grid-cols-4"
+        >
+            <Figure label="Revenue" value={money(kpis.revenue.value)} delta={kpis.revenue.delta} />
+            <Figure
+                label="Orders"
+                value={formatCompact(kpis.orders.value)}
+                delta={kpis.orders.delta}
+            />
+            <Figure
+                label="New customers"
+                value={formatCompact(kpis.customers.value)}
+                delta={kpis.customers.delta}
+                note={`${formatCompact(kpis.customers.total ?? 0)} in total`}
+            />
+            <Figure
+                label="Customer wallets"
+                value={money(kpis.walletsHeld)}
+                note="Not spent yet"
+            />
+        </section>
+    );
+}
+
+function Figure({
+    label,
+    value,
+    delta,
+    note,
+}: {
+    label: string;
+    value: string;
+    delta?: number | null;
+    note?: string;
+}) {
+    const hasDelta = delta !== null && delta !== undefined;
+    const flat = hasDelta && delta === 0;
+    const DeltaIcon = flat ? null : hasDelta && delta! > 0 ? ArrowUpRight : ArrowDownRight;
+
+    return (
+        <div className="bg-card p-4 sm:p-5">
+            <p className="text-xs text-muted-foreground sm:text-sm">{label}</p>
+            <p className="font-heading mt-1 truncate text-2xl font-extrabold tracking-tight sm:text-3xl">
+                {value}
+            </p>
+            <p className="mt-1 flex min-h-4 items-center gap-1 text-xs">
+                {hasDelta ? (
+                    <>
+                        <span
+                            className={`flex items-center gap-0.5 ${
+                                flat
+                                    ? 'text-muted-foreground'
+                                    : delta! > 0
+                                      ? 'text-[#006300] dark:text-[#0ca30c]'
+                                      : 'text-destructive'
+                            }`}
+                        >
+                            {DeltaIcon && <DeltaIcon className="size-3.5" />}
+                            {Math.abs(delta!).toFixed(1)}%
+                        </span>
+                        <span className="text-muted-foreground">vs last 30 days</span>
+                    </>
+                ) : (
+                    <span className="text-muted-foreground">{note}</span>
+                )}
+            </p>
         </div>
     );
 }
 
 /**
- * What the shop actually earned, and which services are eating it.
- *
- * Kept out of the KPI row above deliberately. Revenue and profit look alike as
- * two tiles side by side, and they are not alike at all — a reseller reading
- * quickly needs the second to correct the first, not to sit beside it as
- * another number of the same kind.
+ * Revenue and orders share one chart with a switch, instead of two charts
+ * stacked on a phone. Every chart keeps a table twin — a tooltip must never be
+ * the only way to reach a value.
  */
-function ProfitSection({ profit }: { profit: Props['profit'] }) {
-    const { summary, byService, underwater } = profit;
+function Trends({ trend }: { trend: Props['trend'] }) {
+    const [metric, setMetric] = useState<'revenue' | 'orders'>('revenue');
+    const [showTable, setShowTable] = useState(false);
 
-    // Nothing measurable yet: no paid orders carrying a cost. Saying so beats
-    // a row of confident zeroes, which reads as "you made nothing".
-    if (summary.measuredOrders === 0 && underwater.length === 0) {
-        return null;
-    }
-
-    const losing = summary.profit < 0;
+    const isRevenue = metric === 'revenue';
+    const points = trend.map((day) => ({
+        date: day.date,
+        value: isRevenue ? day.revenue : day.orders,
+    }));
+    const format = (value: number) =>
+        isRevenue ? money(value) : Math.round(value).toLocaleString('en-US');
 
     return (
-        <section className="grid gap-6 lg:grid-cols-3" aria-label="Profit">
-            <Card
-                title="Profit"
-                subtitle="What you kept, last 30 days"
-                className="lg:col-span-1"
-            >
+        <Panel
+            title="Trends"
+            hint="Last 14 days"
+            action={
+                <div className="flex items-center gap-1">
+                    <div className="inline-flex rounded-lg bg-muted p-0.5 text-xs font-medium">
+                        {(['revenue', 'orders'] as const).map((key) => (
+                            <button
+                                key={key}
+                                type="button"
+                                onClick={() => setMetric(key)}
+                                className={`rounded-md px-2.5 py-1 capitalize transition-colors ${
+                                    metric === key
+                                        ? 'bg-card shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            >
+                                {key}
+                            </button>
+                        ))}
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="hidden sm:inline-flex"
+                        onClick={() => setShowTable(!showTable)}
+                    >
+                        {showTable ? 'Chart' : 'Table'}
+                    </Button>
+                </div>
+            }
+        >
+            {showTable ? (
+                <div className="scroll-slim max-h-64 overflow-y-auto pr-2">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                                <th className="pb-2 font-medium">Day</th>
+                                <th className="pb-2 text-right font-medium capitalize">{metric}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {points.map((point) => (
+                                <tr
+                                    key={point.date}
+                                    className="border-b border-border/60 last:border-0"
+                                >
+                                    <td className="py-2">{point.date}</td>
+                                    <td className="py-2 text-right [font-variant-numeric:tabular-nums]">
+                                        {format(point.value)}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <TrendChart
+                    points={points}
+                    variant={isRevenue ? 'area' : 'column'}
+                    label={isRevenue ? 'Revenue' : 'Orders'}
+                    formatValue={format}
+                />
+            )}
+        </Panel>
+    );
+}
+
+/**
+ * What the shop actually kept, and which services are eating it. One card:
+ * the headline and its two inputs on top, the thin-margin services below,
+ * and a warning only when something is priced under cost.
+ */
+function ProfitCard({ profit }: { profit: Props['profit'] }) {
+    const { summary, byService, underwater } = profit;
+    const [showAll, setShowAll] = useState(false);
+
+    const losing = summary.profit < 0;
+    const shown = showAll ? byService : byService.slice(0, 3);
+
+    return (
+        <Panel title="Profit" hint="What you kept, last 30 days">
+            <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
                 <p
                     className="font-heading text-3xl font-extrabold tracking-tight [font-variant-numeric:tabular-nums]"
                     style={losing ? { color: STATUS_COLORS.failed } : undefined}
                 >
-                    {formatMoney(summary.profit)}
+                    {money(summary.profit)}
                 </p>
 
-                <dl className="mt-4 space-y-1.5 text-sm">
-                    <div className="flex justify-between gap-3">
-                        <dt className="text-muted-foreground">Sold for</dt>
+                <dl className="flex gap-5 text-sm">
+                    <div>
+                        <dt className="text-xs text-muted-foreground">Sold for</dt>
                         <dd className="[font-variant-numeric:tabular-nums]">
-                            {formatMoney(summary.revenue)}
+                            {money(summary.revenue)}
                         </dd>
                     </div>
-                    <div className="flex justify-between gap-3">
-                        <dt className="text-muted-foreground">Cost at panel</dt>
+                    <div>
+                        <dt className="text-xs text-muted-foreground">Cost</dt>
                         <dd className="[font-variant-numeric:tabular-nums]">
-                            {formatMoney(summary.cost)}
+                            {money(summary.cost)}
                         </dd>
                     </div>
                     {summary.margin !== null && (
-                        <div className="flex justify-between gap-3 border-t border-border pt-1.5">
-                            <dt className="text-muted-foreground">Margin</dt>
-                            <dd className="[font-variant-numeric:tabular-nums] font-semibold">
+                        <div>
+                            <dt className="text-xs text-muted-foreground">Margin</dt>
+                            <dd className="font-semibold [font-variant-numeric:tabular-nums]">
                                 {summary.margin}%
                             </dd>
                         </div>
                     )}
                 </dl>
+            </div>
 
-                {/* A margin drawn from a fraction of the orders has to say so,
-                    or it reads as the whole picture. */}
-                {summary.coverage !== null && summary.coverage < 100 && (
-                    <p className="mt-3 text-xs text-muted-foreground">
-                        Based on {summary.measuredOrders} of {summary.totalOrders} paid orders —
-                        the rest were placed before costs were recorded.
+            {/* A margin drawn from a fraction of the orders has to say so,
+                or it reads as the whole picture. */}
+            {summary.coverage !== null && summary.coverage < 100 && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                    Based on {summary.measuredOrders} of {summary.totalOrders} paid orders — the
+                    rest were placed before costs were recorded.
+                </p>
+            )}
+
+            {/* Read from the catalogue rather than from orders, so a badly
+                priced service is caught before anyone buys one. */}
+            {underwater.length > 0 && (
+                <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3.5">
+                    <p
+                        className="flex items-center gap-1.5 text-sm font-semibold"
+                        style={{ color: STATUS_COLORS.failed }}
+                    >
+                        <TriangleAlert className="size-4 shrink-0" />
+                        {underwater.length} {underwater.length === 1 ? 'service is' : 'services are'}{' '}
+                        priced at or below cost
                     </p>
-                )}
-            </Card>
+                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        {underwater.slice(0, 3).map((service) => (
+                            <li key={service.id} className="flex justify-between gap-3">
+                                <span className="min-w-0 truncate">{service.name}</span>
+                                <span className="shrink-0 [font-variant-numeric:tabular-nums]">
+                                    {money(service.myPrice)} vs {money(service.costPrice)}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                    <Link
+                        href={route('services.index')}
+                        className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                    >
+                        Fix pricing
+                        <ArrowRight className="size-3" />
+                    </Link>
+                </div>
+            )}
 
-            <Card
-                title="Margin by service"
-                subtitle="Thinnest first — these are the ones to reprice"
-                className="lg:col-span-2"
-            >
-                {byService.length === 0 ? (
-                    <Empty>No orders with a recorded cost yet.</Empty>
-                ) : (
+            {byService.length > 0 && (
+                <div className="mt-5 border-t border-border pt-4">
+                    <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+                        Thinnest margins first
+                    </h3>
                     <ul className="space-y-3">
-                        {byService.map((service) => (
+                        {shown.map((service) => (
                             <li key={service.name} className="text-sm">
                                 <div className="flex items-baseline justify-between gap-3">
                                     <span className="min-w-0 truncate">{service.name}</span>
@@ -610,7 +750,7 @@ function ProfitSection({ profit }: { profit: Props['profit'] }) {
                                                 : undefined
                                         }
                                     >
-                                        {formatMoney(service.profit)}
+                                        {money(service.profit)}
                                         {service.margin !== null && (
                                             <span className="ml-2 text-xs text-muted-foreground">
                                                 {service.margin}%
@@ -620,49 +760,57 @@ function ProfitSection({ profit }: { profit: Props['profit'] }) {
                                 </div>
                                 <p className="text-xs text-muted-foreground">
                                     {service.orders} {service.orders === 1 ? 'order' : 'orders'} ·{' '}
-                                    {formatMoney(service.revenue)} in, {formatMoney(service.cost)}{' '}
-                                    out
+                                    {money(service.revenue)} in, {money(service.cost)} out
                                 </p>
                             </li>
                         ))}
                     </ul>
-                )}
+                    {byService.length > 3 && (
+                        <button
+                            type="button"
+                            onClick={() => setShowAll(!showAll)}
+                            className="mt-3 text-xs font-semibold text-primary hover:underline"
+                        >
+                            {showAll ? 'Show fewer' : `Show all ${byService.length}`}
+                        </button>
+                    )}
+                </div>
+            )}
+        </Panel>
+    );
+}
 
-                {/* Read from the catalogue rather than from orders, so a badly
-                    priced service is caught before anyone buys one. */}
-                {underwater.length > 0 && (
-                    <div className="mt-5 rounded-lg border border-border p-3.5">
-                        <p
-                            className="flex items-center gap-1.5 text-sm font-semibold"
-                            style={{ color: STATUS_COLORS.failed }}
-                        >
-                            <TriangleAlert className="size-4 shrink-0" />
-                            {underwater.length}{' '}
-                            {underwater.length === 1 ? 'service is' : 'services are'} priced at or
-                            below cost
-                        </p>
-                        <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                            {underwater.map((service) => (
-                                <li key={service.id} className="flex justify-between gap-3">
-                                    <span className="min-w-0 truncate">{service.name}</span>
-                                    <span className="shrink-0 [font-variant-numeric:tabular-nums]">
-                                        {formatMoney(service.myPrice)} vs{' '}
-                                        {formatMoney(service.costPrice)} per 1,000
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
-                        <Link
-                            href={route('services.index')}
-                            className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                        >
-                            Fix pricing
-                            <ArrowRight className="size-3" />
-                        </Link>
-                    </div>
-                )}
-            </Card>
-        </section>
+function TopServices({ services }: { services: Props['topServices'] }) {
+    if (services.length === 0) {
+        return <Empty>No orders yet — your best sellers will show up here.</Empty>;
+    }
+
+    return (
+        <ul className="space-y-3">
+            {services.map((service) => {
+                const share = (service.revenue / Math.max(services[0].revenue, 1)) * 100;
+
+                return (
+                    <li key={service.name}>
+                        <div className="flex items-baseline justify-between gap-3 text-sm">
+                            <span className="min-w-0 truncate">{service.name}</span>
+                            <span className="shrink-0 text-muted-foreground [font-variant-numeric:tabular-nums]">
+                                {money(service.revenue)}
+                                <span className="ml-2 text-xs">
+                                    {service.orders} {service.orders === 1 ? 'order' : 'orders'}
+                                </span>
+                            </span>
+                        </div>
+                        <div className="mt-1.5 h-1.5 w-full rounded-full bg-muted">
+                            <div
+                                className="h-full rounded-full"
+                                style={{ width: `${share}%`, background: 'var(--color-chart-1)' }}
+                            />
+                        </div>
+                    </li>
+                );
+            })}
+        </ul>
     );
 }
 
@@ -674,13 +822,13 @@ function ProfitSection({ profit }: { profit: Props['profit'] }) {
  * to read, and showing it alone would keep claiming everything is fine. So the
  * state leads and the balance is marked stale, rather than the reverse.
  *
- * Same rule as the bot pills: an icon and words carry the state, never hue.
+ * Same rule as the bot chips: an icon and words carry the state, never hue.
  */
 function PanelRow({ panel }: { panel: Props['panels'][number] }) {
     const down = panel.status === 'error';
 
     return (
-        <li className="flex items-center justify-between gap-3 text-sm">
+        <li className="flex items-center justify-between gap-3 py-3 text-sm">
             <span className="flex min-w-0 items-center gap-2.5">
                 <Package className="size-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0">
@@ -722,229 +870,17 @@ function PanelRow({ panel }: { panel: Props['panels'][number] }) {
     );
 }
 
-function SetupCard({
-    setup,
-    incomplete,
-}: {
-    setup: Props['setup'];
-    incomplete: Props['setup']['steps'];
-}) {
-    const total = setup.steps.length;
-    const percent = Math.round((setup.completed / total) * 100);
-
-    return (
-        <div className="rounded-xl border border-border bg-card p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <h2 className="font-heading font-bold">
-                        {setup.readyToGoLive ? 'Finish setting up' : 'Your shop is not live yet'}
-                    </h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        {setup.readyToGoLive
-                            ? 'Everything required is done — these are the optional bits.'
-                            : `${incomplete.length} ${incomplete.length === 1 ? 'step' : 'steps'} left before customers can order.`}
-                    </p>
-                </div>
-
-                <Button asChild>
-                    <Link href={route('onboarding')}>
-                        Continue setup
-                        <ArrowRight className="size-4" />
-                    </Link>
-                </Button>
-            </div>
-
-            {/* A meter, not a two-slice pie: one ratio against a limit. */}
-            <div className="mt-4">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                        {setup.completed} of {total} done
-                    </span>
-                    <span className="[font-variant-numeric:tabular-nums]">{percent}%</span>
-                </div>
-                <div className="mt-1.5 h-2 w-full rounded-full bg-muted">
-                    <div
-                        className="h-full rounded-full bg-primary transition-all duration-500"
-                        style={{ width: `${percent}%` }}
-                        role="progressbar"
-                        aria-valuenow={setup.completed}
-                        aria-valuemin={0}
-                        aria-valuemax={total}
-                        aria-label="Setup progress"
-                    />
-                </div>
-            </div>
-
-            <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
-                {setup.steps.map((step) => (
-                    <li
-                        key={step.key}
-                        className="flex items-center gap-1.5 text-xs text-muted-foreground"
-                    >
-                        {step.complete ? (
-                            <CheckCircle2
-                                className="size-3.5"
-                                style={{ color: STATUS_COLORS.completed }}
-                            />
-                        ) : (
-                            <Clock className="size-3.5" />
-                        )}
-                        {step.title}
-                        {step.skipped && !step.complete ? (
-                            <span className="opacity-70">(skipped)</span>
-                        ) : (
-                            !step.required &&
-                            !step.complete && <span className="opacity-70">(optional)</span>
-                        )}
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
-}
-
-/**
- * A chart card with a table-view twin. Every chart has one — a tooltip must
- * never be the only way to reach a value.
- */
-function ChartCard({
-    title,
-    subtitle,
-    points,
-    formatValue,
-    children,
-}: {
-    title: string;
-    subtitle: string;
-    points: Array<{ date: string; value: number }>;
-    formatValue: (value: number) => string;
-    children: React.ReactNode;
-}) {
-    const [showTable, setShowTable] = useState(false);
-
-    return (
-        <div className="rounded-xl border border-border bg-card p-5">
-            <div className="flex items-start justify-between gap-3">
-                <div>
-                    <h2 className="font-heading font-bold">{title}</h2>
-                    <p className="text-sm text-muted-foreground">{subtitle}</p>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => setShowTable(!showTable)}>
-                    {showTable ? 'Chart' : 'Table'}
-                </Button>
-            </div>
-
-            <div className="mt-4">
-                {showTable ? (
-                    <div className="scroll-slim max-h-64 overflow-y-auto pr-2">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                                    <th className="pb-2 font-medium">Day</th>
-                                    <th className="pb-2 text-right font-medium">{title}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {points.map((point) => (
-                                    <tr
-                                        key={point.date}
-                                        className="border-b border-border/60 last:border-0"
-                                    >
-                                        <td className="py-2">{point.date}</td>
-                                        <td className="py-2 text-right [font-variant-numeric:tabular-nums]">
-                                            {formatValue(point.value)}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    children
-                )}
-            </div>
-        </div>
-    );
-}
-
-function Card({
-    title,
-    subtitle,
-    action,
-    className = '',
-    children,
-}: {
-    title: string;
-    subtitle?: string;
-    action?: React.ReactNode;
-    className?: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className={`rounded-xl border border-border bg-card p-5 ${className}`}>
-            <div className="flex items-start justify-between gap-3">
-                <div>
-                    <h2 className="font-heading font-bold">{title}</h2>
-                    {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
-                </div>
-                {action}
-            </div>
-            <div className="mt-4">{children}</div>
-        </div>
-    );
-}
-
 function StatusPill({ status }: { status: OrderStatus }) {
-    const Icon =
-        status === 'completed' ? CheckCircle2 : status === 'pending' ? Clock : XCircle;
+    const Icon = status === 'completed' ? CheckCircle2 : status === 'pending' ? Clock : XCircle;
 
     return (
-        <span className="inline-flex items-center gap-1.5 text-xs">
-            <Icon className="size-3.5 shrink-0" style={{ color: STATUS_COLORS[status] }} />
+        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <Icon className="size-3 shrink-0" style={{ color: STATUS_COLORS[status] }} />
             {STATUS_LABELS[status]}
         </span>
     );
 }
 
-function QuickAction({
-    icon: Icon,
-    label,
-    href,
-    disabled,
-}: {
-    icon: LucideIcon;
-    label: string;
-    href?: string;
-    disabled?: boolean;
-}) {
-    const inner = (
-        <>
-            <Icon className="size-4 shrink-0" />
-            <span className="flex-1 text-left">{label}</span>
-            {disabled ? (
-                <span className="text-xs text-muted-foreground">Soon</span>
-            ) : (
-                <ArrowRight className="size-3.5" />
-            )}
-        </>
-    );
-
-    const classes =
-        'flex items-center gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm transition-colors';
-
-    if (disabled || !href) {
-        return (
-            <span className={`${classes} cursor-not-allowed text-muted-foreground`}>{inner}</span>
-        );
-    }
-
-    return (
-        <Link href={href} className={`${classes} hover:border-primary/40 hover:bg-accent/40`}>
-            {inner}
-        </Link>
-    );
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
+function Empty({ children }: { children: ReactNode }) {
     return <p className="text-sm text-muted-foreground">{children}</p>;
 }

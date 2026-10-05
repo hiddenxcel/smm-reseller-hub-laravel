@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { useForm } from '@inertiajs/react';
 import { Loader2 } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
-import { Card, EmptyState, FieldError, NeedsAttention } from './bits';
+import { Card, EmptyState, FieldError, NeedsAttention, StatusBadge } from './bits';
 import { PanelRow } from './types';
 
 /**
@@ -18,7 +18,7 @@ export function PanelTab({ panels }: { panels: PanelRow[] }) {
     const active = panels.filter((panel) => panel.status === 'active');
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             {active.length === 0 && (
                 <NeedsAttention>
                     No panel is connected, so your bot has nothing to sell. Connect one below.
@@ -49,38 +49,38 @@ function PanelItem({ panel }: { panel: PanelRow }) {
     const isActive = panel.status === 'active';
 
     return (
-        <li className="py-3 first:pt-0 last:pb-0">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+        <li className="py-4 first:pt-0 last:pb-0">
+            <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                     <p className="font-medium">{panel.name}</p>
                     <p className="font-data truncate text-xs text-muted-foreground">
                         {panel.api_url}
                     </p>
-
-                    <p className="mt-1 text-xs text-muted-foreground">
-                        {panel.servicesCount !== null && (
-                            <>{panel.servicesCount} services in its catalogue</>
-                        )}
-                        {panel.balance !== null && (
-                            <>
-                                {panel.servicesCount !== null && ' · '}
-                                balance {panel.currency ?? ''} {panel.balance}
-                            </>
-                        )}
-                    </p>
                 </div>
 
-                <span
-                    className={[
-                        'rounded-full px-2.5 py-1 text-xs font-medium',
-                        isActive
-                            ? 'bg-primary/10 text-primary'
-                            : 'bg-muted text-muted-foreground',
-                    ].join(' ')}
-                >
+                <StatusBadge tone={isActive ? 'good' : 'muted'}>
                     {isActive ? 'Active' : panel.status}
-                </span>
+                </StatusBadge>
             </div>
+
+            {/* The two facts worth a glance, side by side rather than a
+                sentence to parse. */}
+            <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-xl bg-muted/50 px-3 py-2">
+                    <dt className="text-xs text-muted-foreground">Services</dt>
+                    <dd className="font-medium [font-variant-numeric:tabular-nums]">
+                        {panel.servicesCount ?? '—'}
+                    </dd>
+                </div>
+                <div className="rounded-xl bg-muted/50 px-3 py-2">
+                    <dt className="text-xs text-muted-foreground">Balance</dt>
+                    <dd className="font-medium [font-variant-numeric:tabular-nums]">
+                        {panel.balance !== null
+                            ? `${panel.currency ?? ''} ${panel.balance}`.trim()
+                            : '—'}
+                    </dd>
+                </div>
+            </dl>
 
             <LowBalanceField panel={panel} />
         </li>
@@ -109,12 +109,19 @@ function LowBalanceField({ panel }: { panel: PanelRow }) {
     };
 
     return (
-        <form onSubmit={submit} className="mt-2.5">
-            <div className="flex flex-wrap items-end gap-2">
-                <div>
-                    <Label htmlFor={`threshold-${panel.id}`} className="text-xs">
-                        Warn me below
-                    </Label>
+        <form onSubmit={submit} className="mt-3">
+            <div className="flex items-center justify-between gap-3">
+                <Label htmlFor={`threshold-${panel.id}`} className="text-sm">
+                    Warn me below
+                </Label>
+
+                <div className="flex items-center gap-2">
+                    {isDirty && (
+                        <Button type="submit" size="sm" variant="outline" disabled={processing}>
+                            {processing && <Loader2 className="size-3.5 animate-spin" />}
+                            Save
+                        </Button>
+                    )}
                     <Input
                         id={`threshold-${panel.id}`}
                         type="number"
@@ -126,19 +133,12 @@ function LowBalanceField({ panel }: { panel: PanelRow }) {
                             setData('low_balance_threshold', event.target.value)
                         }
                         placeholder={String(panel.defaultLowBalance)}
-                        className="mt-1 h-8 w-32"
+                        className="h-9 w-28 text-right"
                     />
                 </div>
-
-                {isDirty && (
-                    <Button type="submit" size="sm" variant="outline" disabled={processing}>
-                        {processing && <Loader2 className="size-3.5 animate-spin" />}
-                        Save
-                    </Button>
-                )}
             </div>
 
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1.5 text-xs text-muted-foreground">
                 {panel.lowOnFunds
                     ? 'This panel is below its threshold now — top it up with your provider.'
                     : `Leave empty to use the default of ${panel.defaultLowBalance}.`}
@@ -173,7 +173,7 @@ function ConnectPanelCard({ hasPanel }: { hasPanel: boolean }) {
 
     if (! open) {
         return (
-            <Button variant="outline" onClick={() => setOpen(true)}>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setOpen(true)}>
                 Connect another panel
             </Button>
         );

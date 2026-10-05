@@ -59,12 +59,31 @@ export default function FilterBar({
             : filters.from === isoDaysAgo(range.days),
     );
 
+    const rangeSelect = (
+        <Select
+            label="Range"
+            value={activeRange?.label ?? 'Custom'}
+            onChange={(label) => {
+                const range = RANGES.find((item) => item.label === label);
+
+                if (!range) return;
+
+                onApply({
+                    from: range.days === null ? null : isoDaysAgo(range.days),
+                    to: null,
+                    page: 1,
+                });
+            }}
+            options={RANGES.map((range) => range.label)}
+        />
+    );
+
     return (
         <div className="space-y-3">
             {/* Status tabs. Counts land a moment after the table — the number
                 is useful, but not worth holding the rows back for. */}
             <div
-                className="-mb-px flex gap-1 overflow-x-auto"
+                className="scroll-slim -mb-px flex gap-0.5 overflow-x-auto"
                 role="tablist"
                 aria-label="Filter by status"
             >
@@ -88,7 +107,7 @@ export default function FilterBar({
                                 })
                             }
                             className={[
-                                'flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm transition-colors',
+                                'flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 py-2 text-sm transition-colors',
                                 isActive
                                     ? 'border-primary font-semibold text-foreground'
                                     : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -112,35 +131,22 @@ export default function FilterBar({
                 })}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
                 <div className="relative min-w-0 flex-1 sm:max-w-xs">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <input
                         type="search"
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Phone, service, order ID…"
+                        placeholder="Search phone or service"
                         aria-label="Search orders"
                         className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-[3px] focus:ring-ring/30"
                     />
                 </div>
 
-                <Select
-                    label="Range"
-                    value={activeRange?.label ?? 'Custom'}
-                    onChange={(label) => {
-                        const range = RANGES.find((item) => item.label === label);
-
-                        if (!range) return;
-
-                        onApply({
-                            from: range.days === null ? null : isoDaysAgo(range.days),
-                            to: null,
-                            page: 1,
-                        });
-                    }}
-                    options={RANGES.map((range) => range.label)}
-                />
+                {/* On a phone the range and export live inside the filter
+                    panel below, so this row is just search and the toggle. */}
+                <div className="hidden sm:block">{rangeSelect}</div>
 
                 <Button
                     type="button"
@@ -150,7 +156,7 @@ export default function FilterBar({
                     className="h-9"
                 >
                     <SlidersHorizontal className="size-3.5" />
-                    Filters
+                    <span className="hidden sm:inline">Filters</span>
                     <ChevronDown
                         className={`size-3.5 transition-transform ${advancedOpen ? 'rotate-180' : ''}`}
                     />
@@ -167,7 +173,7 @@ export default function FilterBar({
                     </button>
                 )}
 
-                <div className="ms-auto">
+                <div className="ms-auto hidden sm:block">
                     <a
                         href={route('orders.export', currentQuery())}
                         className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm transition-colors hover:bg-accent"
@@ -179,6 +185,8 @@ export default function FilterBar({
 
             {advancedOpen && (
                 <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-muted/30 p-3">
+                    <div className="sm:hidden">{rangeSelect}</div>
+
                     <Select
                         label="Payment"
                         value={filters.payment ?? 'Any'}
@@ -220,6 +228,13 @@ export default function FilterBar({
                         value={filters.to}
                         onChange={(value) => onApply({ to: value, page: 1 })}
                     />
+
+                    <a
+                        href={route('orders.export', currentQuery())}
+                        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm transition-colors hover:bg-accent sm:hidden"
+                    >
+                        Export CSV
+                    </a>
                 </div>
             )}
         </div>

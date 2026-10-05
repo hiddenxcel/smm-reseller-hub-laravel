@@ -1,28 +1,27 @@
-import { Button } from '@/components/ui/button';
 import { useForm } from '@inertiajs/react';
-import { Card, Field, Toggle, inputClass } from './bits';
+import { Card, Field, SaveBar, Toggle, inputClass } from './bits';
 import { Commands, Spam } from './types';
 
 const COMMANDS: { key: keyof Commands; label: string; description: string }[] = [
     {
         key: 'refill',
         label: 'Refill',
-        description: 'Customers can ask for a refill on an order that dropped.',
+        description: 'Ask for a refill on an order that dropped.',
     },
     {
         key: 'status',
         label: 'Status',
-        description: 'Customers can check how far along an order is.',
+        description: 'Check how far along an order is.',
     },
     {
         key: 'cancel',
         label: 'Cancel',
-        description: 'Customers can cancel an order the panel has not started.',
+        description: 'Cancel an order the panel has not started.',
     },
     {
         key: 'speedup',
         label: 'Speed up',
-        description: 'Customers can request faster delivery. Only enable it if your panel supports it.',
+        description: 'Ask for faster delivery — only if your panel supports it.',
     },
 ];
 
@@ -41,11 +40,11 @@ export function CommandsTab({ commands, spam }: { commands: Commands; spam: Spam
                 event.preventDefault();
                 form.post(route('order-bot.commands'), { preserveScroll: true });
             }}
-            className="space-y-6"
+            className="space-y-4 sm:space-y-6"
         >
             <Card
-                title="Commands"
-                description="Turn off anything your panel cannot actually do — a command that always fails is worse than one that is missing."
+                title="What customers can do"
+                description="Turn off anything your panel cannot do — a command that always fails is worse than none."
             >
                 <div className="divide-y divide-border">
                     {COMMANDS.map((command) => (
@@ -65,10 +64,7 @@ export function CommandsTab({ commands, spam }: { commands: Commands; spam: Spam
                 </div>
             </Card>
 
-            <Card
-                title="Anti-spam"
-                description="Staff numbers are never blocked by this."
-            >
+            <Card title="Anti-spam" description="Staff numbers are never blocked.">
                 <Toggle
                     label="Block repeated messages"
                     checked={form.data.spam.enabled}
@@ -78,10 +74,10 @@ export function CommandsTab({ commands, spam }: { commands: Commands; spam: Spam
                 />
 
                 {form.data.spam.enabled && (
-                    <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                    <div className="mt-2 grid grid-cols-3 gap-3">
                         <Field
-                            label="Messages"
-                            hint="Before blocking"
+                            label="After"
+                            hint="messages"
                             error={form.errors['spam.repeat_threshold']}
                         >
                             <input
@@ -101,7 +97,7 @@ export function CommandsTab({ commands, spam }: { commands: Commands; spam: Spam
 
                         <Field
                             label="Within"
-                            hint="Minutes"
+                            hint="minutes"
                             error={form.errors['spam.window_minutes']}
                         >
                             <input
@@ -120,8 +116,8 @@ export function CommandsTab({ commands, spam }: { commands: Commands; spam: Spam
                         </Field>
 
                         <Field
-                            label="Blocked for"
-                            hint="Minutes"
+                            label="Block for"
+                            hint="minutes"
                             error={form.errors['spam.disable_minutes']}
                         >
                             <input
@@ -142,11 +138,7 @@ export function CommandsTab({ commands, spam }: { commands: Commands; spam: Spam
                 )}
             </Card>
 
-            <div className="flex justify-end">
-                <Button type="submit" disabled={form.processing}>
-                    {form.processing ? 'Saving…' : 'Save changes'}
-                </Button>
-            </div>
+            <SaveBar processing={form.processing} dirty={form.isDirty} />
         </form>
     );
 }

@@ -1,5 +1,7 @@
+import SegmentedTabs from '@/components/SegmentedTabs';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
+import { Bot, ScrollText, Settings2, SlidersHorizontal } from 'lucide-react';
 import { CommandsTab } from './CommandsTab';
 import { LogsTab } from './LogsTab';
 import { SettingsTab } from './SettingsTab';
@@ -7,12 +9,12 @@ import { SetupTab } from './SetupTab';
 import { StatusPill } from './bits';
 import { OrderBotPageProps } from './types';
 
-const TAB_LABELS: Record<string, string> = {
-    setup: 'Bot setup',
-    commands: 'Commands',
-    logs: 'Logs',
-    settings: 'Settings',
-};
+const TABS = {
+    setup: { label: 'Setup', icon: Bot },
+    commands: { label: 'Commands', icon: SlidersHorizontal },
+    logs: { label: 'Logs', icon: ScrollText },
+    settings: { label: 'Settings', icon: Settings2 },
+} as const;
 
 /**
  * The order bot's console.
@@ -25,61 +27,55 @@ export default function OrderBotIndex(props: OrderBotPageProps) {
     const { tab, tabs, status } = props;
 
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h1 className="font-heading text-xl font-bold">Order Bot</h1>
-                        <p className="text-sm text-muted-foreground">
-                            The bot that sells — customers order and pay in chat.
-                        </p>
+        <AuthenticatedLayout>
+            <Head title="Order Bot" />
+
+            <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
+                <header className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <h1 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">
+                            Order Bot
+                        </h1>
+                        {status.number && (
+                            <p className="font-data mt-0.5 text-sm text-muted-foreground">
+                                {status.number}
+                            </p>
+                        )}
                     </div>
 
                     <StatusPill status={status} />
-                </div>
-            }
-        >
-            <Head title="Order Bot" />
+                </header>
 
-            <nav
-                className="scroll-slim -mx-1 mb-6 flex gap-1 overflow-x-auto border-b border-border px-1"
-                aria-label="Order bot sections"
-            >
-                {tabs.map((name) => {
-                    const isCurrent = name === tab;
+                <SegmentedTabs
+                    label="Order bot sections"
+                    current={tab}
+                    tabs={tabs.map((name) => {
+                        const meta = TABS[name as keyof typeof TABS] ?? TABS.setup;
 
-                    return (
-                        <Link
-                            key={name}
-                            href={route('order-bot', name)}
-                            className={[
-                                'whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors',
-                                isCurrent
-                                    ? 'border-primary font-semibold text-foreground'
-                                    : 'border-transparent text-muted-foreground hover:text-foreground',
-                            ].join(' ')}
-                            aria-current={isCurrent ? 'page' : undefined}
-                        >
-                            {TAB_LABELS[name] ?? name}
-                        </Link>
-                    );
-                })}
-            </nav>
-
-            {tab === 'setup' && props.setup && (
-                <SetupTab
-                    data={props.setup}
-                    status={status}
-                    languages={props.languages ?? []}
+                        return {
+                            key: name,
+                            label: meta.label,
+                            icon: meta.icon,
+                            href: route('order-bot', name),
+                        };
+                    })}
                 />
-            )}
-            {tab === 'commands' && props.commands && props.spam && (
-                <CommandsTab commands={props.commands} spam={props.spam} />
-            )}
-            {tab === 'logs' && props.logs && <LogsTab data={props.logs} />}
-            {tab === 'settings' && props.settings && (
-                <SettingsTab settings={props.settings} languages={props.languages ?? []} />
-            )}
+
+                {tab === 'setup' && props.setup && (
+                    <SetupTab data={props.setup} status={status} />
+                )}
+                {tab === 'commands' && props.commands && props.spam && (
+                    <CommandsTab commands={props.commands} spam={props.spam} />
+                )}
+                {tab === 'logs' && props.logs && <LogsTab data={props.logs} />}
+                {tab === 'settings' && props.settings && (
+                    <SettingsTab
+                        settings={props.settings}
+                        languages={props.languages ?? []}
+                        currencies={props.currencies ?? []}
+                    />
+                )}
+            </div>
         </AuthenticatedLayout>
     );
 }

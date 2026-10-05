@@ -1,6 +1,8 @@
+import { Button } from '@/components/ui/button';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
-import { Lock, Plug } from 'lucide-react';
+import { Lock, Plug, Plus } from 'lucide-react';
+import { useState } from 'react';
 import { AddProviderForm } from './AddProviderForm';
 import { ProviderCard } from './ProviderCard';
 import { Card } from './bits';
@@ -9,9 +11,10 @@ import { PanelLimit, Provider } from './types';
 /**
  * The panels a reseller buys from.
  *
- * Two columns: adding on the left, what is connected on the right. A reseller
- * either has none and is here to connect one, or has some and is here to check
- * on them — and both are in view at once.
+ * What is connected comes first — that is nearly always what someone opening
+ * this page wants to check. Adding another is one tap away, in the form that
+ * opens in place; a reseller with none connected sees it already open, since
+ * connecting one is the only thing to do here.
  */
 export default function OrderBotProviders({
     providers,
@@ -20,46 +23,52 @@ export default function OrderBotProviders({
     providers: Provider[];
     limit: PanelLimit;
 }) {
+    const [adding, setAdding] = useState(providers.length === 0);
+
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h1 className="font-heading text-xl font-bold">Providers</h1>
-                        <p className="text-sm text-muted-foreground">
+        <AuthenticatedLayout>
+            <Head title="Providers — Order Bot" />
+
+            <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
+                <header className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <h1 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">
+                            Providers
+                        </h1>
+                        <p className="mt-0.5 text-sm text-muted-foreground">
                             The panels your bot buys from.
                         </p>
                     </div>
 
-                    <span className="font-data rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground">
+                    <span className="font-data shrink-0 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground">
                         {limit.used} of {limit.max}
                     </span>
-                </div>
-            }
-        >
-            <Head title="Providers — Order Bot" />
+                </header>
 
-            <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-                <div>
-                    {limit.reached ? (
-                        <LimitReached limit={limit} />
-                    ) : (
-                        <AddProviderForm />
-                    )}
-                </div>
-
-                <div className="space-y-4">
-                    {providers.length === 0 ? (
-                        <p className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-                            No panels connected yet. Add one to give your bot something to
-                            sell.
-                        </p>
-                    ) : (
-                        providers.map((provider) => (
+                {providers.length > 0 && (
+                    <div className="space-y-3 sm:space-y-4">
+                        {providers.map((provider) => (
                             <ProviderCard key={provider.id} provider={provider} />
-                        ))
-                    )}
-                </div>
+                        ))}
+                    </div>
+                )}
+
+                {limit.reached ? (
+                    <LimitReached limit={limit} />
+                ) : adding ? (
+                    <AddProviderForm
+                        onCancel={providers.length > 0 ? () => setAdding(false) : undefined}
+                    />
+                ) : (
+                    <Button
+                        variant="outline"
+                        className="w-full sm:w-auto"
+                        onClick={() => setAdding(true)}
+                    >
+                        <Plus className="size-4" />
+                        Add a provider
+                    </Button>
+                )}
             </div>
         </AuthenticatedLayout>
     );
@@ -77,10 +86,9 @@ function LimitReached({ limit }: { limit: PanelLimit }) {
                 <Lock className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
                 <div className="min-w-0 space-y-3">
                     <p className="text-sm text-muted-foreground">
-                        Your plan allows {limit.max}{' '}
-                        {limit.max === 1 ? 'panel' : 'panels'}, and {limit.used}{' '}
-                        {limit.used === 1 ? 'is' : 'are'} connected. Remove one, or move to
-                        a plan with room for more.
+                        Your plan allows {limit.max} {limit.max === 1 ? 'panel' : 'panels'}, and{' '}
+                        {limit.used} {limit.used === 1 ? 'is' : 'are'} connected. Remove one, or
+                        move to a plan with room for more.
                     </p>
 
                     <Link

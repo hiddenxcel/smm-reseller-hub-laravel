@@ -6,6 +6,7 @@ use App\Models\Announcement;
 use App\Models\SupportTicket;
 use App\Services\Admin\Impersonation;
 use App\Services\Demo\DemoAccount;
+use App\Services\Team\TeamAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Middleware;
@@ -52,6 +53,11 @@ class HandleInertiaRequests extends Middleware
                 // sides: the console reads it for the sidebar, and a tenant page
                 // reads it to know it is being viewed rather than used.
                 'admin' => fn () => $this->admin(),
+                // Set only when the person signed in is a team member rather
+                // than the owner. `can` is the nav rows their role may open, so
+                // the sidebar can hide the rest instead of offering links that
+                // would only bounce them back.
+                'member' => fn () => $this->member($request),
             ],
             // Set only while an admin is inside a reseller's account, so the
             // banner is a single truthy check rather than a comparison of two
@@ -171,6 +177,25 @@ class HandleInertiaRequests extends Middleware
         return [
             'readOnly' => true,
             'resetMinutes' => (int) config('demo.reset_minutes'),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function member(Request $request): ?array
+    {
+        $member = $request->attributes->get('team_member');
+
+        if ($member === null) {
+            return null;
+        }
+
+        return [
+            'name' => $member->name ?: $member->email,
+            'role' => $member->role,
+            'roleLabel' => TeamAccess::LABELS[$member->role] ?? $member->role,
+            'can' => TeamAccess::visibleNav($member->role),
         ];
     }
 

@@ -67,6 +67,16 @@ export type PageProps<
     auth: {
         user: Tenant;
         admin: Admin | null;
+        /**
+         * Set only when the person signed in is a team member rather than the
+         * owner. `can` is the nav rows their role may open.
+         */
+        member: {
+            name: string;
+            role: 'admin' | 'support' | 'viewer';
+            roleLabel: string;
+            can: string[];
+        } | null;
     };
     impersonation: Impersonation | null;
     /** Set only on the public demo account — see LockDemoAccount. */

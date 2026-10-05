@@ -88,7 +88,7 @@ const MAIN: NavSection[] = [
         label: 'Overview',
         items: [
             { label: 'Dashboard', icon: LayoutDashboard, routeName: 'dashboard' },
-            { label: 'Analytics', icon: BarChart3 },
+            { label: 'Analytics', icon: BarChart3, routeName: 'analytics' },
         ],
     },
     {
@@ -114,7 +114,7 @@ const MAIN: NavSection[] = [
             { label: 'Setup', icon: Settings, routeName: 'settings' },
             { label: 'API', icon: KeyRound, routeName: 'api-access' },
             { label: 'Billing', icon: CreditCard, routeName: 'billing' },
-            { label: 'Team', icon: UsersRound },
+            { label: 'Team', icon: UsersRound, routeName: 'team' },
         ],
     },
     {
@@ -138,7 +138,7 @@ const ORDER_BOT: NavItem[] = [
     { label: 'Inbox', icon: Inbox, routeName: 'order-bot.inbox' },
     { label: 'Providers', icon: Plug, routeName: 'order-bot.providers' },
     { label: 'Gateways', icon: Wallet, routeName: 'order-bot.gateways' },
-    { label: 'Payments', icon: CreditCard },
+    { label: 'Payments', icon: CreditCard, routeName: 'order-bot.payments' },
 ];
 
 const SUPPORT_BOT: NavItem[] = [
@@ -200,7 +200,7 @@ export default function AuthenticatedLayout({
                             <Menu className="size-5" />
                         </button>
                         <AppLogo className="size-7" />
-                        <span className="font-heading font-extrabold">Resellers Hub</span>
+                        <span className="font-heading font-extrabold">Auto Resellers Hub</span>
                     </div>
 
                     {header && (
@@ -233,6 +233,24 @@ function Sidebar({
     // sidebar should show where you are, not make you drill back in to it.
     const [panel, setPanel] = useState<PanelKey>(() => currentPanel());
 
+    // A team member sees only the sections that have something their role can
+    // open — a heading over an empty list would just be noise.
+    const member = usePage().props.auth.member;
+
+    const visibleMain = member
+        ? MAIN.filter(
+              (section) =>
+                  (section.items ?? []).some(
+                      (item) => item.routeName && member.can.includes(item.routeName),
+                  ) ||
+                  (section.drills ?? []).some((drill) =>
+                      PANELS[drill.panel as Exclude<PanelKey, 'main'>].items.some(
+                          (item) => item.routeName && member.can.includes(item.routeName),
+                      ),
+                  ),
+          )
+        : MAIN;
+
     return (
         <>
             {mobileOpen && (
@@ -253,7 +271,7 @@ function Sidebar({
                     <Link href={route('dashboard')} className="flex min-w-0 items-center gap-2.5">
                         <AppLogo className="size-8 shrink-0" />
                         <span className="font-heading truncate font-extrabold">
-                            Resellers Hub
+                            Auto Resellers Hub
                         </span>
                     </Link>
 
@@ -269,7 +287,7 @@ function Sidebar({
 
                 <nav className="scroll-slim flex-1 overflow-y-auto px-3 pb-3" aria-label="Main">
                     {panel === 'main' ? (
-                        MAIN.map((section, index) => (
+                        visibleMain.map((section, index) => (
                             <div
                                 key={section.label ?? 'top'}
                                 /* The rule doubles as the gap: a heading needs
@@ -310,18 +328,22 @@ function Sidebar({
                 <div className="border-t border-border p-3">
                     <div className="px-2 py-1.5">
                         <p className="truncate text-sm font-semibold">{tenant.business_name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{tenant.email}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                            {member ? `${member.name} · ${member.roleLabel}` : tenant.email}
+                        </p>
                     </div>
 
                     <div className="mt-1 space-y-0.5">
                         <ThemeToggle />
-                        <Link
-                            href={route('profile.edit')}
-                            className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                        >
-                            <Settings className="size-4" />
-                            Profile
-                        </Link>
+                        {!member && (
+                            <Link
+                                href={route('profile.edit')}
+                                className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                            >
+                                <Settings className="size-4" />
+                                Profile
+                            </Link>
+                        )}
                         <button
                             type="button"
                             onClick={() => router.post(route('logout'))}
@@ -364,6 +386,16 @@ function currentPanel(): PanelKey {
 
 function DrillRow({ drill, onOpen }: { drill: NavDrill; onOpen: () => void }) {
     const Icon = drill.icon;
+    const member = usePage().props.auth.member;
+
+    if (
+        member &&
+        !PANELS[drill.panel as Exclude<PanelKey, 'main'>].items.some(
+            (item) => item.routeName && member.can.includes(item.routeName),
+        )
+    ) {
+        return null;
+    }
 
     return (
         <button
@@ -438,6 +470,14 @@ function ThemeToggle() {
 function NavRow({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
     const Icon = item.icon;
     const page = usePage().props;
+
+    // A team member is only shown the rows their role can open: a link that
+    // would only bounce them back to the dashboard is worse than no link.
+    const member = page.auth.member;
+
+    if (member && (!item.routeName || !member.can.includes(item.routeName))) {
+        return null;
+    }
 
     // Zero renders nothing at all: a badge showing "0" is a permanent mark
     // against a row where there is nothing to see.

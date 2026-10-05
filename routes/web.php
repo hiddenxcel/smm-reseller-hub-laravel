@@ -3,6 +3,7 @@
 use App\Http\Controllers\ApiAccessController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CustomersController;
+use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\Onboarding\ConnectPanelController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\OrderBotGatewaysController;
 use App\Http\Controllers\OrderBotInboxController;
 use App\Http\Controllers\OrderBotProvidersController;
 use App\Http\Controllers\OrdersController;
+use App\Http\Controllers\PaymentsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
@@ -32,6 +34,8 @@ use App\Http\Controllers\SupportBotController;
 use App\Http\Controllers\SupportBotInboxController;
 use App\Http\Controllers\SupportBotTicketsController;
 use App\Http\Controllers\SupportCenterController;
+use App\Http\Controllers\TeamController;
+use App\Http\Controllers\TeamJoinController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', LandingController::class)->name('home');
@@ -104,6 +108,27 @@ Route::get('/dashboard', DashboardController::class)
     ->middleware('auth')
     ->name('dashboard');
 
+// Accepting a team invite. Outside the auth group, because the person has no
+// account yet; throttled, because the token in the URL is the only credential.
+Route::get('/team/join/{token}', [TeamJoinController::class, 'show'])
+    ->middleware('throttle:20,1')
+    ->name('team.join');
+Route::post('/team/join/{token}', [TeamJoinController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('team.join.store');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/team', [TeamController::class, 'index'])->name('team');
+    Route::post('/team', [TeamController::class, 'store'])->name('team.store');
+    Route::patch('/team/{member}', [TeamController::class, 'update'])->whereNumber('member')->name('team.update');
+    Route::post('/team/{member}/link', [TeamController::class, 'link'])->whereNumber('member')->name('team.link');
+    Route::delete('/team/{member}', [TeamController::class, 'destroy'])->whereNumber('member')->name('team.destroy');
+});
+
+Route::get('/analytics', AnalyticsController::class)
+    ->middleware('auth')
+    ->name('analytics');
+
 Route::middleware('auth')->group(function () {
     // Setup wizard. `onboarding` sends the reseller to whichever step they
     // still need, so it is safe to link to from anywhere.
@@ -143,6 +168,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/order-bot/providers', [OrderBotProvidersController::class, 'store'])->name('order-bot.providers.store');
     Route::post('/order-bot/providers/{panel}/refresh', [OrderBotProvidersController::class, 'refresh'])->name('order-bot.providers.refresh');
     Route::delete('/order-bot/providers/{panel}', [OrderBotProvidersController::class, 'destroy'])->name('order-bot.providers.destroy');
+    Route::get('/order-bot/payments', [PaymentsController::class, 'index'])->name('order-bot.payments');
     Route::get('/order-bot/gateways', [OrderBotGatewaysController::class, 'index'])->name('order-bot.gateways');
     Route::post('/order-bot/gateways', [OrderBotGatewaysController::class, 'store'])->name('order-bot.gateways.store');
     Route::post('/order-bot/gateways/{gateway}/toggle', [OrderBotGatewaysController::class, 'toggle'])->name('order-bot.gateways.toggle');

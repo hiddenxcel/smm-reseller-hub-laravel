@@ -20,8 +20,8 @@ export function ProviderCard({ provider }: { provider: Provider }) {
     const isDown = provider.status !== 'active';
 
     return (
-        <section className="rounded-xl border border-border bg-card p-5">
-            <header className="flex flex-wrap items-start gap-3">
+        <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+            <header className="flex items-start gap-3">
                 <span
                     className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted"
                     aria-hidden
@@ -32,14 +32,15 @@ export function ProviderCard({ provider }: { provider: Provider }) {
                 <div className="min-w-0 flex-1">
                     <h2 className="font-heading truncate font-bold">{provider.name}</h2>
                     <p className="truncate text-xs text-muted-foreground">
-                        {provider.panelType} · {provider.apiUrl}
+                        {provider.apiUrl.replace(/^https?:\/\//, '')}
                     </p>
                 </div>
 
                 <StatusChip status={provider.status} />
             </header>
 
-            <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {/* Three facts in one row: a glance, not a form to read. */}
+            <dl className="mt-4 grid grid-cols-[1.6fr_1fr_1fr] gap-2">
                 <Stat
                     label="Balance"
                     value={
@@ -70,11 +71,12 @@ export function ProviderCard({ provider }: { provider: Provider }) {
                 </p>
             )}
 
-            <footer className="mt-4 flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+            <footer className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4 sm:justify-end">
                 <Button
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="flex-1 sm:flex-none"
                     disabled={busy}
                     onClick={() => {
                         setBusy(true);
@@ -99,7 +101,7 @@ export function ProviderCard({ provider }: { provider: Provider }) {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-destructive hover:text-destructive"
+                        className="flex-1 text-destructive hover:text-destructive sm:flex-none"
                         onClick={() => setConfirming(true)}
                     >
                         <Trash2 className="size-4" />
@@ -196,11 +198,9 @@ function StatusChip({ status }: { status: string }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
     return (
-        <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                {label}
-            </dt>
-            <dd className="font-data mt-0.5 text-sm font-semibold">{value}</dd>
+        <div className="min-w-0 rounded-xl bg-muted/50 px-3 py-2">
+            <dt className="text-xs text-muted-foreground">{label}</dt>
+            <dd className="font-data mt-0.5 whitespace-nowrap text-sm font-semibold">{value}</dd>
         </div>
     );
 }

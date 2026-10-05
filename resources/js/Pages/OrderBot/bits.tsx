@@ -24,30 +24,17 @@ export function StatusPill({ status }: { status: BotStatus }) {
           ? 'Subscription inactive'
           : live
             ? subscription === 'sandbox'
-                ? 'Sandbox — test numbers only'
+                ? 'Sandbox'
                 : 'Online'
             : 'Offline';
 
     return (
-        <div className="flex flex-col items-start gap-1 sm:items-end">
-            <span
-                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium ${tone}`}
-            >
-                <span
-                    className={`size-2 rounded-full ${live ? 'bg-primary' : 'bg-current'}`}
-                    aria-hidden
-                />
-                {label}
-            </span>
-
-            {/* On its own line and labelled: bolted onto the end of "Subscription
-                inactive" it read as though the number were the problem. */}
-            {status.number && (
-                <span className="text-xs text-muted-foreground">
-                    on <span className="font-data">{status.number}</span>
-                </span>
-            )}
-        </div>
+        <span
+            className={`inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium ${tone}`}
+        >
+            <span className={`size-2 rounded-full ${live ? 'bg-primary' : 'bg-current'}`} aria-hidden />
+            {label}
+        </span>
     );
 }
 
@@ -63,7 +50,7 @@ export function Card({
     footer?: ReactNode;
 }) {
     return (
-        <section className="rounded-xl border border-border bg-card p-5">
+        <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
             <h2 className="font-heading font-bold">{title}</h2>
             {description && (
                 <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
@@ -95,20 +82,55 @@ export function Toggle({
     onChange: (value: boolean) => void;
 }) {
     return (
-        <label className="flex cursor-pointer items-start gap-3 py-2">
-            <input
-                type="checkbox"
-                checked={checked}
-                onChange={(event) => onChange(event.target.checked)}
-                className="mt-0.5 size-4 shrink-0 rounded border-input text-primary focus:ring-ring"
-            />
+        <label className="flex cursor-pointer items-center justify-between gap-4 py-3">
             <span className="min-w-0">
                 <span className="block text-sm font-medium">{label}</span>
                 {description && (
                     <span className="block text-sm text-muted-foreground">{description}</span>
                 )}
             </span>
+
+            {/* The checkbox stays the real control (keyboard, screen readers);
+                the two spans are only how it looks. */}
+            <span className="relative inline-flex h-6 w-11 shrink-0">
+                <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(event) => onChange(event.target.checked)}
+                    className="peer sr-only"
+                />
+                <span className="absolute inset-0 rounded-full bg-muted-foreground/30 transition-colors peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring" />
+                <span className="absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+            </span>
         </label>
+    );
+}
+
+/**
+ * Shown only once something has changed, docked to the bottom edge on its own
+ * bar — so it never covers a field, and a form with nothing to save has no
+ * button begging to be pressed.
+ */
+export function SaveBar({ processing, dirty }: { processing: boolean; dirty: boolean }) {
+    if (!dirty && !processing) {
+        return null;
+    }
+
+    return (
+        <div className="sticky bottom-0 z-10 -mx-4 border-t border-border bg-background/90 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border">
+            <div className="flex items-center justify-between gap-3">
+                <p className="hidden text-sm text-muted-foreground sm:block">
+                    You have unsaved changes.
+                </p>
+                <button
+                    type="submit"
+                    disabled={processing}
+                    className="w-full rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60 sm:w-auto"
+                >
+                    {processing ? 'Saving…' : 'Save changes'}
+                </button>
+            </div>
+        </div>
     );
 }
 

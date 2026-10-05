@@ -25,6 +25,7 @@ export type Gateway = {
     code: string;
     label: string;
     type: string;
+    needsPhone?: boolean;
 };
 
 export type RentableNumber = {

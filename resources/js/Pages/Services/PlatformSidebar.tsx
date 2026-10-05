@@ -141,3 +141,104 @@ function Row({
         </button>
     );
 }
+
+/**
+ * The same filter as the sidebar, laid out for a phone: one scrolling row of
+ * chips instead of a column that pushes the list a screen down. Picking a
+ * platform adds a second row for its categories.
+ */
+export function PlatformChips({
+    platforms,
+    categories,
+    selectedPlatform,
+    selectedCategory,
+    total,
+    onSelect,
+}: {
+    platforms?: Array<{ platform: string; services: number; active: number }>;
+    categories?: Array<{ category: string; services: number }>;
+    selectedPlatform: string | null;
+    selectedCategory: string | null;
+    total: number;
+    onSelect: (platform: string | null, category?: string | null) => void;
+}) {
+    if (platforms === undefined) {
+        return <div className="h-8 animate-pulse rounded-full bg-muted" />;
+    }
+
+    return (
+        <div className="space-y-2">
+            <div className="scroll-slim -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+                <Chip
+                    label="All"
+                    count={total}
+                    active={selectedPlatform === null}
+                    onClick={() => onSelect(null, null)}
+                />
+                {platforms.map((entry) => (
+                    <Chip
+                        key={entry.platform}
+                        label={entry.platform}
+                        count={entry.services}
+                        active={selectedPlatform === entry.platform}
+                        onClick={() =>
+                            onSelect(selectedPlatform === entry.platform ? null : entry.platform, null)
+                        }
+                    />
+                ))}
+            </div>
+
+            {selectedPlatform !== null && categories && categories.length > 0 && (
+                <div className="scroll-slim -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+                    {categories.map((category) => (
+                        <Chip
+                            key={category.category}
+                            label={category.category}
+                            count={category.services}
+                            small
+                            active={selectedCategory === category.category}
+                            onClick={() =>
+                                onSelect(
+                                    selectedPlatform,
+                                    selectedCategory === category.category ? null : category.category,
+                                )
+                            }
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function Chip({
+    label,
+    count,
+    active,
+    onClick,
+    small = false,
+}: {
+    label: string;
+    count: number;
+    active: boolean;
+    onClick: () => void;
+    small?: boolean;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-pressed={active}
+            className={[
+                'flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 transition-colors',
+                small ? 'text-xs' : 'text-sm',
+                active
+                    ? 'border-primary bg-primary/10 font-semibold text-foreground'
+                    : 'border-border text-muted-foreground',
+            ].join(' ')}
+        >
+            {label}
+            <span className="font-data text-[0.7rem] tabular-nums opacity-70">{compact(count)}</span>
+        </button>
+    );
+}

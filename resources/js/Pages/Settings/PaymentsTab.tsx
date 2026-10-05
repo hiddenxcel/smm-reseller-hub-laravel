@@ -14,6 +14,18 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 /**
+ * Where each gateway belongs in the menu, by the customer's side of the world.
+ * A gateway not listed here lands in "Other", so adding one to config never
+ * makes it vanish from the form.
+ */
+const REGIONS: Array<{ title: string; codes: string[] }> = [
+    { title: 'East Africa', codes: ['snippe', 'snippe_ke', 'snippe_ug', 'pesapal', 'zenopay', 'momopay'] },
+    { title: 'West & Southern Africa', codes: ['fimipay_ng', 'fimipay_gh', 'fimipay_cm', 'fimipay_za', 'paystack', 'flutterwave'] },
+    { title: 'Cards, worldwide', codes: ['fimipay_usd', 'stripe', 'paypal', 'razorpay'] },
+    { title: 'Crypto', codes: ['nowpayments', 'binance', 'cryptomus', 'heleket'] },
+];
+
+/**
  * The gateway a reseller's own customers pay through.
  *
  * Optional by design — wallets can be credited by hand — so a reseller with
@@ -33,6 +45,25 @@ export function PaymentsTab({
         () => [...gateways].sort((a, b) => Number(b.ready) - Number(a.ready)),
         [gateways],
     );
+
+    const grouped = useMemo(() => {
+        const placed = new Set(REGIONS.flatMap((region) => region.codes));
+
+        const groups = REGIONS.map((region) => ({
+            title: region.title,
+            options: region.codes
+                .map((code) => ordered.find((option) => option.code === code))
+                .filter((option): option is GatewayOption => option !== undefined),
+        }));
+
+        const other = ordered.filter((option) => ! placed.has(option.code));
+
+        if (other.length > 0) {
+            groups.push({ title: 'Other', options: other });
+        }
+
+        return groups.filter((group) => group.options.length > 0);
+    }, [ordered]);
 
     const [selected, setSelected] = useState(ordered[0]?.code ?? '');
     const gateway = ordered.find((option) => option.code === selected);
@@ -66,7 +97,7 @@ export function PaymentsTab({
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             {! hasUsable && (
                 <NeedsAttention tone="info">
                     No gateway is taking payments, so customers cannot top up their own
@@ -108,46 +139,41 @@ export function PaymentsTab({
                 description="Keys are encrypted before we store them, and are never shown again once saved."
             >
                 <form onSubmit={submit} className="max-w-xl space-y-6">
-                    <fieldset>
-                        <legend className="text-sm font-medium">Choose a gateway</legend>
-
-                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                            {ordered.map((option) => (
-                                <label
-                                    key={option.code}
-                                    className={[
-                                        'flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-sm transition-colors',
-                                        option.code === selected
-                                            ? 'border-primary bg-accent/50'
-                                            : 'border-border hover:border-primary/40',
-                                    ].join(' ')}
-                                >
-                                    <input
-                                        type="radio"
-                                        name="gateway"
-                                        value={option.code}
-                                        checked={option.code === selected}
-                                        onChange={() => choose(option.code)}
-                                        className="mt-0.5 size-4 accent-primary"
-                                    />
-                                    <span className="min-w-0">
-                                        <span className="block font-medium">{option.label}</span>
-                                        <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                                            {TYPE_LABELS[option.type ?? ''] ?? option.type}
-                                            {! option.ready && (
-                                                <>
-                                                    <Clock className="size-3" />
-                                                    coming soon
-                                                </>
-                                            )}
-                                        </span>
-                                    </span>
-                                </label>
+                    {/* One menu grouped by where the customer is, instead of a
+                        wall of twenty-one options. A native select, so a phone
+                        shows its own picker. */}
+                    <div>
+                        <Label htmlFor="gateway">Gateway</Label>
+                        <select
+                            id="gateway"
+                            value={selected}
+                            onChange={(event) => choose(event.target.value)}
+                            className="mt-1.5 h-11 w-full rounded-xl border border-input bg-transparent px-3 text-sm"
+                        >
+                            {grouped.map((group) => (
+                                <optgroup key={group.title} label={group.title}>
+                                    {group.options.map((option) => (
+                                        <option key={option.code} value={option.code}>
+                                            {option.label}
+                                            {option.ready ? '' : ' — coming soon'}
+                                            {connected.some((row) => row.code === option.code)
+                                                ? ' ✓'
+                                                : ''}
+                                        </option>
+                                    ))}
+                                </optgroup>
                             ))}
-                        </div>
+                        </select>
+
+                        {gateway && (
+                            <p className="mt-1.5 text-xs text-muted-foreground">
+                                {TYPE_LABELS[gateway.type ?? ''] ?? gateway.type}
+                                {isConnected && ' · already connected — fill only what you want to change'}
+                            </p>
+                        )}
 
                         <FieldError message={errors.gateway} />
-                    </fieldset>
+                    </div>
 
                     {gateway && (
                         <div className="space-y-5">
@@ -183,7 +209,7 @@ export function PaymentsTab({
                                 </div>
                             ))}
 
-                            <Button type="submit" disabled={processing}>
+                            <Button type="submit" className="w-full sm:w-auto" disabled={processing}>
                                 {processing && <Loader2 className="size-4 animate-spin" />}
                                 {isConnected ? 'Update credentials' : `Connect ${gateway.label}`}
                             </Button>

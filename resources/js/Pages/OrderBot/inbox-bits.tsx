@@ -105,3 +105,29 @@ export function initials(label: string): string {
 
     return trimmed.slice(0, 2).toUpperCase();
 }
+
+/** A steady colour per person, so the same customer is the same colour everywhere. */
+function hueOf(label: string): number {
+    let hash = 0;
+
+    for (const char of label) {
+        hash = (hash * 31 + char.charCodeAt(0)) % 360;
+    }
+
+    return hash;
+}
+
+export function Avatar({ label }: { label: string }) {
+    return (
+        <span
+            className="grid size-10 shrink-0 place-items-center rounded-full text-xs font-bold"
+            style={{
+                backgroundColor: `oklch(0.92 0.06 ${hueOf(label)})`,
+                color: `oklch(0.35 0.09 ${hueOf(label)})`,
+            }}
+            aria-hidden
+        >
+            {initials(label)}
+        </span>
+    );
+}

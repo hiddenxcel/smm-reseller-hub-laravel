@@ -37,27 +37,28 @@ export function ServicesTab({
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             {importedCount === 0 && (
                 <NeedsAttention>
                     You have not imported any services yet, so your bot has nothing to sell.
                 </NeedsAttention>
             )}
 
-            <Card
-                title="Your services"
-                description={`${importedCount} imported from ${panel.name}.`}
-                footer={
-                    <Button variant="outline" asChild>
-                        <Link href={route('services.index')}>Manage prices and services</Link>
-                    </Button>
-                }
-            >
-                <p className="text-sm text-muted-foreground">
-                    Prices, availability and retiring a service live on the Services screen.
-                    This tab is for pulling in more of {panel.name}&rsquo;s catalogue.
-                </p>
-            </Card>
+            {/* Prices and retiring a service live on the Services screen, so
+                this is only a count and a way there. */}
+            <section className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
+                <div className="min-w-0">
+                    <p className="font-heading text-2xl font-extrabold [font-variant-numeric:tabular-nums]">
+                        {importedCount}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        {importedCount === 1 ? 'service' : 'services'} imported from {panel.name}
+                    </p>
+                </div>
+                <Button variant="outline" asChild className="shrink-0">
+                    <Link href={route('services.index')}>Manage prices</Link>
+                </Button>
+            </section>
 
             <ImportCard
                 panelId={panel.id}
@@ -155,13 +156,18 @@ function ImportCard({
                         />
                     </div>
 
-                    <ul className="max-h-96 divide-y divide-border overflow-y-auto rounded-lg border border-border">
+                    <ul className="scroll-slim max-h-96 divide-y divide-border overflow-y-auto rounded-xl border border-border">
                         {visible.map((service) => {
                             const id = service.provider_service_id;
                             const isPicked = picked[id] !== undefined;
 
                             return (
-                                <li key={id} className="flex flex-wrap items-center gap-3 p-3">
+                                <li
+                                    key={id}
+                                    className={`flex flex-wrap items-center gap-3 p-3 ${
+                                        isPicked ? 'bg-accent/40' : ''
+                                    }`}
+                                >
                                     <input
                                         type="checkbox"
                                         checked={isPicked}
@@ -202,7 +208,7 @@ function ImportCard({
                                                 }))
                                             }
                                             placeholder="Your price"
-                                            className="w-28"
+                                            className="ml-7 w-full sm:ml-0 sm:w-28"
                                             aria-label={`Your price for ${service.name}`}
                                             required
                                         />
@@ -218,7 +224,11 @@ function ImportCard({
                         </p>
                     )}
 
-                    <Button type="submit" disabled={processing || chosenCount === 0}>
+                    <Button
+                        type="submit"
+                        className="w-full sm:w-auto"
+                        disabled={processing || chosenCount === 0}
+                    >
                         {processing && <Loader2 className="size-4 animate-spin" />}
                         {chosenCount === 0
                             ? 'Select services to import'

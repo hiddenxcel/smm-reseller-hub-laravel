@@ -1,5 +1,5 @@
 import { router, useForm } from '@inertiajs/react';
-import { Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { Card, Field, inputClass } from '../OrderBot/bits';
 import { PanelOption, Rule } from './types';
@@ -14,46 +14,75 @@ import { PanelOption, Rule } from './types';
  * Exclusions are listed first because that is the order the matcher applies
  * them in — a `no_guarantee` keyword beats a `guarantee` one, so "no refill on
  * anything with 'cheap' in the name" holds even alongside a broad grant.
+ *
+ * The rules come first and adding one opens in place: a reseller opening this
+ * tab is mostly checking what is set, not adding.
  */
 export function RulesTab({ rules, panels }: { rules: Rule[]; panels: PanelOption[] }) {
     const exclusions = rules.filter((rule) => rule.type === 'no_guarantee');
     const grants = rules.filter((rule) => rule.type === 'guarantee');
 
+    const [adding, setAdding] = useState(rules.length === 0);
+
     return (
-        <div className="space-y-6">
-            <AddRuleForm panels={panels} />
+        <div className="space-y-4 sm:space-y-6">
+            {rules.length === 0 && (
+                <p className="rounded-2xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
+                    No rules yet, so the bot refuses every refill. Add one — a keyword like{' '}
+                    <span className="font-data text-foreground">followers</span> covers every
+                    service with that word in its name.
+                </p>
+            )}
 
-            {rules.length === 0 ? (
-                <Card title="No rules yet">
-                    <p className="text-sm text-muted-foreground">
-                        Without a rule the bot refuses every refill request. Add one above —
-                        a keyword like <span className="font-data">followers</span> covers
-                        every service with that word in its name.
-                    </p>
-                </Card>
+            {exclusions.length > 0 && (
+                <RuleGroup
+                    title="No refill"
+                    note="Checked first — these win over any guarantee."
+                    rules={exclusions}
+                />
+            )}
+
+            {grants.length > 0 && <RuleGroup title="Refill guaranteed" rules={grants} />}
+
+            {adding ? (
+                <AddRuleForm
+                    panels={panels}
+                    onCancel={rules.length > 0 ? () => setAdding(false) : undefined}
+                />
             ) : (
-                <>
-                    {exclusions.length > 0 && (
-                        <Card
-                            title="No refill"
-                            description="Checked first — these win over any guarantee below."
-                        >
-                            <RuleList rules={exclusions} />
-                        </Card>
-                    )}
-
-                    {grants.length > 0 && (
-                        <Card title="Refill guaranteed">
-                            <RuleList rules={grants} />
-                        </Card>
-                    )}
-                </>
+                <button
+                    type="button"
+                    onClick={() => setAdding(true)}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-medium transition-colors hover:bg-accent sm:w-auto"
+                >
+                    <Plus className="size-4" aria-hidden />
+                    Add a rule
+                </button>
             )}
         </div>
     );
 }
 
-function AddRuleForm({ panels }: { panels: PanelOption[] }) {
+function RuleGroup({ title, note, rules }: { title: string; note?: string; rules: Rule[] }) {
+    return (
+        <section>
+            <div className="mb-2.5">
+                <h2 className="font-heading text-sm font-bold uppercase tracking-wide text-muted-foreground">
+                    {title}
+                </h2>
+                {note && <p className="text-xs text-muted-foreground">{note}</p>}
+            </div>
+
+            <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+                {rules.map((rule) => (
+                    <RuleRow key={rule.id} rule={rule} />
+                ))}
+            </ul>
+        </section>
+    );
+}
+
+function AddRuleForm({ panels, onCancel }: { panels: PanelOption[]; onCancel?: () => void }) {
     const form = useForm({
         type: 'guarantee' as 'guarantee' | 'no_guarantee',
         keyword: '',
@@ -71,23 +100,47 @@ function AddRuleForm({ panels }: { panels: PanelOption[] }) {
 
     return (
         <Card title="Add a rule">
-            <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-                <Field label="Rule" hint="What happens when a service name matches.">
-                    <select
-                        className={inputClass}
-                        value={form.data.type}
-                        onChange={(event) =>
-                            form.setData('type', event.target.value as 'guarantee' | 'no_guarantee')
-                        }
-                    >
-                        <option value="guarantee">Refill guaranteed</option>
-                        <option value="no_guarantee">No refill</option>
-                    </select>
-                </Field>
+            <form onSubmit={submit} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Rule">
+                        <select
+                            className={inputClass}
+                            value={form.data.type}
+                            onChange={(event) =>
+                                form.setData(
+                                    'type',
+                                    event.target.value as 'guarantee' | 'no_guarantee',
+                                )
+                            }
+                        >
+                            <option value="guarantee">Refill guaranteed</option>
+                            <option value="no_guarantee">No refill</option>
+                        </select>
+                    </Field>
+
+                    {form.data.type === 'guarantee' && (
+                        <Field
+                            label="Refill days"
+                            hint="0 means lifetime."
+                            error={form.errors.refillDays}
+                        >
+                            <input
+                                type="number"
+                                min={0}
+                                max={3650}
+                                className={inputClass}
+                                value={form.data.refillDays}
+                                onChange={(event) =>
+                                    form.setData('refillDays', event.target.value)
+                                }
+                            />
+                        </Field>
+                    )}
+                </div>
 
                 <Field
                     label="Keyword"
-                    hint="Matched inside the service name, case-insensitively."
+                    hint="Matched inside the service name, ignoring capitals."
                     error={form.errors.keyword}
                 >
                     <input
@@ -99,25 +152,8 @@ function AddRuleForm({ panels }: { panels: PanelOption[] }) {
                     />
                 </Field>
 
-                {form.data.type === 'guarantee' && (
-                    <Field
-                        label="Refill days"
-                        hint="0 means lifetime."
-                        error={form.errors.refillDays}
-                    >
-                        <input
-                            type="number"
-                            min={0}
-                            max={3650}
-                            className={inputClass}
-                            value={form.data.refillDays}
-                            onChange={(event) => form.setData('refillDays', event.target.value)}
-                        />
-                    </Field>
-                )}
-
                 {panels.length > 0 && (
-                    <Field label="Panel" hint="Leave blank to apply to every panel.">
+                    <Field label="Panel" hint="Leave on “All panels” to apply everywhere.">
                         <select
                             className={inputClass}
                             value={form.data.panelId}
@@ -133,38 +169,39 @@ function AddRuleForm({ panels }: { panels: PanelOption[] }) {
                     </Field>
                 )}
 
-                <div className="sm:col-span-2">
+                <div className="flex flex-col gap-2 sm:flex-row-reverse">
                     <button
                         type="submit"
                         disabled={form.processing}
-                        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+                        className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
                     >
                         {form.processing ? 'Adding…' : 'Add rule'}
                     </button>
+
+                    {onCancel && (
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            className="rounded-xl px-5 py-2.5 text-sm text-muted-foreground hover:text-foreground"
+                        >
+                            Cancel
+                        </button>
+                    )}
                 </div>
             </form>
         </Card>
     );
 }
 
-function RuleList({ rules }: { rules: Rule[] }) {
-    return (
-        <ul className="divide-y divide-border">
-            {rules.map((rule) => (
-                <RuleRow key={rule.id} rule={rule} />
-            ))}
-        </ul>
-    );
-}
-
 function RuleRow({ rule }: { rule: Rule }) {
     const [busy, setBusy] = useState(false);
+    const active = rule.status === 'active';
 
     const toggle = () => {
         setBusy(true);
         router.patch(
             route('support-bot.rules.update', rule.id),
-            { status: rule.status === 'active' ? 'inactive' : 'active' },
+            { status: active ? 'inactive' : 'active' },
             { preserveScroll: true, onFinish: () => setBusy(false) },
         );
     };
@@ -189,11 +226,11 @@ function RuleRow({ rule }: { rule: Rule }) {
               : `${rule.refillDays} days`;
 
     return (
-        <li className="flex flex-wrap items-center gap-3 py-3">
+        <li className="flex items-center gap-3 p-3.5">
             <div className="min-w-0 flex-1">
                 <p
                     className={`font-data truncate text-sm ${
-                        rule.status === 'active' ? '' : 'text-muted-foreground line-through'
+                        active ? '' : 'text-muted-foreground line-through'
                     }`}
                 >
                     {rule.keyword}
@@ -204,20 +241,26 @@ function RuleRow({ rule }: { rule: Rule }) {
                 </p>
             </div>
 
-            <button
-                type="button"
-                onClick={toggle}
-                disabled={busy}
-                className="rounded-lg border border-input px-3 py-1.5 text-xs disabled:opacity-60"
-            >
-                {rule.status === 'active' ? 'Disable' : 'Enable'}
-            </button>
+            {/* A switch rather than a "Disable" button: the row says whether
+                it is on, and the same control turns it back. */}
+            <label className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer">
+                <input
+                    type="checkbox"
+                    checked={active}
+                    onChange={toggle}
+                    disabled={busy}
+                    className="peer sr-only"
+                    aria-label={`${active ? 'Disable' : 'Enable'} rule ${rule.keyword}`}
+                />
+                <span className="absolute inset-0 rounded-full bg-muted-foreground/30 transition-colors peer-checked:bg-primary peer-disabled:opacity-60" />
+                <span className="absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+            </label>
 
             <button
                 type="button"
                 onClick={remove}
                 disabled={busy}
-                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:text-destructive disabled:opacity-60"
+                className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:text-destructive disabled:opacity-60"
                 aria-label={`Remove rule ${rule.keyword}`}
             >
                 <Trash2 className="size-4" aria-hidden />

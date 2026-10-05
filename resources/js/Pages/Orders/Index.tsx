@@ -163,16 +163,13 @@ export default function Orders({
         <AuthenticatedLayout bleed>
             <Head title="Orders" />
 
-            {/* Sticky through the whole scroll: with a hundred rows on screen,
-                the column headers and the status tabs are what keep a reseller
-                oriented, and losing them is what makes a long table feel lost. */}
-            <div className="sticky top-0 z-30 border-b border-border bg-background/95 px-4 pb-3 pt-5 backdrop-blur sm:px-8">
-                <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-                    <div>
-                        <h1 className="font-heading text-2xl font-extrabold tracking-tight">
+            <div className="px-4 pt-5 sm:px-8">
+                <div className="flex items-end justify-between gap-3">
+                    <div className="min-w-0">
+                        <h1 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">
                             Orders
                         </h1>
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        <p className="mt-0.5 text-sm text-muted-foreground">
                             {summary ? (
                                 <>
                                     {summary.orders.toLocaleString('en-US')}{' '}
@@ -192,7 +189,12 @@ export default function Orders({
                         </span>
                     )}
                 </div>
+            </div>
 
+            {/* Only the status tabs and search stay in view while the list
+                scrolls: they are what keeps a reseller oriented in a long
+                list. The title and totals scroll away. */}
+            <div className="sticky top-0 z-30 mt-3 border-b border-border bg-background/95 px-4 pb-3 pt-2 backdrop-blur sm:px-8">
                 <FilterBar
                     filters={filters}
                     tabCounts={tabCounts}
@@ -208,7 +210,23 @@ export default function Orders({
                 {rows.length === 0 ? (
                     <EmptyState isFiltered={isFiltered} onReset={reset} />
                 ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border">
+                    <>
+                    {/* Below `md` the table becomes a list: eight columns on a
+                        phone is a sideways scroll nobody reads. */}
+                    <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card md:hidden">
+                        {rows.map((order) => (
+                            <MobileRow
+                                key={order.id}
+                                order={order}
+                                selected={selected.has(order.id)}
+                                statusLabels={statusLabels}
+                                onToggle={toggleRow}
+                                onOpen={setDetailId}
+                            />
+                        ))}
+                    </div>
+
+                    <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
                         <table className="w-full min-w-[56rem] border-collapse text-sm">
                             <thead>
                                 <tr className="border-b border-border bg-muted/40 text-left">
@@ -280,6 +298,7 @@ export default function Orders({
                             </tbody>
                         </table>
                     </div>
+                    </>
                 )}
 
                 {rows.length > 0 && (
@@ -395,6 +414,75 @@ function Row({
                 {formatShort(order.createdAt)}
             </td>
         </tr>
+    );
+}
+
+function MobileRow({
+    order,
+    selected,
+    statusLabels,
+    onToggle,
+    onOpen,
+}: {
+    order: OrderRow;
+    selected: boolean;
+    statusLabels: Record<OrderStatusGroup, string>;
+    onToggle: (id: number) => void;
+    onOpen: (id: number) => void;
+}) {
+    return (
+        <div
+            onClick={() => onOpen(order.id)}
+            className={[
+                'flex cursor-pointer items-center gap-3 p-3.5 transition-colors',
+                selected ? 'bg-primary/5' : '',
+            ].join(' ')}
+        >
+            <div onClick={(event) => event.stopPropagation()}>
+                <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={() => onToggle(order.id)}
+                    aria-label={`Select order ${order.id}`}
+                    className="size-4 cursor-pointer rounded border-border accent-primary"
+                />
+            </div>
+
+            <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-1.5 truncate font-medium">
+                    <span className="truncate">{order.service ?? '—'}</span>
+                    {order.error && (
+                        <TriangleAlert
+                            className="size-3.5 shrink-0 text-[#d03b3b]"
+                            aria-label="The panel rejected this order"
+                        />
+                    )}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                    {order.customer}
+                    {order.quantity !== null && ` · ${order.quantity.toLocaleString('en-US')}`}
+                    {order.createdAt && ` · ${shortDay(order.createdAt)}`}
+                </p>
+                {/* Paid is the normal state and says nothing; only an unpaid or
+                    failed payment earns a label. */}
+                {order.paymentStatus !== 'paid' && (
+                    <div className="mt-1.5">
+                        <PaymentBadge status={order.paymentStatus} />
+                    </div>
+                )}
+            </div>
+
+            <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <p className="text-sm font-semibold tabular-nums">
+                    {order.amount !== null ? formatMoney(order.amount) : '—'}
+                </p>
+                <StatusBadge
+                    status={order.status}
+                    label={statusLabels[order.status]}
+                    title={order.rawStatus}
+                />
+            </div>
+        </div>
     );
 }
 
@@ -522,6 +610,11 @@ function EmptyState({
             )}
         </div>
     );
+}
+
+/** "Mar 4" — the phone list has room for a day, not a time. */
+function shortDay(iso: string): string {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 /** "Mar 4, 14:02" — long enough to identify, short enough for a table cell. */

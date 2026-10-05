@@ -34,7 +34,7 @@ export function WhatsAppTab({
     rentals: Rental[];
 }) {
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             {numbers.length === 0 && (
                 <NeedsAttention>
                     No WhatsApp number is connected, so your bots cannot answer anyone.
@@ -207,7 +207,7 @@ function ConnectOwnCard({
 
     if (! open) {
         return (
-            <Button variant="outline" onClick={() => setOpen(true)}>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setOpen(true)}>
                 Connect your own Meta number
             </Button>
         );
@@ -266,7 +266,7 @@ function ConnectOwnCard({
                         id="bot_type"
                         value={data.bot_type}
                         onChange={(event) => setData('bot_type', event.target.value)}
-                        className="mt-1.5 h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                        className="mt-1.5 h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm"
                     >
                         <option value="order">Order bot</option>
                         <option value="support">Support bot</option>
@@ -295,7 +295,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
     return (
         <div>
             <p className="mb-1 text-xs font-medium text-muted-foreground">{label}</p>
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2">
                 <code className="font-data min-w-0 flex-1 truncate text-xs">{value}</code>
                 <Button
                     type="button"

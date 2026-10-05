@@ -1,35 +1,23 @@
-import InputError from '@/components/InputError';
-import InputLabel from '@/components/InputLabel';
-import PrimaryButton from '@/components/PrimaryButton';
-import TextInput from '@/components/TextInput';
-import { Transition } from '@headlessui/react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useForm } from '@inertiajs/react';
-import { FormEventHandler, useRef } from 'react';
+import { Check, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { FormEventHandler, useRef, useState } from 'react';
 
-export default function UpdatePasswordForm({
-    className = '',
-}: {
-    className?: string;
-}) {
+export default function UpdatePasswordForm() {
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
+    const [visible, setVisible] = useState(false);
 
-    const {
-        data,
-        setData,
-        errors,
-        put,
-        reset,
-        processing,
-        recentlySuccessful,
-    } = useForm({
+    const { data, setData, errors, put, reset, processing, recentlySuccessful } = useForm({
         current_password: '',
         password: '',
         password_confirmation: '',
     });
 
-    const updatePassword: FormEventHandler = (e) => {
-        e.preventDefault();
+    const updatePassword: FormEventHandler = (event) => {
+        event.preventDefault();
 
         put(route('password.update'), {
             preserveScroll: true,
@@ -48,99 +36,104 @@ export default function UpdatePasswordForm({
         });
     };
 
+    const type = visible ? 'text' : 'password';
+    const filled = data.current_password !== '' && data.password !== '';
+
     return (
-        <section className={className}>
-            <header>
-                <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                    Update Password
-                </h2>
+        <form onSubmit={updatePassword} className="space-y-4">
+            <Field label="Current password" error={errors.current_password} htmlFor="current_password">
+                <Input
+                    id="current_password"
+                    ref={currentPasswordInput}
+                    type={type}
+                    className="h-10"
+                    value={data.current_password}
+                    onChange={(event) => setData('current_password', event.target.value)}
+                    autoComplete="current-password"
+                />
+            </Field>
 
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Ensure your account is using a long, random password to stay
-                    secure.
-                </p>
-            </header>
+            <Field
+                label="New password"
+                hint="At least 8 characters."
+                error={errors.password}
+                htmlFor="password"
+            >
+                <Input
+                    id="password"
+                    ref={passwordInput}
+                    type={type}
+                    className="h-10"
+                    value={data.password}
+                    onChange={(event) => setData('password', event.target.value)}
+                    autoComplete="new-password"
+                />
+            </Field>
 
-            <form onSubmit={updatePassword} className="mt-6 space-y-6">
-                <div>
-                    <InputLabel
-                        htmlFor="current_password"
-                        value="Current Password"
-                    />
+            <Field
+                label="Confirm new password"
+                error={errors.password_confirmation}
+                htmlFor="password_confirmation"
+            >
+                <Input
+                    id="password_confirmation"
+                    type={type}
+                    className="h-10"
+                    value={data.password_confirmation}
+                    onChange={(event) => setData('password_confirmation', event.target.value)}
+                    autoComplete="new-password"
+                />
+            </Field>
 
-                    <TextInput
-                        id="current_password"
-                        ref={currentPasswordInput}
-                        value={data.current_password}
-                        onChange={(e) =>
-                            setData('current_password', e.target.value)
-                        }
-                        type="password"
-                        className="mt-1 block w-full"
-                        autoComplete="current-password"
-                    />
+            <button
+                type="button"
+                onClick={() => setVisible(!visible)}
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+            >
+                {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {visible ? 'Hide passwords' : 'Show passwords'}
+            </button>
 
-                    <InputError
-                        message={errors.current_password}
-                        className="mt-2"
-                    />
-                </div>
+            <div className="flex items-center gap-3">
+                <Button
+                    type="submit"
+                    className="w-full sm:w-auto"
+                    disabled={processing || !filled}
+                >
+                    {processing && <Loader2 className="size-4 animate-spin" />}
+                    Change password
+                </Button>
 
-                <div>
-                    <InputLabel htmlFor="password" value="New Password" />
+                {recentlySuccessful && (
+                    <p className="flex items-center gap-1.5 text-sm text-primary">
+                        <Check className="size-4" aria-hidden />
+                        Changed
+                    </p>
+                )}
+            </div>
+        </form>
+    );
+}
 
-                    <TextInput
-                        id="password"
-                        ref={passwordInput}
-                        value={data.password}
-                        onChange={(e) => setData('password', e.target.value)}
-                        type="password"
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                    />
-
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div>
-                    <InputLabel
-                        htmlFor="password_confirmation"
-                        value="Confirm Password"
-                    />
-
-                    <TextInput
-                        id="password_confirmation"
-                        value={data.password_confirmation}
-                        onChange={(e) =>
-                            setData('password_confirmation', e.target.value)
-                        }
-                        type="password"
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                    />
-
-                    <InputError
-                        message={errors.password_confirmation}
-                        className="mt-2"
-                    />
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <PrimaryButton disabled={processing}>Save</PrimaryButton>
-
-                    <Transition
-                        show={recentlySuccessful}
-                        enter="transition ease-in-out"
-                        enterFrom="opacity-0"
-                        leave="transition ease-in-out"
-                        leaveTo="opacity-0"
-                    >
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Saved.
-                        </p>
-                    </Transition>
-                </div>
-            </form>
-        </section>
+function Field({
+    label,
+    hint,
+    error,
+    htmlFor,
+    children,
+}: {
+    label: string;
+    hint?: string;
+    error?: string;
+    htmlFor: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div>
+            <Label htmlFor={htmlFor}>{label}</Label>
+            {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+            <div className="mt-1.5">{children}</div>
+            {error && <p className="mt-1.5 text-sm text-destructive">{error}</p>}
+        </div>
     );
 }
