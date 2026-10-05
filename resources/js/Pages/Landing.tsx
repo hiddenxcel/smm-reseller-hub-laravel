@@ -1,3 +1,4 @@
+import Capabilities from '@/components/landing/Capabilities';
 import ComparisonTable from '@/components/landing/ComparisonTable';
 import Faq from '@/components/landing/Faq';
 import FeatureGrid from '@/components/landing/FeatureGrid';
@@ -156,7 +157,7 @@ const FAQS = [
     },
     {
         q: 'What language does the bot speak?',
-        a: 'English, French, Kiswahili, Turkish or Hindi, chosen per customer rather than per shop — so one bot can serve people who do not share a language.',
+        a: 'The order bot speaks English, French, Kiswahili, Turkish and Hindi, chosen per customer rather than per shop — so one bot can serve people who do not share a language. The support menu is in English for now.',
     },
     {
         q: 'Can I build my own thing on top?',
@@ -486,6 +487,17 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                     />
 
                     <TwoBots />
+                </Section>
+
+                {/* ---- what each bot does ---- */}
+                <Section id="capabilities">
+                    <SectionHeading
+                        eyebrow="Everything it does"
+                        title="Every command, spelled out"
+                        subtitle="No vague promises. This is what your customers can do on WhatsApp, and what lands on your side when they do."
+                    />
+
+                    <Capabilities />
                 </Section>
 
                 {/* ---- services / pricing ---- */}

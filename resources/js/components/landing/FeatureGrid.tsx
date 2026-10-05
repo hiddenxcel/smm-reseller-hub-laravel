@@ -53,7 +53,7 @@ const FEATURES = [
     },
     {
         icon: Languages,
-        title: 'Five languages',
+        title: 'Order bot in five languages',
         body: 'English, French, Kiswahili, Turkish and Hindi — each customer in their own.',
     },
     {

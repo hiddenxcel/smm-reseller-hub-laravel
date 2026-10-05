@@ -64,8 +64,8 @@ const BOTS = [
         points: [
             { icon: RefreshCw, text: 'Refills, against your guarantee rules' },
             { icon: PackageSearch, text: 'Order status, read from the panel' },
-            { icon: MessageSquare, text: 'Cancel, speed up, partial complaints' },
-            { icon: UserRound, text: 'Hand over to you when it should' },
+            { icon: MessageSquare, text: 'Cancel, speed-up and partial reports, passed to you' },
+            { icon: UserRound, text: 'Hand over to you, on the same number' },
         ],
         chat: {
             title: 'YourPanel · Support',

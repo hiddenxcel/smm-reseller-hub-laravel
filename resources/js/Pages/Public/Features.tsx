@@ -88,8 +88,8 @@ const SERVICES = [
         points: [
             'Refills, checked against your own guarantee window',
             'Order status, read live from the panel',
-            'Cancel and speed-up requests',
-            'Partial and fake-complaint handling',
+            'Cancel and speed-up requests, logged and passed to you',
+            'Partial and fake-completion reports, logged for your review',
             'Top-up problems, and a route to you when it should',
             'Each action can be switched off in your settings',
         ],
@@ -164,7 +164,7 @@ const EVERYTHING = [
     { icon: Layers, title: 'Multiple panels', body: 'Sell from every panel you run through one bot.' },
     { icon: Wallet, title: 'Customer wallets', body: 'Each customer holds a balance that orders debit instantly.' },
     { icon: ShieldCheck, title: 'Official Cloud API', body: "Meta's own API — your number is not at risk." },
-    { icon: Languages, title: 'Five languages', body: 'English, French, Kiswahili, Turkish and Hindi.' },
+    { icon: Languages, title: 'Order bot in five languages', body: 'English, French, Kiswahili, Turkish and Hindi.' },
     { icon: Megaphone, title: 'Broadcast', body: "Message recent customers inside Meta's 24-hour window." },
     { icon: Gift, title: 'Referrals', body: 'Reward customers who bring you more customers.' },
     { icon: BarChart3, title: 'Orders and revenue', body: 'What sold, what it earned, who keeps coming back.' },
@@ -182,7 +182,7 @@ export default function Features({ plans, demoNumber, assistantEnabled }: Props)
         >
             <Seo
                 title="Features"
-                description="Every service in the Resellers Hub platform: the WhatsApp order bot, the support bot, AI chat, AI tickets and rented Cloud API numbers — with what each one actually does."
+                description="Every service in the Auto Resellers Hub platform: the WhatsApp order bot, the support bot, AI chat, AI tickets and rented Cloud API numbers — with what each one actually does."
             />
 
             {/* ---- each service in turn ---- */}

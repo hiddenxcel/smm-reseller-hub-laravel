@@ -41,7 +41,7 @@ const INCLUDED = [
     'Unlimited customers and orders',
     'Sandbox until you choose to go live',
     'Your own payment gateways',
-    'All five bot languages',
+    'Order bot in five languages',
     'API access and logs',
     'Cancel any time',
 ];

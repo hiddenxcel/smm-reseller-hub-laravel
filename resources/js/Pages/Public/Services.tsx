@@ -55,7 +55,7 @@ const SERVICES = [
         solves: [
             'Refills against your guarantee rules',
             'Order status read from the panel',
-            'Cancel, speed up, partial complaints',
+            'Cancel, speed-up and partial reports, passed to you',
         ],
     },
     {
