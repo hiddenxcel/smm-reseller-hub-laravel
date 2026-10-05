@@ -34,6 +34,12 @@ class SkipStepTest extends TestCase
         parent::setUp();
 
         $this->tenant = Tenant::factory()->create();
+
+        // These tests are about the steps that ask for something. The practice
+        // chat that opens the wizard is covered in SimulatorTest.
+        $settings = BotSettings::for($this->tenant->id, 'order');
+        Arr::set($settings, 'shop.bot_tried', true);
+        BotSettings::save($this->tenant->id, 'order', $settings);
     }
 
     private function skipped(): array
@@ -67,7 +73,7 @@ class SkipStepTest extends TestCase
 
         $this->assertTrue($progress->isSkipped(OnboardingStep::ConnectPanel));
         $this->assertFalse($progress->isComplete(OnboardingStep::ConnectPanel));
-        $this->assertSame(0, $progress->completedCount());
+        $this->assertSame(1, $progress->completedCount()); // the practice chat
         $this->assertFalse($progress->isReadyToGoLive());
     }
 
@@ -133,7 +139,7 @@ class SkipStepTest extends TestCase
 
         // Skipped and complete are independent: the data decides completion.
         $this->assertTrue($progress->isComplete(OnboardingStep::ConnectPanel));
-        $this->assertSame(1, $progress->completedCount());
+        $this->assertSame(2, $progress->completedCount());
     }
 
     public function test_the_wizard_page_reports_which_steps_were_skipped(): void
@@ -144,9 +150,9 @@ class SkipStepTest extends TestCase
             ->get(route('onboarding.step', 'panel'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->where('steps.0.skipped', true)
-                ->where('steps.0.complete', false)
-                ->where('steps.1.skipped', false));
+                ->where('steps.1.skipped', true)
+                ->where('steps.1.complete', false)
+                ->where('steps.2.skipped', false));
     }
 
     public function test_a_finished_step_offers_nothing_to_skip(): void
@@ -193,7 +199,7 @@ class SkipStepTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('setup.readyToGoLive', false)
-                ->where('setup.steps.4.skipped', true)
-                ->where('setup.steps.4.complete', false));
+                ->where('setup.steps.5.skipped', true)
+                ->where('setup.steps.5.complete', false));
     }
 }

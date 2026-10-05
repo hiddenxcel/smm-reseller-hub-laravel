@@ -1,4 +1,5 @@
 import OnboardingLayout, { WizardStep } from '@/Layouts/OnboardingLayout';
+import WhatsAppSimulator, { SimulatorConfig } from '@/components/simulator/WhatsAppSimulator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,7 @@ import {
     Rocket,
     Trash2,
 } from 'lucide-react';
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useState } from 'react';
 
 type BotNumber = {
     id: number;
@@ -41,6 +42,8 @@ type Props = {
     recentMessages: LoggedMessage[];
     botNumbers: BotNumber[];
     canSkip: boolean;
+    simulator: SimulatorConfig;
+    simTested: boolean;
 };
 
 export default function TestBot({
@@ -54,6 +57,8 @@ export default function TestBot({
     recentMessages,
     botNumbers,
     canSkip,
+    simulator,
+    simTested,
 }: Props) {
     const numberForm = useForm({ phone: '' });
     // Going live sends no fields, so its rejection arrives on the page's
@@ -79,18 +84,31 @@ export default function TestBot({
 
     const botNumber = botNumbers[0];
 
+    // Either way of seeing the bot work is enough to open the shop. The
+    // simulator sets simTested on the server; this just keeps the button in
+    // step with it without a reload.
+    const [triedHere, setTriedHere] = useState(simTested);
+    const canGoLive = botReplied || triedHere;
+
     return (
         <OnboardingLayout step={step} steps={steps} completed={completed} canSkip={canSkip}>
             <Head title="Test your bot" />
 
-            <div className="max-w-xl">
-                <h1 className="font-heading text-2xl font-extrabold">Test your bot</h1>
+            <div className="grid gap-10 lg:grid-cols-[1fr_22rem] lg:items-start xl:gap-14">
+            <div className="order-2 max-w-xl lg:order-1">
+                <h1 className="font-heading text-3xl font-extrabold">Test your bot</h1>
                 <p className="mt-2 text-muted-foreground">
-                    Send your own bot a message and watch it answer. Nothing here is a simulation
-                    &mdash; this is the same path a real customer takes.
+                    Place an order the way your customer would, using your own services and prices.
+                    The chat beside this is the real bot, in practice mode &mdash; nothing is
+                    charged and nothing reaches your panel.
                 </p>
 
-                <section className="mt-8">
+                <details className="group mt-8 rounded-2xl border border-border p-5 open:bg-muted/30">
+                <summary className="cursor-pointer list-none font-heading font-bold marker:hidden">
+                    Prefer to test on real WhatsApp? <span className="text-sm font-normal text-muted-foreground">(optional)</span>
+                </summary>
+
+                <section className="mt-6">
                     <h2 className="font-heading font-bold">1. Add the number you&rsquo;ll test from</h2>
                     <p className="mt-1.5 text-sm text-muted-foreground">
                         Your bot only answers registered testers until you go live, so a stranger
@@ -195,8 +213,10 @@ export default function TestBot({
                     )}
                 </section>
 
+                </details>
+
                 <section className="mt-10 border-t border-border pt-6">
-                    <h2 className="font-heading font-bold">3. Go live</h2>
+                    <h2 className="font-heading font-bold">Go live</h2>
                     <p className="mt-1.5 text-sm text-muted-foreground">
                         Once your bot has answered, opening the shop means anyone who messages it
                         can order.
@@ -206,7 +226,7 @@ export default function TestBot({
                         <Button
                             type="submit"
                             size="lg"
-                            disabled={goLiveForm.processing || ! botReplied}
+                            disabled={goLiveForm.processing || ! canGoLive}
                             className="w-full"
                         >
                             {goLiveForm.processing ? (
@@ -218,14 +238,19 @@ export default function TestBot({
                         </Button>
                     </form>
 
-                    {! botReplied && (
+                    {! canGoLive && (
                         <p className="mt-2 text-xs text-muted-foreground">
-                            Available once your bot has answered a message.
+                            Available once you have tried your bot &mdash; place a test order in the chat.
                         </p>
                     )}
 
                     <FieldError message={goLiveError} />
                 </section>
+            </div>
+
+            <div className="order-1 lg:sticky lg:top-6 lg:order-2">
+                <WhatsAppSimulator config={simulator} onUsed={() => setTriedHere(true)} />
+            </div>
             </div>
         </OnboardingLayout>
     );

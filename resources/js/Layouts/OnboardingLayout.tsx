@@ -33,10 +33,10 @@ export default function OnboardingLayout({ step, steps, completed, canSkip = tru
     return (
         <div className="min-h-dvh bg-background">
             <header className="border-b border-border/60">
-                <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+                <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
                     <Link href="/" className="font-heading flex items-center gap-2 font-extrabold">
                         <AppLogo />
-                        Resellers Hub
+                        Auto Resellers Hub
                     </Link>
 
                     <p className="text-sm text-muted-foreground">
@@ -57,7 +57,7 @@ export default function OnboardingLayout({ step, steps, completed, canSkip = tru
                 </div>
             </header>
 
-            <div className="mx-auto grid max-w-5xl gap-10 px-4 py-10 lg:grid-cols-[220px_1fr]">
+            <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 lg:grid-cols-[220px_1fr]">
                 <nav aria-label="Setup steps">
                     <ol className="space-y-1">
                         {steps.map((item, index) => {
@@ -167,14 +167,19 @@ function StepLink({
  */
 function SkipControl({ step, required }: { step: string; required: boolean }) {
     const isTestStep = step === 'test';
+    const isTryStep = step === 'try';
 
-    const heading = isTestStep
+    const heading = isTryStep
+      ? 'Want to jump straight to setup?'
+      : isTestStep
         ? 'Not ready to test?'
         : required
           ? 'Cannot do this right now?'
           : 'This step is optional';
 
-    const body = isTestStep
+    const body = isTryStep
+      ? 'No problem — the practice chat is always here for you to come back to.'
+      : isTestStep
         ? 'Your bot stays in sandbox until you have tested it, so only your own test numbers get replies.'
         : required
           ? 'Nothing is lost — your shop just is not finished yet. You can pick this up in Settings whenever you are ready.'
@@ -198,7 +203,7 @@ function SkipControl({ step, required }: { step: string; required: boolean }) {
                 onClick={() => router.post(route('onboarding.skip', step))}
             >
                 <SkipForward className="size-4" aria-hidden />
-                {isTestStep ? 'Test it later' : 'Skip for now'}
+                {isTryStep ? 'Skip the demo' : isTestStep ? 'Test it later' : 'Skip for now'}
             </Button>
         </div>
     );

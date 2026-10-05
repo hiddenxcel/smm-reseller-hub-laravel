@@ -30,6 +30,15 @@ class OnboardingProgress
     public function isComplete(OnboardingStep $step): bool
     {
         return match ($step) {
+            // Done once they have tried it — or once they are clearly past
+            // needing to. A reseller who set a shop up before this step
+            // existed should not be sent back to a demo.
+            OnboardingStep::TryBot => (bool) Arr::get(
+                BotSettings::for($this->tenant->id, 'order'),
+                'shop.bot_tried',
+                false,
+            ) || $this->hasProgressedPast(),
+
             OnboardingStep::ConnectPanel => $this->tenant->panels()
                 ->where('status', 'active')
                 ->exists(),
@@ -135,6 +144,18 @@ class OnboardingProgress
             OnboardingStep::ordered(),
             fn (OnboardingStep $step) => $this->isComplete($step),
         ));
+    }
+
+    /** Has any real setup step been finished? */
+    private function hasProgressedPast(): bool
+    {
+        foreach (OnboardingStep::ordered() as $step) {
+            if ($step !== OnboardingStep::TryBot && $step !== OnboardingStep::TestBot && $this->isComplete($step)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

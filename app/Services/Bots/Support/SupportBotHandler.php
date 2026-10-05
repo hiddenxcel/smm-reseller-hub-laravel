@@ -12,6 +12,7 @@ use App\Services\Ai\AiAnswers;
 use App\Services\Bots\BotHandler;
 use App\Services\Bots\BotMessenger;
 use App\Services\Bots\BotSettings;
+use App\Services\Bots\BotSimulation;
 use App\Services\Guarantee\GuaranteeMatcher;
 use App\Services\Panel\SmmProviderClient;
 use Illuminate\Support\Arr;
@@ -271,7 +272,8 @@ class SupportBotHandler implements BotHandler
 
         // Only fail out when the action actually needs the panel — a
         // partial-completion report is just a note to staff.
-        if ($action->needsPanel() && $panel === null) {
+        // A rehearsal has no panel to ask, and must not ask a real one.
+        if ($action->needsPanel() && $panel === null && ! BotSimulation::active()) {
             $this->messenger->sendText($from, "⚠️ Support isn't fully set up yet. Please try again later.");
             $this->finish($from);
 
@@ -294,8 +296,17 @@ class SupportBotHandler implements BotHandler
 
     // ---- the actions -----------------------------------------------------
 
-    private function reportStatus(string $from, TenantPanel $panel, string $orderId): void
+    private function reportStatus(string $from, ?TenantPanel $panel, string $orderId): void
     {
+        if (BotSimulation::active()) {
+            $this->messenger->sendText(
+                $from,
+                "📦 Order *#{$orderId}*\nStatus: *In progress*\nStart: 1,204\nRemaining: 318".$this->simNote('read live from your panel'),
+            );
+
+            return;
+        }
+
         $result = SmmProviderClient::forPanel($panel)->checkStatus($orderId);
 
         if ($result->failed) {
@@ -317,8 +328,17 @@ class SupportBotHandler implements BotHandler
         $this->messenger->sendText($from, $message, 'STATUS_SUCCESS');
     }
 
-    private function requestRefill(string $from, TenantPanel $panel, string $orderId): void
+    private function requestRefill(string $from, ?TenantPanel $panel, string $orderId): void
     {
+        if (BotSimulation::active()) {
+            $this->messenger->sendText(
+                $from,
+                "♻️ Refill for *#{$orderId}* submitted!\nGuarantee: 30 days ✅".$this->simNote('checked against your guarantee rules, then sent to your panel'),
+            );
+
+            return;
+        }
+
         // Whether a refill is owed depends on the service the order was for,
         // matched against the reseller's own guarantee keywords.
         $verdict = GuaranteeMatcher::forTenant($this->tenantId)
@@ -357,8 +377,17 @@ class SupportBotHandler implements BotHandler
         $this->notifyStaff("♻️ Refill requested for *#{$orderId}* by {$from} (guarantee: {$guarantee})");
     }
 
-    private function requestCancellation(string $from, TenantPanel $panel, string $orderId): void
+    private function requestCancellation(string $from, ?TenantPanel $panel, string $orderId): void
     {
+        if (BotSimulation::active()) {
+            $this->messenger->sendText(
+                $from,
+                "🗑️ Cancellation for *#{$orderId}* has been requested. Our team will confirm shortly.".$this->simNote('your team is alerted with the order ID'),
+            );
+
+            return;
+        }
+
         // Confirm the order exists before promising anything about it.
         if (SmmProviderClient::forPanel($panel)->checkStatus($orderId)->failed) {
             $this->messenger->sendText($from, "❌ Order *#{$orderId}* not found.", 'CANCEL_INVALID');
@@ -424,6 +453,12 @@ class SupportBotHandler implements BotHandler
         );
 
         $this->notifyStaff("👤 {$from} asked to speak to a human — replying in the Support inbox.");
+    }
+
+    /** What the person rehearsing is told about the line above it. */
+    private function simNote(string $what): string
+    {
+        return "\n\n🧪 _Rehearsal: on your live shop this is {$what}._";
     }
 
     private function explainTopupIssue(string $from): void

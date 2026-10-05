@@ -21,6 +21,7 @@ use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SimulatorController;
 use App\Http\Controllers\Site\AssistantController;
 use App\Http\Controllers\Site\BlogController;
 use App\Http\Controllers\Site\ContactController;
@@ -104,6 +105,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/onboarding/test/number', [TestBotController::class, 'storeNumber'])->name('onboarding.test.number.store');
     Route::delete('/onboarding/test/number/{phone}', [TestBotController::class, 'destroyNumber'])->name('onboarding.test.number.destroy');
     Route::post('/onboarding/test/go-live', [TestBotController::class, 'goLive'])->name('onboarding.test.golive');
+
+    // The WhatsApp screen in the browser. Throttled: each message runs a
+    // transaction, and a chat has no need to be faster than a person types.
+    Route::post('/simulator/send', [SimulatorController::class, 'send'])
+        ->middleware('throttle:90,1')
+        ->name('simulator.send');
 
     // "I'll come back to this." Skipping records a decision; it never marks
     // the step done, so the dashboard and go-live still ask for it.

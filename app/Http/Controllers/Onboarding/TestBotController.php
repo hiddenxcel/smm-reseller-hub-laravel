@@ -82,13 +82,17 @@ class TestBotController extends Controller
     {
         $tenant = $request->user();
 
-        if (! TestBotStatus::for($tenant->id)->botHasReplied()) {
+        $settings = BotSettings::for($tenant->id, 'order');
+
+        // Either way of seeing it work counts: a real message on WhatsApp, or a
+        // test order in the simulator against the reseller's own services.
+        if (! TestBotStatus::for($tenant->id)->botHasReplied()
+            && ! Arr::get($settings, 'shop.sim_tested', false)) {
             throw ValidationException::withMessages([
-                'go_live' => 'Your bot has not answered a message yet. Send it one first.',
+                'go_live' => 'Try your bot first — chat with it on the left, or message it on WhatsApp.',
             ]);
         }
 
-        $settings = BotSettings::for($tenant->id, 'order');
         Arr::set($settings, 'shop.bot_tested', true);
         BotSettings::save($tenant->id, 'order', $settings);
 

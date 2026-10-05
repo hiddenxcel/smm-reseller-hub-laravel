@@ -14,6 +14,7 @@ use App\Services\Ai\AiAnswers;
 use App\Services\Bots\BotHandler;
 use App\Services\Bots\BotLang;
 use App\Services\Bots\BotMessenger;
+use App\Services\Bots\BotSimulation;
 use App\Services\Bots\BotSettings;
 use App\Services\Customers\CustomerReferrals;
 use App\Services\Payments\Gateway;
@@ -731,7 +732,10 @@ class OrderBotHandler implements BotHandler
 
         // Forwarding to the panel is a third-party call, so it happens off the
         // request — the customer is told their order is in either way.
-        SubmitOrderToPanel::dispatch($result->order->id);
+        // A rehearsal never reaches the panel — see BotSimulation.
+        if (! BotSimulation::active()) {
+            SubmitOrderToPanel::dispatch($result->order->id);
+        }
 
         $this->finish($from);
 
@@ -866,6 +870,13 @@ class OrderBotHandler implements BotHandler
         array $context,
         BotCustomer $customer,
     ): void {
+        // A rehearsal pays instantly instead of opening a real gateway.
+        if (BotSimulation::active()) {
+            $this->simulateTopup($from, $amount, $context, $customer);
+
+            return;
+        }
+
         $usable = $this->gateways->usableFor($this->tenantId);
 
         if ($usable->isEmpty()) {
@@ -881,6 +892,33 @@ class OrderBotHandler implements BotHandler
         }
 
         $this->askGateway($from, $usable, $amount, $context);
+    }
+
+    /**
+     * The simulator's stand-in for a payment: the wallet is credited at once,
+     * and the order that was waiting on it goes through.
+     *
+     * Said in English whatever the customer's language, like the staff alerts —
+     * it is a note to the person trying the bot, not something a customer sees.
+     */
+    private function simulateTopup(string $from, string $amount, array $context, BotCustomer $customer): void
+    {
+        $customer->credit($amount);
+
+        $this->messenger->sendText(
+            $from,
+            "🧪 *Demo payment*\nOn your live shop the customer pays through your own gateway here. For this rehearsal {$this->money($amount)} was added to the wallet.",
+        );
+
+        $hasOrder = filled($context['service'] ?? null) && filled($context['amount'] ?? null);
+
+        if ($hasOrder) {
+            $this->placeOrder($from, $customer->fresh(), $context);
+
+            return;
+        }
+
+        $this->finish($from);
     }
 
     /**

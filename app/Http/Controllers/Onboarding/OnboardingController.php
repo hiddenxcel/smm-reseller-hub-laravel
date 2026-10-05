@@ -11,6 +11,9 @@ use App\Models\TenantWhatsApp;
 use App\Services\Onboarding\OnboardingProgress;
 use App\Services\Onboarding\OnboardingStep;
 use App\Services\Onboarding\TestBotStatus;
+use App\Services\Bots\BotSettings;
+use App\Services\Simulator\BotSimulator;
+use Illuminate\Support\Arr;
 use App\Services\Panel\ServiceCatalogue;
 use App\Services\Payments\Gateway;
 use Illuminate\Http\RedirectResponse;
@@ -63,6 +66,11 @@ class OnboardingController extends Controller
         ];
 
         return match ($current) {
+            OnboardingStep::TryBot => Inertia::render('Onboarding/TryBot', [
+                ...$shared,
+                'simulator' => $this->simulatorProps($request),
+            ]),
+
             OnboardingStep::ConnectPanel => Inertia::render('Onboarding/ConnectPanel', $shared),
 
             OnboardingStep::ImportServices => $this->importServices($request, $shared),
@@ -96,6 +104,8 @@ class OnboardingController extends Controller
 
             OnboardingStep::TestBot => Inertia::render('Onboarding/TestBot', [
                 ...$shared,
+                'simulator' => $this->simulatorProps($request),
+                'simTested' => (bool) Arr::get(BotSettings::for($request->user()->id, 'order'), 'shop.sim_tested', false),
                 ...TestBotStatus::for($request->user()->id)->toArray(),
                 'botNumbers' => TenantWhatsApp::where('tenant_id', $request->user()->id)
                     ->get()
@@ -106,6 +116,23 @@ class OnboardingController extends Controller
                     ]),
             ]),
         };
+    }
+
+    /**
+     * What the in-browser WhatsApp screen needs to draw itself.
+     *
+     * @return array<string, mixed>
+     */
+    private function simulatorProps(Request $request): array
+    {
+        $tenant = $request->user();
+
+        return [
+            'endpoint' => route('simulator.send'),
+            'business' => $tenant->business_name,
+            'bots' => BotSimulator::BOTS,
+            'startingBalance' => BotSimulator::STARTING_BALANCE,
+        ];
     }
 
     /**

@@ -84,7 +84,7 @@ class DashboardTest extends TestCase
             ->has('botStatus')
             ->has('trend', DashboardMetrics::TREND_DAYS)
             ->has('statusMix')
-            ->has('setup.steps', 5)
+            ->has('setup.steps', 6)
         );
     }
 

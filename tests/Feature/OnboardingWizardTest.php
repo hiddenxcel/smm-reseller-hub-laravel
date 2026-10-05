@@ -12,6 +12,7 @@ use App\Services\Onboarding\OnboardingProgress;
 use App\Services\Onboarding\OnboardingStep;
 use App\Services\Payments\Gateway;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
@@ -31,6 +32,12 @@ class OnboardingWizardTest extends TestCase
         parent::setUp();
 
         $this->tenant = Tenant::factory()->create();
+
+        // The wizard opens on a practice chat; these tests are about the steps
+        // after it, so it has been tried already. See test_a_fresh_tenant_*.
+        $settings = BotSettings::for($this->tenant->id, 'order');
+        Arr::set($settings, 'shop.bot_tried', true);
+        BotSettings::save($this->tenant->id, 'order', $settings);
     }
 
     private function completePanelStep(): TenantPanel
@@ -97,6 +104,15 @@ class OnboardingWizardTest extends TestCase
         ])->assertRedirect(route('onboarding', absolute: false));
     }
 
+    public function test_a_fresh_tenant_starts_with_the_practice_chat(): void
+    {
+        $fresh = Tenant::factory()->create();
+
+        $this->actingAs($fresh, 'tenant')
+            ->get(route('onboarding'))
+            ->assertRedirect(route('onboarding.step', OnboardingStep::TryBot->value));
+    }
+
     public function test_a_fresh_tenant_starts_at_the_panel_step(): void
     {
         $this->actingAs($this->tenant, 'tenant')
@@ -152,9 +168,9 @@ class OnboardingWizardTest extends TestCase
         $response->assertOk();
 
         $response->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('completed', 1)
+            ->where('completed', 2)
             ->where('readyToGoLive', false)
-            ->has('steps', 5)
+            ->has('steps', 6)
         );
     }
 
