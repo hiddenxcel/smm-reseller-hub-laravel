@@ -1,3 +1,4 @@
+import PhoneFrame from '@/components/PhoneFrame';
 import { useEffect, useRef, useState } from 'react';
 
 type Message = {
@@ -45,23 +46,7 @@ const REPLAY_PAUSE = 3200;
 export default function PhoneDemo() {
     const [visible, setVisible] = useState<Message[]>([SCRIPT[0]]);
     const [typing, setTyping] = useState(false);
-    const [clock, setClock] = useState('09:41');
     const chatRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const tick = () =>
-            setClock(
-                new Date().toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                }),
-            );
-
-        tick();
-        const timer = window.setInterval(tick, 30_000);
-
-        return () => window.clearInterval(timer);
-    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -116,18 +101,8 @@ export default function PhoneDemo() {
     }, [visible, typing]);
 
     return (
-        <div className="soft-lg mx-auto w-full max-w-[320px] rounded-[2.5rem] border border-border bg-card p-3">
-            <div className="overflow-hidden rounded-[2rem] bg-[#0b141a]">
-                {/* status bar */}
-                <div className="flex items-center justify-between px-5 py-2 text-[11px] font-medium text-white/80">
-                    <span>{clock}</span>
-                    <span className="flex gap-1">
-                        <span aria-hidden>▮</span>
-                        <span aria-hidden>◗</span>
-                        <span aria-hidden>▮</span>
-                    </span>
-                </div>
-
+        <PhoneFrame className="max-w-[19.5rem]" footerBg="#0b141a">
+            <>
                 {/* chat header */}
                 <div className="flex items-center gap-3 bg-[#1f2c34] px-4 py-3">
                     <span
@@ -153,7 +128,7 @@ export default function PhoneDemo() {
                     that failed to load rather than one about to start. */}
                 <div
                     ref={chatRef}
-                    className="flex h-[300px] flex-col justify-end space-y-2 overflow-y-auto bg-[#0b141a] px-3 py-4 sm:h-[380px]"
+                    className="flex h-[22rem] flex-col justify-end space-y-2 overflow-y-auto bg-[#0b141a] px-3 py-4 sm:h-[26rem]"
                     aria-live="polite"
                     aria-label="Example conversation with the order bot"
                 >
@@ -163,8 +138,8 @@ export default function PhoneDemo() {
 
                     {typing && <TypingBubble />}
                 </div>
-            </div>
-        </div>
+            </>
+        </PhoneFrame>
     );
 }
 

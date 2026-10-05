@@ -1,3 +1,4 @@
+import PhoneFrame from '@/components/PhoneFrame';
 import { Bot, Check, CheckCheck, Headset, ListChecks, Loader2, RotateCcw, Send, X } from 'lucide-react';
 import { FormEvent, Fragment, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 
@@ -229,8 +230,8 @@ export default function WhatsAppSimulator({
             </div>
 
             {/* ---- the phone ---- */}
-            <div className="soft-lg rounded-[2.25rem] border border-border bg-card p-2.5">
-                <div className="relative flex h-[34rem] flex-col overflow-hidden rounded-[1.75rem] bg-[#0b141a] sm:h-[36rem]">
+            <PhoneFrame className="max-w-[21.5rem]" screenClassName="h-[37rem] sm:h-[38.5rem]">
+                <>
                     <div className="flex items-center gap-2.5 bg-[#1f2c34] px-3.5 py-3">
                         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                             <info.icon className="size-4" />
@@ -375,10 +376,10 @@ export default function WhatsAppSimulator({
                             </div>
                         </div>
                     )}
-                </div>
-            </div>
+                </>
+            </PhoneFrame>
 
-            <p className="mt-3 text-center text-xs text-muted-foreground">{info.hint}</p>
+            <p className="mt-4 text-center text-xs text-muted-foreground">{info.hint}</p>
         </div>
     );
 }

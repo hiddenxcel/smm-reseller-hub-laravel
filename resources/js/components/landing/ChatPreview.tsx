@@ -1,3 +1,5 @@
+import PhoneFrame from '@/components/PhoneFrame';
+
 type Line = {
     from: 'bot' | 'customer';
     text: string;
@@ -20,8 +22,8 @@ export default function ChatPreview({
     lines: Line[];
 }) {
     return (
-        <div className="soft-lg mx-auto w-full max-w-sm rounded-[2rem] border border-border bg-card p-2.5">
-            <div className="overflow-hidden rounded-[1.5rem] bg-[#0b141a]">
+        <PhoneFrame className="max-w-[19.5rem]" footerBg="#0b141a">
+            <>
                 <div className="flex items-center gap-2.5 bg-[#1f2c34] px-3.5 py-2.5">
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm text-primary-foreground">
                         ●
@@ -34,7 +36,7 @@ export default function ChatPreview({
                     </span>
                 </div>
 
-                <div className="space-y-2 px-3 py-4">
+                <div className="min-h-[19rem] space-y-2 px-3 py-4">
                     {lines.map((line, index) => (
                         <div
                             key={index}
@@ -53,7 +55,7 @@ export default function ChatPreview({
                         </div>
                     ))}
                 </div>
-            </div>
-        </div>
+            </>
+        </PhoneFrame>
     );
 }
