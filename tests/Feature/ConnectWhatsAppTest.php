@@ -218,4 +218,59 @@ class ConnectWhatsAppTest extends TestCase
             ])
             ->assertSessionHasErrors(['phone_number_id', 'token']);
     }
+
+    // ---- disconnecting ----------------------------------------------------
+
+    public function test_it_disconnects_a_number_of_your_own(): void
+    {
+        $number = TenantWhatsApp::factory()->for($this->tenant)->create(['source' => 'own', 'bot_type' => 'order']);
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->delete(route('onboarding.whatsapp.disconnect', $number->id))
+            ->assertRedirect(route('onboarding'));
+
+        $this->assertDatabaseCount('tenant_whatsapp', 0);
+    }
+
+    public function test_a_disconnected_number_frees_its_bot_for_a_replacement(): void
+    {
+        $old = TenantWhatsApp::factory()->for($this->tenant)->create(['source' => 'own', 'bot_type' => 'order']);
+
+        // Refused while the old number holds the bot...
+        $this->actingAs($this->tenant, 'tenant')
+            ->post(route('onboarding.whatsapp.store'), $this->payload(['phone_number_id' => 'NEW123']))
+            ->assertSessionHasErrors('bot_type');
+
+        // ...and accepted once it has been let go.
+        $this->actingAs($this->tenant, 'tenant')
+            ->delete(route('onboarding.whatsapp.disconnect', $old->id));
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->post(route('onboarding.whatsapp.store'), $this->payload(['phone_number_id' => 'NEW123']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('tenant_whatsapp', ['phone_number_id' => 'NEW123']);
+    }
+
+    public function test_it_cannot_disconnect_another_tenants_number(): void
+    {
+        $other = TenantWhatsApp::factory()->for(Tenant::factory()->create())->create(['source' => 'own']);
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->delete(route('onboarding.whatsapp.disconnect', $other->id))
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('tenant_whatsapp', 1);
+    }
+
+    public function test_a_rented_number_is_not_removed_this_way(): void
+    {
+        $rented = TenantWhatsApp::factory()->for($this->tenant)->create(['source' => 'rented']);
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->delete(route('onboarding.whatsapp.disconnect', $rented->id))
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('tenant_whatsapp', 1);
+    }
 }

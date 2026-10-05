@@ -59,6 +59,25 @@ export function WhatsAppTab({
                                         {number.source === 'rented' && ' · rented from us'}
                                     </p>
                                 </div>
+
+                                {number.source !== 'rented' && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            if (window.confirm(`Disconnect ${number.display_number ?? number.phone_number_id}? It stays yours in Meta — we just stop answering on it.`)) {
+                                                router.delete(
+                                                    route('onboarding.whatsapp.disconnect', number.id),
+                                                    { preserveScroll: true },
+                                                );
+                                            }
+                                        }}
+                                        aria-label={`Disconnect ${number.display_number ?? number.phone_number_id}`}
+                                    >
+                                        <Trash2 className="size-3.5" />
+                                    </Button>
+                                )}
                             </li>
                         ))}
                     </ul>

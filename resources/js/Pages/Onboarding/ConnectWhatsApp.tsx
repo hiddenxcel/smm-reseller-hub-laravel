@@ -118,6 +118,16 @@ function ConnectedList({ numbers, rentals }: { numbers: ConnectedNumber[]; renta
         });
     };
 
+    const disconnect = (number: ConnectedNumber) => {
+        if (! window.confirm(`Disconnect ${number.display_number ?? number.phone_number_id}? It stays yours in Meta — we just stop answering on it.`)) {
+            return;
+        }
+
+        router.delete(route('onboarding.whatsapp.disconnect', number.id), {
+            preserveScroll: true,
+        });
+    };
+
     return (
         <div className="mt-6 rounded-xl border border-border bg-muted/40 p-4">
             <p className="mb-2 text-sm font-semibold">Already connected</p>
@@ -146,6 +156,17 @@ function ConnectedList({ numbers, rentals }: { numbers: ConnectedNumber[]; renta
                                     size="sm"
                                     onClick={() => release(rental)}
                                     aria-label={`Release ${number.display_number}`}
+                                >
+                                    <Trash2 className="size-3.5" />
+                                </Button>
+                            )}
+                            {! rental && number.source !== 'rented' && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => disconnect(number)}
+                                    aria-label={`Disconnect ${number.display_number ?? number.phone_number_id}`}
                                 >
                                     <Trash2 className="size-3.5" />
                                 </Button>

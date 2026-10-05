@@ -64,6 +64,32 @@ class ConnectWhatsAppController extends Controller
     }
 
     /**
+     * Disconnect a number the reseller brought themselves.
+     *
+     * Without this there was no way to swap one in: a number holds its bot
+     * (see assertBotIsUnclaimed), so connecting a replacement was refused for
+     * as long as the old one stayed, and nothing on screen could remove it.
+     *
+     * Only our own record goes. The number, its WhatsApp account and the access
+     * token are the reseller's in Meta and are not touched there. A rented
+     * number is not removable here: it carries a rental that is billed, and
+     * handing it back is what ends that.
+     */
+    public function destroy(Request $request, int $number): RedirectResponse
+    {
+        $row = TenantWhatsApp::withoutTenantScope()
+            ->where('tenant_id', $request->user()->id)
+            ->where('source', 'own')
+            ->whereKey($number)
+            ->firstOrFail();
+
+        $row->delete();
+
+        return $this->afterSave($request)
+            ->with('status', 'Number disconnected.');
+    }
+
+    /**
      * One bot per number, and one number per bot: if another of this
      * reseller's numbers already runs the order bot, a second cannot also
      * claim it — an inbound message would have no single answer to "whose bot

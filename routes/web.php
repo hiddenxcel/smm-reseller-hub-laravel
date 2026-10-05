@@ -108,6 +108,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/onboarding/panel', [ConnectPanelController::class, 'store'])->name('onboarding.panel.store');
     Route::post('/onboarding/services', [ImportServicesController::class, 'store'])->name('onboarding.services.store');
     Route::post('/onboarding/whatsapp', [ConnectWhatsAppController::class, 'store'])->name('onboarding.whatsapp.store');
+    // Your own number only — a rented one is handed back through release.
+    Route::delete('/onboarding/whatsapp/{number}', [ConnectWhatsAppController::class, 'destroy'])
+        ->whereNumber('number')
+        ->name('onboarding.whatsapp.disconnect');
     Route::post('/onboarding/whatsapp/rent', [RentNumberController::class, 'store'])->name('onboarding.whatsapp.rent');
     Route::delete('/onboarding/whatsapp/rent/{rental}', [RentNumberController::class, 'destroy'])->name('onboarding.whatsapp.release');
     Route::post('/onboarding/payments', [SetupPaymentsController::class, 'store'])->name('onboarding.payments.store');
