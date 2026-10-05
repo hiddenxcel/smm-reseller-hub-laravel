@@ -9,6 +9,7 @@ use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\TenantWhatsApp;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
@@ -72,7 +73,7 @@ class BotRouter
             return BotRoute::GateLocked;
         }
 
-        if ($this->isSpam($tenant->id, $target, $message->from)) {
+        if ($this->isSpam($tenant->id, $target, $message->from, $message->text)) {
             return BotRoute::SpamBlocked;
         }
 
@@ -105,7 +106,19 @@ class BotRouter
             && BotSettings::isTestNumber($tenantId, $from);
     }
 
-    private function isSpam(int $tenantId, string $bot, string $from): bool
+    /**
+     * Is this sender repeating themselves?
+     *
+     * What is counted is the same message sent again, not messages in general.
+     * Counting every message treated an ordinary order as an attack: choosing a
+     * platform, a service, a quantity, a link and confirming is eight messages
+     * in a couple of minutes, and the fourth was dropped without a word — the
+     * customer just saw the bot stop answering.
+     *
+     * Once tripped, the sender stays blocked for the configured block time,
+     * not merely until the counting window runs out.
+     */
+    private function isSpam(int $tenantId, string $bot, string $from, string $text = ''): bool
     {
         $settings = BotSettings::for($tenantId, $bot);
 
@@ -119,9 +132,20 @@ class BotRouter
 
         $threshold = (int) Arr::get($settings, 'spam.repeat_threshold', 3);
         $window = (int) Arr::get($settings, 'spam.window_minutes', 5) * 60;
-        $key = "bot:{$tenantId}:{$from}";
+        $blockFor = (int) Arr::get($settings, 'spam.disable_minutes', 60) * 60;
+
+        $blocked = "bot-blocked:{$tenantId}:{$from}";
+
+        if (Cache::has($blocked)) {
+            return true;
+        }
+
+        // Case and surrounding space do not make a message a different one.
+        $key = "bot:{$tenantId}:{$from}:".md5(mb_strtolower(trim($text)));
 
         if (RateLimiter::tooManyAttempts($key, $threshold)) {
+            Cache::put($blocked, true, $blockFor);
+
             return true;
         }
 
