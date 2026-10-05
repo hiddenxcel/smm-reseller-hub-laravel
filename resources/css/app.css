@@ -255,6 +255,54 @@
     box-shadow: var(--shadow-inset);
   }
 
+  /*
+    Landing-page card surface. One recipe for every card so the page reads as a
+    system: a faint top-lit gradient, a hairline border, a soft shadow, and on
+    hover a lift with a green-tinted border and glow. Hover lift is gated to
+    devices that can hover so a tap on a phone does not leave a card stuck up.
+  */
+  .card-surface {
+    position: relative;
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--primary) 5%, var(--card)) 0%,
+      var(--card) 55%
+    );
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -12px rgb(15 23 42 / 0.12);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+
+  @media (hover: hover) {
+    .card-surface:hover {
+      transform: translateY(-4px);
+      border-color: color-mix(in oklab, var(--primary) 45%, var(--border));
+      box-shadow: 0 2px 4px rgb(15 23 42 / 0.05),
+        0 18px 40px -14px color-mix(in oklab, var(--primary) 40%, transparent);
+    }
+  }
+
+  /* Dotted backdrop for the hero, faded out toward the edges. */
+  .bg-dots {
+    background-image: radial-gradient(
+      color-mix(in oklab, var(--foreground) 14%, transparent) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 75%);
+  }
+
+  .text-gradient {
+    background-image: linear-gradient(
+      100deg,
+      var(--primary),
+      color-mix(in oklab, var(--primary) 55%, #0ea5e9)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
   /* The browser default bar — arrows, full-width track — is heavier than the
      cards it sits in. This is the same scroll, drawn to match the surface:
      no arrows, a track that disappears, a thumb that only firms up on hover.

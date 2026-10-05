@@ -103,10 +103,10 @@ export default function PricingTable({
                         <Reveal key={key} delay={index * 80} index={index} card className="h-full">
                             <div
                                 className={[
-                                    'relative flex h-full flex-col rounded-2xl p-6 transition-transform duration-300 hover:-translate-y-1',
+                                    'card-surface relative flex h-full flex-col rounded-2xl p-6 sm:p-7',
                                     featured
-                                        ? 'border-2 border-primary bg-card shadow-lg'
-                                        : 'soft border border-transparent bg-card',
+                                        ? 'border-2 border-primary shadow-xl shadow-primary/15 lg:scale-[1.03]'
+                                        : '',
                                 ].join(' ')}
                             >
                                 {featured && (

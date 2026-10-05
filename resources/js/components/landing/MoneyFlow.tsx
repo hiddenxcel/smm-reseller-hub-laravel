@@ -39,7 +39,7 @@ export default function MoneyFlow() {
                 {STEPS.map((item, index) => (
                     <Fragment key={item.step}>
                         <Reveal delay={index * 120} index={index} card className="h-full">
-                            <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5">
+                            <div className="card-surface flex h-full flex-col rounded-2xl p-5 sm:p-6">
                                 <div className="mb-3 flex items-center gap-3">
                                     <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                                         <item.icon className="size-5" />
@@ -70,7 +70,7 @@ export default function MoneyFlow() {
 
             {/* The claim the whole section exists to make. */}
             <Reveal delay={200}>
-                <div className="mt-4 flex items-start gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-5">
+                <div className="mt-4 flex items-start gap-3 rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/10 to-primary/5 p-5 sm:p-6">
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                         <Ban className="size-5" />
                     </span>

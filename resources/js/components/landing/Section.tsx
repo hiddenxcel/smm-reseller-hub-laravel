@@ -19,8 +19,8 @@ export function Section({ id, muted, tight, className = '', children }: SectionP
         <section
             id={id}
             className={[
-                'px-4',
-                tight ? 'py-8 sm:py-10' : 'py-16 sm:py-20',
+                'px-4 sm:px-6',
+                tight ? 'py-8 sm:py-10' : 'py-14 sm:py-20 lg:py-24',
                 muted ? 'bg-muted/40' : '',
                 className,
             ].join(' ')}
@@ -42,17 +42,18 @@ export function SectionHeading({
     // Every heading reveals on scroll, so no caller has to remember to wrap
     // one — and none of them can drift out of step with the rest.
     return (
-        <Reveal className="mx-auto mb-12 max-w-2xl text-center">
+        <Reveal className="mx-auto mb-10 max-w-2xl text-center sm:mb-14">
             {eyebrow && (
-                <p className="mb-3 text-sm font-semibold tracking-wide text-primary uppercase">
+                <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
+                    <span aria-hidden className="size-1.5 rounded-full bg-primary" />
                     {eyebrow}
                 </p>
             )}
-            <h2 className="text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">
+            <h2 className="text-[1.75rem] leading-tight font-extrabold tracking-tight text-balance sm:text-4xl lg:text-5xl">
                 {title}
             </h2>
             {subtitle && (
-                <p className="mt-4 text-lg text-pretty text-muted-foreground">{subtitle}</p>
+                <p className="mt-4 text-base text-pretty sm:text-lg text-muted-foreground">{subtitle}</p>
             )}
         </Reveal>
     );

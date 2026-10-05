@@ -191,7 +191,7 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
     return (
         <>
             {/* Spelled out rather than using <Seo>, which would title this
-                "X — Resellers Hub" and read as a subpage. The tags are still
+                "X — Auto Resellers Hub" and read as a subpage. The tags are still
                 keyed: Inertia drops any `inertia`-marked default a page does
                 not restate, so leaving them off would strip the description
                 from the one page most likely to be shared. */}
@@ -203,7 +203,7 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                 />
                 <meta
                     property="og:title"
-                    content="Resellers Hub — WhatsApp Bots for SMM Panels"
+                    content="Auto Resellers Hub — WhatsApp Bots for SMM Panels"
                     head-key="og:title"
                 />
                 <meta
@@ -213,7 +213,7 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                 />
                 <meta
                     name="twitter:title"
-                    content="Resellers Hub — WhatsApp Bots for SMM Panels"
+                    content="Auto Resellers Hub — WhatsApp Bots for SMM Panels"
                     head-key="twitter:title"
                 />
                 <meta
@@ -249,11 +249,15 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                 {/* ---- hero ---- */}
                 {/* The nav floats rather than occupying a row, so the hero
                     starts under it instead of after it. */}
-                <Section className="relative overflow-hidden pt-14 pb-10 sm:pt-16">
+                <Section className="relative overflow-hidden pt-12 pb-12 sm:pt-16 sm:pb-16 lg:pt-20">
                     {/* Two soft washes behind the fold. Enough to stop the
                         canvas reading as flat white, far short of the neon
                         gradients that make a payments product look like a
                         pump-and-dump. */}
+                    <div
+                        aria-hidden
+                        className="bg-dots pointer-events-none absolute inset-0 -z-10"
+                    />
                     <div
                         aria-hidden
                         className="pointer-events-none absolute -top-40 -right-32 -z-10 size-[32rem] rounded-full bg-primary/10 blur-3xl"
@@ -296,9 +300,9 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                                 the first screen is the one that has to work,
                                 and it was giving the headline the least room. */}
                             <Reveal delay={80}>
-                                <h1 className="font-heading text-[2.75rem] leading-[1.05] font-black tracking-[-0.02em] text-balance sm:text-6xl">
+                                <h1 className="font-heading text-[2.4rem] leading-[1.05] font-black tracking-[-0.02em] text-balance sm:text-6xl lg:text-7xl">
                                     WhatsApp bots for your{' '}
-                                    <span className="relative text-primary">
+                                    <span className="text-gradient relative">
                                         SMM panel
                                         {/* Underlined rather than just coloured:
                                             it marks the phrase as the point of
@@ -315,15 +319,15 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                                 The mechanism is the section below; this line
                                 has to earn the scroll. */}
                             <Reveal delay={160}>
-                                <p className="mx-auto mt-5 max-w-lg text-lg text-pretty text-muted-foreground lg:mx-0">
+                                <p className="mx-auto mt-5 max-w-lg text-base text-pretty sm:text-lg text-muted-foreground lg:mx-0">
                                     Sell followers, likes and views around the clock — paid by
                                     mobile money or crypto, without you lifting a finger.
                                 </p>
                             </Reveal>
 
                             <Reveal delay={240}>
-                                <div className="mt-8 flex flex-wrap justify-center gap-3 lg:justify-start">
-                                    <Button size="lg" asChild>
+                                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
+                                    <Button size="lg" className="w-full shadow-lg shadow-primary/25 sm:w-auto" asChild>
                                         <Link href={route('register')}>
                                             <Rocket className="size-4" />
                                             Start free
@@ -332,7 +336,7 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                                     {/* Points at the demo rather than the price
                                         list: someone who is not sure yet wants to
                                         see it work, not to find out what it costs. */}
-                                    <Button size="lg" variant="outline" asChild>
+                                    <Button size="lg" variant="outline" className="w-full sm:w-auto" asChild>
                                         <a href="#demo">
                                             <PlayCircle className="size-4" />
                                             See it work
@@ -364,7 +368,7 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                                 list is both true and more use to a reseller
                                 deciding whether this fits their shop. */}
                             <Reveal delay={320}>
-                                <div className="mt-9 border-t border-border/70 pt-6">
+                                <div className="card-surface mx-auto mt-9 max-w-md rounded-2xl p-5 text-left lg:mx-0">
                                     <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                                         Your bot handles
                                     </p>
@@ -405,7 +409,7 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                         centred columns the claims had nothing holding them and
                         the padding ran to twice the height of the content, so
                         the whole strip read as a gap between two sections. */}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                         {TRUST.map((item, index) => (
                             <Reveal
                                 key={item.label}
@@ -414,12 +418,12 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                                 card
                                 className="h-full"
                             >
-                                <div className="flex h-full flex-col rounded-2xl border border-border/70 bg-card p-5 transition-colors duration-300 hover:border-primary/40">
-                                    <span className="mb-3 flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                <div className="card-surface flex h-full flex-col rounded-2xl p-5">
+                                    <span className="mb-3 flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
                                         <item.icon className="size-4" />
                                     </span>
 
-                                    <p className="font-heading text-2xl leading-none font-extrabold text-primary">
+                                    <p className="font-heading text-xl leading-none font-extrabold text-primary sm:text-2xl">
                                         {item.value}
                                     </p>
 
@@ -444,7 +448,7 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                 {/* ---- why us ---- */}
                 <Section>
                     <SectionHeading
-                        eyebrow="Why Resellers Hub"
+                        eyebrow="Why Auto Resellers Hub"
                         title="Built for resellers, not for end customers"
                         subtitle="During a gold rush, sell shovels. You already have the customers — this is the infrastructure that serves them."
                     />
@@ -452,10 +456,10 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                     <div className="grid gap-6 md:grid-cols-3">
                         {WHY.map((item, index) => (
                             <Reveal key={item.title} delay={index * 100} index={index}>
-                                <Card className="soft h-full border-transparent transition-transform duration-300 hover:-translate-y-1">
-                                    <CardContent className="pt-6">
-                                        <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-                                            <item.icon className="size-5" />
+                                <Card className="card-surface h-full rounded-2xl py-0 shadow-none">
+                                    <CardContent className="p-6 sm:p-7">
+                                        <span className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md shadow-primary/25">
+                                            <item.icon className="size-6" />
                                         </span>
                                         <h3 className="font-heading mb-2 text-lg font-bold">
                                             {item.title}
@@ -514,11 +518,15 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                         subtitle="Four steps between signing up and your first automated order."
                     />
 
-                    <ol className="grid gap-6 md:grid-cols-4">
+                    <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
                         {STEPS.map((step, index) => (
-                            <li key={step.title} className="relative">
-                                <Reveal delay={index * 110} index={index}>
-                                    <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                            <li key={step.title} className="relative h-full">
+                                <Reveal delay={index * 110} index={index} card className="h-full">
+                                  <div className="card-surface h-full rounded-2xl p-5 sm:p-6">
+                                    <span aria-hidden className="font-heading absolute top-4 right-5 text-4xl font-black text-primary/10">
+                                        0{index + 1}
+                                    </span>
+                                    <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/25">
                                         <step.icon className="size-5" />
                                     </span>
                                     <p className="mb-1 text-xs font-semibold text-primary">
@@ -528,6 +536,7 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                                     <p className="text-sm leading-relaxed text-muted-foreground">
                                         {step.body}
                                     </p>
+                                  </div>
                                 </Reveal>
                             </li>
                         ))}
@@ -602,7 +611,7 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                             page background: this is the last thing a reader
                             passes, and it should read as an invitation rather
                             than as another paragraph. */}
-                        <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-14 text-center text-primary-foreground sm:px-12">
+                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-[color-mix(in_oklab,var(--primary)_70%,#0b3b2e)] px-6 py-12 text-center text-primary-foreground shadow-xl shadow-primary/20 sm:px-12 sm:py-16">
                             <div
                                 aria-hidden
                                 className="pointer-events-none absolute -top-24 -right-20 size-80 rounded-full bg-white/10 blur-3xl"
@@ -613,7 +622,7 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                             />
 
                             <div className="relative">
-                                <h2 className="font-heading text-3xl font-extrabold text-balance sm:text-4xl">
+                                <h2 className="font-heading text-[1.75rem] font-extrabold text-balance sm:text-4xl">
                                     Put your panel on WhatsApp today
                                 </h2>
 
@@ -622,8 +631,8 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                                     decide to go live.
                                 </p>
 
-                                <div className="mt-8 flex flex-wrap justify-center gap-3">
-                                    <Button size="lg" variant="secondary" asChild>
+                                <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                                    <Button size="lg" variant="secondary" className="w-full sm:w-auto" asChild>
                                         <Link href={route('register')}>
                                             <Rocket className="size-4" />
                                             Create your account
@@ -633,7 +642,7 @@ export default function Landing({ plans, gateways, demoNumber, assistantEnabled 
                                     <Button
                                         size="lg"
                                         variant="outline"
-                                        className="border-white/30 bg-transparent text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
+                                        className="w-full border-white/30 bg-transparent sm:w-auto text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
                                         asChild
                                     >
                                         <a href="#demo">

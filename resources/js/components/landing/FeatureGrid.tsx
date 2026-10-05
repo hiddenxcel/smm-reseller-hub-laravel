@@ -85,7 +85,7 @@ export default function FeatureGrid() {
         <div>
             {/* ---- the one that unblocks a start ---- */}
             <Reveal>
-                <div className="mb-6 grid items-center gap-8 rounded-3xl border border-primary/20 bg-primary/5 p-6 sm:p-10 lg:grid-cols-2">
+                <div className="mb-6 grid items-center gap-8 rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 sm:p-10 lg:grid-cols-2">
                     <div>
                         <p className="mb-3 flex w-fit items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold tracking-wide text-primary uppercase">
                             <Phone className="size-3.5" />
@@ -153,11 +153,11 @@ export default function FeatureGrid() {
             </Reveal>
 
             {/* ---- everything else ---- */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
                 {FEATURES.map((feature, index) => (
                     <Reveal key={feature.title} delay={index * 60} index={index} card className="h-full">
-                        <div className="group flex h-full flex-col rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40">
-                            <span className="mb-3 flex size-10 items-center justify-center rounded-xl bg-accent text-accent-foreground transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground">
+                        <div className="card-surface group flex h-full flex-col rounded-2xl p-5 sm:p-6">
+                            <span className="mb-4 flex size-11 items-center justify-center rounded-xl bg-accent ring-1 ring-primary/10 text-accent-foreground transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground">
                                 <feature.icon className="size-5" />
                             </span>
 
