@@ -12,6 +12,10 @@ enum OrderState: string
     case MainMenu = 'MAIN_MENU';
     case SelectLanguage = 'SELECT_LANG';
 
+    /** Choosing between the two things a customer can change: language and currency. */
+    case SettingsMenu = 'SETTINGS_MENU';
+    case SelectCurrency = 'SELECT_CURRENCY';
+
     // The order flow proper.
     case SelectPlatform = 'SELECT_PLATFORM';
     case SelectCategory = 'SELECT_CATEGORY';

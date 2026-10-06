@@ -13,6 +13,8 @@ final readonly class InboundMessage
         public string $from,
         public string $text,
         public ?string $providerMessageId = null,
+        /** The name on the sender's WhatsApp profile, as Meta reports it. */
+        public ?string $profileName = null,
     ) {}
 
     /**
@@ -45,7 +47,25 @@ final readonly class InboundMessage
             from: $from,
             text: self::extractText($message),
             providerMessageId: isset($message['id']) ? (string) $message['id'] : null,
+            profileName: self::cleanName(data_get($value, 'contacts.0.profile.name')),
         );
+    }
+
+    /**
+     * A profile name made safe to keep: no control characters, one space
+     * between words, and a length that cannot fill a column. Null when nothing
+     * is left.
+     */
+    public static function cleanName(mixed $name): ?string
+    {
+        if (! is_string($name)) {
+            return null;
+        }
+
+        $name = preg_replace('/[\p{C}]+/u', ' ', $name) ?? '';
+        $name = trim(preg_replace('/\s+/u', ' ', $name) ?? '');
+
+        return $name === '' ? null : mb_substr($name, 0, 80);
     }
 
     /**

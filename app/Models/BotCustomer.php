@@ -23,6 +23,7 @@ class BotCustomer extends Model
         'name',
         'email',
         'lang',
+        'currency',
         'country',
         'notes',
         'tags',
@@ -72,6 +73,31 @@ class BotCustomer extends Model
     }
 
     /** A blocked customer is one the reseller has told the bot to ignore. */
+    /**
+     * The name to greet them by: the first word of their name that has letters, in plain
+     * capitals-then-lowercase, or null when there is nothing worth saying.
+     *
+     * A WhatsApp profile name is whatever the person typed — "juma hassan 🔥",
+     * "★ Asha ★", "Smm Panel Official". The first word, stripped of the
+     * decoration around it, is the part that reads naturally after "Hello".
+     * A name with no letters in it (only emoji, say) gives null, and the bot
+     * falls back to a neutral word rather than greeting a symbol.
+     */
+    public function firstName(): ?string
+    {
+        // The first word that has a letter in it, so a leading "★" or "🔥" is
+        // skipped rather than mistaken for the name.
+        foreach (preg_split('/\s+/u', trim((string) $this->name)) ?: [] as $word) {
+            $word = preg_replace('/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/u', '', $word) ?? '';
+
+            if ($word !== '' && preg_match('/\p{L}/u', $word)) {
+                return mb_convert_case($word, MB_CASE_TITLE, 'UTF-8');
+            }
+        }
+
+        return null;
+    }
+
     public function isBlocked(): bool
     {
         return $this->blocked_at !== null;

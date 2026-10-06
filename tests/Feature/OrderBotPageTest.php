@@ -295,7 +295,7 @@ class OrderBotPageTest extends TestCase
         $this->actingAs($this->tenant)
             ->get(route('order-bot', 'settings'))
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('currencies', 10)
+                ->has('currencies', count(config('currency.usd_to')))
                 ->where('currencies.0.code', 'USD')
                 ->where('currencies.0.perUsd', 1)
                 ->where('currencies.0.name', 'US dollar')
@@ -316,18 +316,18 @@ class OrderBotPageTest extends TestCase
     public function test_an_old_unsupported_currency_does_not_block_saving_other_settings(): void
     {
         $settings = BotSettings::for($this->tenant->id, 'order');
-        $settings['shop']['currency'] = 'INR';
+        $settings['shop']['currency'] = 'ZZZ';
         BotSettings::save($this->tenant->id, 'order', $settings);
 
         // Kept as it is: the form sends back what it was given.
-        $this->saveShop(['currency' => 'INR', 'minTopup' => 3])->assertSessionHasNoErrors();
+        $this->saveShop(['currency' => 'ZZZ', 'minTopup' => 3])->assertSessionHasNoErrors();
 
         $saved = BotSettings::for($this->tenant->id, 'order');
-        $this->assertSame('INR', $saved['shop']['currency']);
+        $this->assertSame('ZZZ', $saved['shop']['currency']);
         $this->assertEquals(3, $saved['shop']['min_topup']);
 
         // But another unsupported one cannot be newly chosen.
-        $this->saveShop(['currency' => 'EGP'])->assertSessionHasErrors('currency');
+        $this->saveShop(['currency' => 'YYY'])->assertSessionHasErrors('currency');
     }
 
     public function test_it_rejects_an_unsupported_language(): void

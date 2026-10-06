@@ -47,6 +47,9 @@ class BotSettings
             // here rather than derived, because skipping is a decision, not
             // a state of the data.
             'skipped_steps' => [],
+            // Give the customer their money back when the provider cancels an
+            // order or delivers only part of it.
+            'auto_refund' => true,
         ],
     ];
 

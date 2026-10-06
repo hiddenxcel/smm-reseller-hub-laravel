@@ -17,6 +17,7 @@ use App\Services\Bots\BotMessenger;
 use App\Services\Bots\BotSimulation;
 use App\Services\Bots\BotSettings;
 use App\Services\Customers\CustomerReferrals;
+use App\Services\Payments\ExchangeRates;
 use App\Services\Payments\Gateway;
 use App\Services\Payments\GatewayFactory;
 use App\Services\Payments\StartTopup;
@@ -62,6 +63,9 @@ class OrderBotHandler implements BotHandler
 
     private string $currency;
 
+    /** What this customer sees prices in. The shop's own currency unless they chose another. */
+    private string $displayCurrency;
+
     private string $locale = BotLang::DEFAULT;
 
     private GatewayFactory $gateways;
@@ -75,6 +79,7 @@ class OrderBotHandler implements BotHandler
         $this->tenantId = (int) $tenant->id;
         $this->shop = Arr::get(BotSettings::for($this->tenantId, self::BOT), 'shop', []);
         $this->currency = $this->shop['currency'] ?? 'USD';
+        $this->displayCurrency = $this->currency;
 
         // Resolved rather than injected: BotHandlerFactory constructs handlers
         // with (tenant, messenger) by contract, and both bots depend on that
@@ -88,6 +93,7 @@ class OrderBotHandler implements BotHandler
         $text = trim($text);
         $customer = $this->customer($from);
         $this->locale = BotLang::resolve($customer, $this->shop['lang'] ?? null);
+        $this->displayCurrency = $this->displayCurrencyFor($customer);
 
         $conversation = BotConversation::current($this->tenantId, $from, self::BOT);
         $state = $this->stateOf($conversation);
@@ -101,7 +107,9 @@ class OrderBotHandler implements BotHandler
 
         match ($state) {
             OrderState::MainMenu => $this->onMenuChoice($from, $text, $customer),
+            OrderState::SettingsMenu => $this->onSettingsChosen($from, $text, $customer),
             OrderState::SelectLanguage => $this->onLanguageChosen($from, $text, $customer),
+            OrderState::SelectCurrency => $this->onCurrencyChosen($from, $text, $context, $customer),
             OrderState::SelectPlatform => $this->onPlatformChosen($from, $text, $customer),
             OrderState::SelectCategory => $this->onCategoryChosen($from, $text, $context, $customer),
             OrderState::SelectService => $this->onServiceChosen($from, $text, $context),
@@ -126,7 +134,7 @@ class OrderBotHandler implements BotHandler
 
     private function showMainMenu(string $from, BotCustomer $customer): void
     {
-        $name = $customer->name ?: $this->t('default_customer_name');
+        $name = $customer->firstName() ?? $this->t('default_customer_name');
 
         $rows = [
             $this->menuRow('new_order'),
@@ -181,7 +189,7 @@ class OrderBotHandler implements BotHandler
             'profile' => $this->showProfile($from, $customer),
             'referral' => $this->showReferral($from, $customer),
             'track' => $this->showRecentOrders($from),
-            'settings' => $this->askLanguage($from),
+            'settings' => $this->showSettings($from),
             'group' => $this->sayAndFinish($from, 'group_info', ['url' => $this->shop['group_url'] ?? '']),
             'website' => $this->sayAndFinish($from, 'website_info', ['url' => $this->shop['website_url'] ?? '']),
             'topup' => $this->askTopupAmount($from),
@@ -265,6 +273,147 @@ class OrderBotHandler implements BotHandler
     }
 
     // ---- settings --------------------------------------------------------
+
+    /** Language, and — when there is more than one to choose from — currency. */
+    private function showSettings(string $from): void
+    {
+        $currencies = ExchangeRates::catalogue();
+
+        // One currency means nothing to choose; go straight to language.
+        if (count($currencies) < 2) {
+            $this->askLanguage($from);
+
+            return;
+        }
+
+        $this->moveTo($from, OrderState::SettingsMenu);
+
+        $this->messenger->sendButtons($from, $this->t('settings_menu'), [
+            ['id' => 'set:language', 'title' => $this->t('btn_language')],
+            ['id' => 'set:currency', 'title' => $this->t('btn_currency')],
+        ]);
+    }
+
+    private function onSettingsChosen(string $from, string $text, BotCustomer $customer): void
+    {
+        match ($text) {
+            'set:language' => $this->askLanguage($from),
+            'set:currency' => $this->askCurrency($from, $customer),
+            default => $this->say($from, 'settings_press_option'),
+        };
+    }
+
+    /** A list holds ten rows: nine currencies, and one to move on to the next nine. */
+    private const CURRENCIES_PER_PAGE = 9;
+
+    /**
+     * One page of the currencies a customer can see prices in. The shop's own
+     * comes first. There are far more than fit in one list, so the last row
+     * leads to the next page (and back to the first from the last), and any
+     * currency can also simply be typed as its three-letter code.
+     */
+    private function askCurrency(string $from, BotCustomer $customer, int $page = 0): void
+    {
+        $choices = $this->currencyChoices();
+        $pages = max(1, (int) ceil(count($choices) / self::CURRENCIES_PER_PAGE));
+        $page = max(0, min($page, $pages - 1));
+
+        // Everything fits in one list: no paging.
+        $slice = count($choices) <= 10
+            ? $choices
+            : array_slice($choices, $page * self::CURRENCIES_PER_PAGE, self::CURRENCIES_PER_PAGE);
+
+        $rows = [];
+
+        foreach ($slice as $entry) {
+            $rows[] = [
+                'id' => 'cur:'.$entry['code'],
+                'title' => $entry['code'].' — '.$entry['name'],
+                'description' => $entry['code'] === $this->currency ? $this->t('currency_shop_row') : '',
+            ];
+        }
+
+        if ($pages > 1) {
+            $rows[] = $page < $pages - 1
+                ? [
+                    'id' => 'cur_more',
+                    'title' => $this->t('currency_more_title'),
+                    'description' => $this->t('currency_more_desc', ['page' => $page + 2, 'pages' => $pages]),
+                ]
+                : [
+                    'id' => 'cur_first',
+                    'title' => $this->t('currency_first_title'),
+                    'description' => $this->t('currency_first_desc'),
+                ];
+        }
+
+        $this->moveTo($from, OrderState::SelectCurrency, ['cur_page' => $page]);
+
+        $this->messenger->sendList(
+            $from,
+            $this->t('settings_choose_currency', ['shop' => $this->currency]).($pages > 1
+                ? "\n\n".$this->t('currency_page', ['page' => $page + 1, 'pages' => $pages])
+                : ''),
+            $this->t('btn_currency'),
+            $this->t('btn_currency'),
+            $rows,
+        );
+    }
+
+    /** @return array<int, array{code: string, name: string, perUsd: float}> */
+    private function currencyChoices(): array
+    {
+        $all = ExchangeRates::catalogue();
+
+        usort($all, fn (array $a, array $b) => ($b['code'] === $this->currency) <=> ($a['code'] === $this->currency));
+
+        return $all;
+    }
+
+    private function onCurrencyChosen(string $from, string $text, array $context, BotCustomer $customer): void
+    {
+        $page = (int) ($context['cur_page'] ?? 0);
+
+        if ($text === 'cur_more') {
+            $this->askCurrency($from, $customer, $page + 1);
+
+            return;
+        }
+
+        if ($text === 'cur_first') {
+            $this->askCurrency($from, $customer, 0);
+
+            return;
+        }
+
+        $code = strtoupper(trim(str_starts_with($text, 'cur:') ? substr($text, 4) : $text));
+
+        // A list row, or a code typed in — for any currency, on a page or not.
+        if (preg_match('/^[A-Z]{3}$/', $code) !== 1 || ! ExchangeRates::supports($code)) {
+            $this->say($from, 'settings_press_currency');
+
+            return;
+        }
+
+        // The shop's own currency is "no preference", so a later change of the
+        // shop's currency is followed rather than left behind.
+        $customer->update(['currency' => $code === $this->currency ? null : $code]);
+        $this->displayCurrency = $code;
+
+        $this->say($from, $code === $this->currency ? 'currency_reset' : 'currency_changed', [
+            'currency' => $code,
+            'shop' => $this->currency,
+        ]);
+
+        $this->showMainMenu($from, $customer);
+    }
+
+    private function displayCurrencyFor(BotCustomer $customer): string
+    {
+        $chosen = strtoupper((string) $customer->currency);
+
+        return $chosen !== '' && ExchangeRates::supports($chosen) ? $chosen : $this->currency;
+    }
 
     private function askLanguage(string $from): void
     {
@@ -387,7 +536,7 @@ class OrderBotHandler implements BotHandler
             $body .= $this->t('track_line', [
                 'number' => $order->provider_order_id ?: $order->id,
                 'service' => $order->service_name ?: '—',
-                'status' => $order->status ?: 'pending',
+                'status' => $order->customerStatus(),
                 'amount' => $this->money($order->amount ?? '0'),
             ]);
         }
@@ -428,7 +577,7 @@ class OrderBotHandler implements BotHandler
 
         $this->messenger->sendList(
             $from,
-            $this->t('choose_platform', ['name' => $customer->name ?: $this->t('default_customer_name')]),
+            $this->t('choose_platform', ['name' => $customer->firstName() ?? $this->t('default_customer_name')]),
             $this->t('btn_platforms'),
             $this->t('platforms_header'),
             $rows,
@@ -517,7 +666,10 @@ class OrderBotHandler implements BotHandler
 
         foreach ($services->take(self::MAX_LIST_ROWS) as $service) {
             $isPaused = $service->status === BotService::PAUSED;
-            $price = $this->money($this->pricePerUnit($service)).' '.$this->t('per_1k');
+            // The price per 1,000 as the reseller set it. (This used to divide by
+            // 1,000 first and then label the result "/ 1k", so a service at 4.00
+            // per thousand was listed as "0.00 / 1k".)
+            $price = $this->money($service->my_price).' '.$this->t('per_1k');
 
             $rows[] = [
                 'id' => "svc_{$service->id}",
@@ -547,6 +699,12 @@ class OrderBotHandler implements BotHandler
                 'cost_price' => $service->cost_price === null ? null : (string) $service->cost_price,
                 'paused' => $isPaused,
                 'link_instructions' => $service->link_instructions,
+                // What the card tells the customer before they choose a quantity.
+                'description' => $service->description,
+                'quality' => $service->quality,
+                'speed' => $service->speed,
+                'drop' => $service->drop_info,
+                'refill' => $service->refill_info,
             ];
         }
 
@@ -563,7 +721,7 @@ class OrderBotHandler implements BotHandler
             $this->t('choose_service', [
                 'heading' => $heading,
                 'heading_upper' => mb_strtoupper($heading),
-                'name' => $customer->name ?: $this->t('default_customer_name'),
+                'name' => $customer->firstName() ?? $this->t('default_customer_name'),
             ]),
             $this->t('btn_services'),
             $this->t('services_header'),
@@ -594,13 +752,102 @@ class OrderBotHandler implements BotHandler
 
         $context['service'] = $service;
         $this->moveTo($from, OrderState::SelectQuantity, $context);
-        $this->askQuantity($from, $service);
+        $this->askQuantity($from, $service, $context);
     }
 
     // ---- ordering: quantity, link, confirm -------------------------------
 
-    private function askQuantity(string $from, array $service): void
+    /**
+     * Words that mean "take me back a step". A word, a number and an arrow, so
+     * whichever a customer reaches for works — and the arrow is also a row at
+     * the end of the quantity list.
+     */
+    private const BACK_WORDS = ['back', '0', '⬅', '←', '<', '‹', 'rudi', 'nyuma', 'retour', 'geri', 'वापस', 'رجوع'];
+
+    private function isBack(string $text): bool
     {
+        // The arrow emoji comes with an invisible variation selector attached.
+        $text = mb_strtolower(trim(str_replace("\u{FE0F}", '', $text)));
+
+        return $text === 'qty_back' || in_array($text, self::BACK_WORDS, true);
+    }
+
+    /**
+     * Everything a customer should know about a service before choosing how
+     * many: its full name, what it is, what it costs, and the promises the
+     * reseller has made about it.
+     *
+     * Each line appears only when it has something to say. A service nobody has
+     * described still gets its name, price, link and size — never an empty
+     * "Quality:" with nothing after it.
+     */
+    private function serviceCard(array $service, array $context): string
+    {
+        $head = "🎯 *{$service['name']}*";
+
+        if (filled($service['description'] ?? null)) {
+            $head .= "\n\n".trim((string) $service['description']);
+        }
+
+        $facts = [
+            $this->t('card_price', ['price' => $this->money($service['my_price'])]),
+        ];
+
+        if (filled($service['quality'] ?? null)) {
+            $facts[] = $this->t('card_quality', ['value' => trim((string) $service['quality'])]);
+        }
+
+        if (filled($service['speed'] ?? null)) {
+            $facts[] = $this->t('card_speed', ['value' => trim((string) $service['speed'])]);
+        }
+
+        // The reseller's own words, as written.
+        if (filled($service['drop'] ?? null)) {
+            $facts[] = $this->t('card_drop', ['value' => trim((string) $service['drop'])]);
+        }
+
+        if (filled($service['refill'] ?? null)) {
+            $facts[] = $this->t('card_refill', ['value' => trim((string) $service['refill'])]);
+        }
+
+        $link = LinkGuide::for((string) ($context['platform'] ?? ''), $context['category'] ?? null, (string) ($service['unit'] ?? ''));
+        $facts[] = $this->t('card_link', ['value' => $this->t($link['type'] === 'profile' ? 'card_link_profile' : 'card_link_post')]);
+
+        $facts[] = $this->t('card_range', [
+            'min' => number_format((int) $service['min']),
+            'max' => number_format((int) $service['max']),
+        ]);
+
+        return $head."\n\n".implode("\n", $facts)."\n\n".$this->t('card_footer')."\n".$this->t('card_back_hint');
+    }
+
+    /** Back to the list of services the customer was choosing from. */
+    private function backToServices(string $from, array $context, BotCustomer $customer): void
+    {
+        $platform = (string) ($context['platform'] ?? '');
+        $category = $context['category'] ?? null;
+
+        $services = $this->servicesFor($platform)->filter(
+            fn (BotService $service) => $category === null
+                ? blank($service->category)
+                : $service->category === $category
+        );
+
+        if ($services->isEmpty()) {
+            $this->startOrder($from, $customer);
+
+            return;
+        }
+
+        $this->showServices($from, $platform, $category, $services, $customer);
+    }
+
+    private function askQuantity(string $from, array $service, array $context = []): void
+    {
+        // The card goes first, on its own, and the choice of quantity follows
+        // as a second message: what the service is, then how many.
+        $this->messenger->sendText($from, $this->serviceCard($service, $context));
+
         $rows = [];
 
         foreach (self::QUANTITY_PRESETS as $quantity) {
@@ -621,6 +868,12 @@ class OrderBotHandler implements BotHandler
             'description' => "{$service['min']} – {$service['max']}",
         ];
 
+        $rows[] = [
+            'id' => 'qty_back',
+            'title' => $this->t('qty_back_title'),
+            'description' => $this->t('qty_back_desc'),
+        ];
+
         $this->messenger->sendList(
             $from,
             $this->t('how_many', ['service' => $service['name']]),
@@ -634,6 +887,13 @@ class OrderBotHandler implements BotHandler
     private function onQuantityChosen(string $from, string $text, array $context, BotCustomer $customer): void
     {
         $service = $context['service'];
+
+        if ($this->isBack($text)) {
+            $this->backToServices($from, $context, $customer);
+
+            return;
+        }
+
         $choice = str_starts_with($text, 'qty_') ? substr($text, 4) : $text;
 
         if ($choice === 'custom') {
@@ -677,7 +937,7 @@ class OrderBotHandler implements BotHandler
             : $this->t($guide['stepsKey'], ['platform' => $platform]);
 
         $message = $this->t('link_request', [
-            'name' => $customer->name ?: $this->t('default_customer_name'),
+            'name' => $customer->firstName() ?? $this->t('default_customer_name'),
             'qty' => $this->quantityLabel((int) $context['quantity']).' '.$service['unit'],
             'image_note' => $guide['imageUrl'] !== null ? $this->t('link_see_image') : '',
             'steps' => $steps,
@@ -695,6 +955,15 @@ class OrderBotHandler implements BotHandler
 
     private function onLinkGiven(string $from, string $text, array $context): void
     {
+        // Changed their mind about how many: back to the quantities.
+        if ($this->isBack($text)) {
+            unset($context['quantity']);
+            $this->moveTo($from, OrderState::SelectQuantity, $context);
+            $this->askQuantity($from, $context['service'], $context);
+
+            return;
+        }
+
         if (! filter_var($text, FILTER_VALIDATE_URL)) {
             $this->say($from, 'invalid_link');
 
@@ -797,9 +1066,9 @@ class OrderBotHandler implements BotHandler
         $this->messenger->sendButtons(
             $from,
             $this->t('insufficient_balance', [
-                'balance' => $this->money($customer->balance),
-                'amount' => $this->money($amount),
-                'shortfall' => $this->money($shortfall),
+                'balance' => $this->shopMoney($customer->balance),
+                'amount' => $this->shopMoney($amount),
+                'shortfall' => $this->shopMoney($shortfall),
             ]),
             [
                 ['id' => 'topup_yes', 'title' => $this->t('btn_topup_pay')],
@@ -817,7 +1086,7 @@ class OrderBotHandler implements BotHandler
 
         $this->say($from, 'topup_prompt', [
             'cur' => $this->currency,
-            'min' => $this->money((string) ($this->shop['min_topup'] ?? 1)),
+            'min' => $this->shopMoney((string) ($this->shop['min_topup'] ?? 1)),
         ]);
     }
 
@@ -861,7 +1130,7 @@ class OrderBotHandler implements BotHandler
 
         if (! is_numeric($amount) || bccomp($amount, $min, 2) === -1) {
             $this->say($from, 'topup_amount_invalid', [
-                'min' => $this->money($min),
+                'min' => $this->shopMoney($min),
                 'cur' => $this->currency,
             ]);
 
@@ -944,7 +1213,7 @@ class OrderBotHandler implements BotHandler
 
         $this->messenger->sendText(
             $from,
-            "🧪 *Demo payment*\nOn your live shop the customer pays through your own gateway here. For this rehearsal {$this->money($amount)} was added to the wallet.",
+            "🧪 *Demo payment*\nOn your live shop the customer pays through your own gateway here. For this rehearsal {$this->shopMoney($amount)} was added to the wallet.",
         );
 
         $hasOrder = filled($context['service'] ?? null) && filled($context['amount'] ?? null);
@@ -985,7 +1254,7 @@ class OrderBotHandler implements BotHandler
 
         $this->messenger->sendList(
             $from,
-            $this->t('choose_payment_method', ['amount' => $this->money($amount)]),
+            $this->t('choose_payment_method', ['amount' => $this->shopMoney($amount)]),
             $this->t('btn_choose_payment'),
             $this->t('payment_header'),
             $rows,
@@ -1079,6 +1348,8 @@ class OrderBotHandler implements BotHandler
             // Blank when the shop has a single gateway and nothing was asked,
             // which lets StartTopup fall back to the reseller's default.
             gateway: (string) ($context['pay_gateway'] ?? ''),
+            // The order that is waiting on this payment, kept with it.
+            pendingOrder: $this->orderWaitingOnPayment($context),
         );
 
         if ($result->noGateway) {
@@ -1103,7 +1374,7 @@ class OrderBotHandler implements BotHandler
 
         if ($result->isPush()) {
             $this->say($from, $hasOrder ? 'payment_push' : 'topup_only_push', [
-                'amount' => $this->money($amount),
+                'amount' => $this->shopMoney($amount),
                 'phone' => $phone,
             ]);
 
@@ -1111,9 +1382,29 @@ class OrderBotHandler implements BotHandler
         }
 
         $this->say($from, $hasOrder ? 'payment_link' : 'topup_only_link', [
-            'amount' => $this->money($amount),
+            'amount' => $this->shopMoney($amount),
             'url' => (string) $result->redirectUrl,
         ]);
+    }
+
+    /**
+     * The order a top-up is for, if the customer was placing one — enough to
+     * place it later without the conversation.
+     *
+     * @return array{service: array, link: string, quantity: int, amount: string}|null
+     */
+    private function orderWaitingOnPayment(array $context): ?array
+    {
+        if (blank($context['service'] ?? null) || blank($context['amount'] ?? null) || blank($context['link'] ?? null)) {
+            return null;
+        }
+
+        return [
+            'service' => $context['service'],
+            'link' => (string) $context['link'],
+            'quantity' => (int) $context['quantity'],
+            'amount' => (string) $context['amount'],
+        ];
     }
 
     /**
@@ -1213,12 +1504,6 @@ class OrderBotHandler implements BotHandler
         $this->finish($from);
     }
 
-    /** Panel prices are per 1000 units, which is how resellers quote them. */
-    private function pricePerUnit(BotService $service): string
-    {
-        return bcdiv((string) $service->my_price, '1000', 4);
-    }
-
     private function costOf(array $service, int $quantity): string
     {
         return bcdiv(bcmul((string) $service['my_price'], (string) $quantity, 4), '1000', 2);
@@ -1229,7 +1514,35 @@ class OrderBotHandler implements BotHandler
         return $quantity >= 1000 ? number_format($quantity / 1000).'K' : (string) $quantity;
     }
 
+    /**
+     * An amount as this customer sees it: converted to the currency they chose,
+     * with a leading "≈" because it is converted, or in the shop's own
+     * currency when they chose nothing.
+     *
+     * For looking at — prices, totals, balances. Anything the customer is asked
+     * to pay uses shopMoney(), so the figure on the payment is the figure that
+     * is charged.
+     */
     private function money(string|float $amount): string
+    {
+        if ($this->displayCurrency === $this->currency) {
+            return $this->shopMoney($amount);
+        }
+
+        $converted = ExchangeRates::convert($amount, $this->currency, $this->displayCurrency);
+
+        // No rate (it was removed since): the shop's own figure is better than none.
+        if ($converted === null) {
+            return $this->shopMoney($amount);
+        }
+
+        $whole = in_array($this->displayCurrency, ['TZS', 'UGX', 'XAF', 'NGN', 'KES'], true);
+
+        return '≈ '.$this->displayCurrency.' '.number_format((float) $converted, $whole ? 0 : 2);
+    }
+
+    /** An amount in the shop's own currency, exactly — for everything that is paid. */
+    private function shopMoney(string|float $amount): string
     {
         return $this->currency.' '.number_format((float) $amount, 2);
     }

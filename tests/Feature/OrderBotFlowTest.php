@@ -406,6 +406,8 @@ class OrderBotFlowTest extends TestCase
 
         $this->send('hi');
         $this->send('main:settings');
+        // Settings asks first what to change: language or currency.
+        $this->send('set:language');
         $this->send('lang:sw');
 
         $this->assertSame('sw', $customer->fresh()->lang);

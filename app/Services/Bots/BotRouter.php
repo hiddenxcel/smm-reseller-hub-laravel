@@ -77,6 +77,8 @@ class BotRouter
             return BotRoute::SpamBlocked;
         }
 
+        $this->rememberName((int) $tenant->id, $message);
+
         $messenger = $this->messengers->forWhatsApp($whatsapp, $tenant);
 
         if ($message->providerMessageId !== null) {
@@ -192,6 +194,34 @@ class BotRouter
             ->where('tenant_id', $tenantId)
             ->where('phone', $from)
             ->update(['last_seen_at' => now()]);
+    }
+
+    /**
+     * Keep the name on the sender's WhatsApp profile as the customer's name, so
+     * the bot can greet them by it.
+     *
+     * Only filled in, never overwritten: once a name is on file (typed by the
+     * reseller, or set earlier) it is theirs to change, not WhatsApp's. A first
+     * message from someone new creates the customer here, so the very first
+     * greeting already has their name.
+     */
+    private function rememberName(int $tenantId, InboundMessage $message): void
+    {
+        if ($message->profileName === null) {
+            return;
+        }
+
+        $customer = BotCustomer::withoutTenantScope()->firstOrCreate(
+            ['tenant_id' => $tenantId, 'phone' => $message->from],
+            [
+                'name' => $message->profileName,
+                'lang' => Arr::get(BotSettings::for($tenantId, 'order'), 'shop.lang', BotLang::DEFAULT),
+            ],
+        );
+
+        if (blank($customer->name)) {
+            $customer->update(['name' => $message->profileName]);
+        }
     }
 
     private function isBlocked(int $tenantId, string $from): bool
