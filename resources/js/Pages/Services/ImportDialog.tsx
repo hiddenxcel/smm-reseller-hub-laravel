@@ -30,6 +30,8 @@ export default function ImportDialog({
 }) {
     const [panelId, setPanelId] = useState<number | null>(panels[0]?.id ?? null);
     const [entries, setEntries] = useState<CatalogueEntry[] | null>(null);
+    // What the panel has in all — more than `entries` when the list was capped.
+    const [panelTotal, setPanelTotal] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [importing, setImporting] = useState(false);
@@ -54,12 +56,19 @@ export default function ImportDialog({
             const response = await fetch(route('services.panel-catalogue', panelId), {
                 headers: { Accept: 'application/json' },
             });
-            const body = await response.json();
 
-            if (body.failed) {
+            // A failed request is not an empty panel. Reading the body of an
+            // error as if it were a list is how "no services" used to be shown
+            // when the real answer was "something went wrong".
+            const body = response.ok ? await response.json().catch(() => null) : null;
+
+            if (body === null) {
+                setError('Something went wrong reading that panel. Please try again.');
+            } else if (body.failed) {
                 setError(body.message ?? 'Could not read that panel.');
             } else {
                 setEntries(body.services ?? []);
+                setPanelTotal(body.total ?? (body.services ?? []).length);
             }
         } catch {
             setError('Could not reach the panel.');
@@ -279,10 +288,19 @@ export default function ImportDialog({
                                             </Button>
                                         </div>
 
+                                        {panelTotal > entries.length && (
+                                            <p className="mt-2 text-xs text-muted-foreground">
+                                                Showing the first {entries.length.toLocaleString('en-US')} of{' '}
+                                                {panelTotal.toLocaleString('en-US')} services on this panel.
+                                            </p>
+                                        )}
+
                                         <div className="mt-3 max-h-72 overflow-y-auto rounded-lg border border-border">
                                             {visible.length === 0 ? (
                                                 <p className="py-8 text-center text-sm text-muted-foreground">
-                                                    Nothing matches that.
+                                                    {entries.length === 0
+                                                        ? 'This panel returned no services.'
+                                                        : 'Nothing matches that.'}
                                                 </p>
                                             ) : (
                                                 visible.map((entry) => {

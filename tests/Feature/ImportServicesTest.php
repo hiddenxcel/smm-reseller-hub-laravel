@@ -147,9 +147,11 @@ class ImportServicesTest extends TestCase
     {
         $this->panel->delete();
 
+        // To the panel step itself: the wizard's front door would send them
+        // straight back here whenever the panel step had been skipped.
         $this->actingAs($this->tenant, 'tenant')
             ->get(route('onboarding.step', 'services'))
-            ->assertRedirect(route('onboarding'));
+            ->assertRedirect(route('onboarding.step', 'panel'));
     }
 
     // ---- importing --------------------------------------------------------
@@ -187,6 +189,33 @@ class ImportServicesTest extends TestCase
             'cost_price' => '2.0000',
             'status' => 'active',
         ]);
+    }
+
+    public function test_importing_from_the_services_page_stays_on_the_services_page(): void
+    {
+        $this->actingAs($this->tenant, 'tenant')
+            ->from(route('services.index'))
+            ->post(route('onboarding.services.store'), $this->importPayload())
+            ->assertRedirect(route('services.index'))
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseHas('bot_services', ['tenant_id' => $this->tenant->id, 'provider_service_id' => '101']);
+    }
+
+    public function test_importing_from_settings_stays_in_settings(): void
+    {
+        $this->actingAs($this->tenant, 'tenant')
+            ->from(route('settings'))
+            ->post(route('onboarding.services.store'), $this->importPayload())
+            ->assertRedirect(route('settings'));
+    }
+
+    public function test_importing_from_the_wizard_still_moves_on(): void
+    {
+        $this->actingAs($this->tenant, 'tenant')
+            ->from(route('onboarding.step', 'services'))
+            ->post(route('onboarding.services.store'), $this->importPayload())
+            ->assertRedirect(route('onboarding'));
     }
 
     public function test_importing_twice_updates_rather_than_duplicates(): void

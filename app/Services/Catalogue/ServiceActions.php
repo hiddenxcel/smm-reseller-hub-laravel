@@ -26,6 +26,45 @@ class ServiceActions
     }
 
     /**
+     * The what-customers-are-told columns from a form's values.
+     *
+     * Free text, kept as the reseller wrote it. A blank is stored as nothing,
+     * which the bot reads as "say nothing about it".
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    public static function featureColumns(array $attributes): array
+    {
+        $text = fn (string $key) => filled($attributes[$key] ?? null) ? trim((string) $attributes[$key]) : null;
+
+        return [
+            'quality' => $text('quality'),
+            'speed' => $text('speed'),
+            'drop_info' => $text('drop_info'),
+            'refill_info' => $text('refill_info'),
+        ];
+    }
+
+    /**
+     * What a quantity of this service is counted in ("500 Followers").
+     *
+     * The category already says it — a service in "Followers" is counted in
+     * followers — so it is taken from there. Only a service with no category
+     * falls back to what was given, and then to followers.
+     */
+    public static function unitFor(?string $category, ?string $given = null): string
+    {
+        foreach ([$category, $given] as $candidate) {
+            if (filled($candidate)) {
+                return mb_substr(trim((string) $candidate), 0, 50);
+            }
+        }
+
+        return 'Followers';
+    }
+
+    /**
      * Edit a service's details.
      *
      * `provider_service_id` and `panel_id` are not editable: together they are
@@ -43,8 +82,9 @@ class ServiceActions
             'description' => $attributes['description'] ?? null,
             'platform' => $attributes['platform'] ?? $service->platform,
             'category' => $attributes['category'] ?? null,
-            'unit_label' => $attributes['unit_label'] ?? $service->unit_label,
+            'unit_label' => self::unitFor($attributes['category'] ?? null, $attributes['unit_label'] ?? $service->unit_label),
             'link_instructions' => $attributes['link_instructions'] ?? null,
+            ...self::featureColumns($attributes),
             'min_quantity' => max(1, (int) ($attributes['min_quantity'] ?? $service->min_quantity)),
             'max_quantity' => max(
                 (int) ($attributes['min_quantity'] ?? $service->min_quantity),

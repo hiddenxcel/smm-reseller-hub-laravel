@@ -1,3 +1,4 @@
+import { CharCount, WHATSAPP } from '@/components/CharLimit';
 import { router, useForm } from '@inertiajs/react';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
@@ -179,9 +180,15 @@ function EditDialog({
                     value={data.content}
                     onChange={(e) => setData('content', e.target.value)}
                     rows={6}
-                    maxLength={4000}
+                    maxLength={WHATSAPP.text}
                     autoFocus
                     className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <CharCount
+                    value={data.content}
+                    limit={WHATSAPP.text}
+                    near="Close to WhatsApp's limit for one message."
+                    over="Too long — WhatsApp would refuse this message."
                 />
                 {errors.content && (
                     <p className="mt-1 text-xs text-destructive">{errors.content}</p>

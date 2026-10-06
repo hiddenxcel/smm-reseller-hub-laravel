@@ -12,11 +12,13 @@ final readonly class CatalogueResult
         public bool $loaded,
         public array $services,
         public ?string $message,
+        /** How many the panel has, which can be more than $services holds. */
+        public int $total = 0,
     ) {}
 
-    public static function loaded(array $services): self
+    public static function loaded(array $services, ?int $total = null): self
     {
-        return new self(loaded: true, services: $services, message: null);
+        return new self(loaded: true, services: $services, message: null, total: $total ?? count($services));
     }
 
     public static function failed(string $message): self

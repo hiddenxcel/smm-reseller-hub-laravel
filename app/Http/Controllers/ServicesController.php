@@ -108,14 +108,22 @@ class ServicesController extends Controller
             'category' => ['nullable', 'string', 'max:80'],
             'provider_service_id' => ['required', 'string', 'max:50'],
             'panel_id' => ['nullable', 'integer'],
-            'description' => ['nullable', 'string', 'max:2000'],
+            'description' => ['nullable', 'string', 'max:500'],
+            // What the customer is told before they order: each line only appears
+            // in the bot when it is filled in.
+            'quality' => ['nullable', 'string', 'max:80'],
+            'speed' => ['nullable', 'string', 'max:80'],
+            'drop_info' => ['nullable', 'string', 'max:80'],
+            'refill_info' => ['nullable', 'string', 'max:80'],
             'unit_label' => ['nullable', 'string', 'max:50'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
             // Zero would have the bot sell for nothing.
             'my_price' => ['required', 'numeric', 'gt:0'],
             'min_quantity' => ['required', 'integer', 'min:1'],
             'max_quantity' => ['required', 'integer', 'min:1'],
-            'link_instructions' => ['nullable', 'string', 'max:1000'],
+            // Sent inside a picture's caption with the greeting, the quantity and an
+            // example link, and a caption holds 1,024 characters in all.
+            'link_instructions' => ['nullable', 'string', 'max:600'],
         ]);
 
         $panelId = $this->panelIdFor($request, $validated['panel_id'] ?? null);
@@ -128,12 +136,15 @@ class ServicesController extends Controller
             'category' => $validated['category'] ?? null,
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'unit_label' => $validated['unit_label'] ?? 'Followers',
+            // What the quantity is counted in follows from the category, so it
+            // is not asked for twice.
+            'unit_label' => ServiceActions::unitFor($validated['category'] ?? null, $validated['unit_label'] ?? null),
             'cost_price' => $validated['cost_price'] ?? null,
             'my_price' => $validated['my_price'],
             'min_quantity' => $validated['min_quantity'],
             'max_quantity' => max($validated['min_quantity'], $validated['max_quantity']),
             'link_instructions' => $validated['link_instructions'] ?? null,
+            ...ServiceActions::featureColumns($validated),
             'status' => BotService::ACTIVE,
         ]);
 
@@ -157,13 +168,21 @@ class ServicesController extends Controller
             'name' => ['required', 'string', 'max:190'],
             'platform' => ['required', 'string', 'max:50'],
             'category' => ['nullable', 'string', 'max:80'],
-            'description' => ['nullable', 'string', 'max:2000'],
+            'description' => ['nullable', 'string', 'max:500'],
+            // What the customer is told before they order: each line only appears
+            // in the bot when it is filled in.
+            'quality' => ['nullable', 'string', 'max:80'],
+            'speed' => ['nullable', 'string', 'max:80'],
+            'drop_info' => ['nullable', 'string', 'max:80'],
+            'refill_info' => ['nullable', 'string', 'max:80'],
             'unit_label' => ['nullable', 'string', 'max:50'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
             'my_price' => ['required', 'numeric', 'gt:0'],
             'min_quantity' => ['required', 'integer', 'min:1'],
             'max_quantity' => ['required', 'integer', 'min:1'],
-            'link_instructions' => ['nullable', 'string', 'max:1000'],
+            // Sent inside a picture's caption with the greeting, the quantity and an
+            // example link, and a caption holds 1,024 characters in all.
+            'link_instructions' => ['nullable', 'string', 'max:600'],
         ]);
 
         return $this->back(
@@ -358,9 +377,12 @@ class ServicesController extends Controller
         $result = $this->catalogue->forPanel($panel);
 
         return response()->json([
-            'failed' => $result->failed,
+            'failed' => ! $result->loaded,
             'message' => $result->message,
             'services' => $result->services,
+            // What the panel has in all, so the screen can say when it is
+            // showing only part of it.
+            'total' => $result->total,
         ]);
     }
 

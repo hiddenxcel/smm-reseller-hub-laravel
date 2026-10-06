@@ -1,6 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
+import { CharCount, WHATSAPP } from '@/components/CharLimit';
 import { inputClass } from '../OrderBot/bits';
 import { Language, TemplateRow, Templates } from './types';
 
@@ -123,7 +124,13 @@ function TemplateItem({
                         value={form.data.content}
                         onChange={(event) => form.setData('content', event.target.value)}
                         placeholder="Using the built-in wording. Type here to replace it."
-                        maxLength={4000}
+                        maxLength={WHATSAPP.text}
+                    />
+                    <CharCount
+                        value={form.data.content}
+                        limit={WHATSAPP.text}
+                        near="Close to WhatsApp's limit for one message."
+                        over="Too long — WhatsApp would refuse this message."
                     />
 
                     <div className="mt-3 flex flex-wrap items-center gap-3">

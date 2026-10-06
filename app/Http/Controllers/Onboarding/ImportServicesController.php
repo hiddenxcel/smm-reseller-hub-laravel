@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Onboarding;
 use App\Http\Controllers\Controller;
 use App\Models\BotService;
 use App\Models\TenantPanel;
+use App\Services\Catalogue\ServiceFeatures;
 use App\Services\Panel\ServiceCatalogue;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,7 @@ class ImportServicesController extends Controller
         $panel = $this->panelFor($request, (int) $validated['panel_id']);
 
         foreach ($validated['services'] as $service) {
-            BotService::updateOrCreate(
+            $imported = BotService::updateOrCreate(
                 [
                     'tenant_id' => $panel->tenant_id,
                     'panel_id' => $panel->id,
@@ -54,12 +55,38 @@ class ImportServicesController extends Controller
                     'status' => 'active',
                 ],
             );
+
+            $this->fillFeaturesFromName($imported);
         }
 
         $count = count($validated['services']);
 
         return $this->afterSave($request)
             ->with('status', $count === 1 ? '1 service imported.' : "{$count} services imported.");
+    }
+
+    /**
+     * What the name already promises ("No Drop", "365 Days Refill") becomes the
+     * service's drop and refill lines, so customers are told without the
+     * reseller typing it again for every import.
+     *
+     * Only blanks are filled: anything the reseller has set stays as they set it
+     * when a service is imported a second time.
+     */
+    private function fillFeaturesFromName(BotService $service): void
+    {
+        $guess = ServiceFeatures::guess($service->name);
+        $fill = [];
+
+        foreach (['drop_info', 'refill_info'] as $column) {
+            if (blank($service->{$column}) && $guess[$column] !== null) {
+                $fill[$column] = $guess[$column];
+            }
+        }
+
+        if ($fill !== []) {
+            $service->update($fill);
+        }
     }
 
     /**
@@ -82,18 +109,22 @@ class ImportServicesController extends Controller
     }
 
     /**
-     * Where to go after a setup action succeeds.
+     * Where to go after services are imported.
      *
-     * The same forms serve two screens with opposite needs: the wizard must
-     * advance to the next step, while Settings must stay on the tab the
-     * reseller is working in. Submitting from Settings is the special case,
-     * so that is what gets detected; everything else advances, which keeps
-     * the wizard's behaviour identical to before Settings existed.
+     * The same endpoint serves three screens: the setup wizard, which must
+     * advance to its next step, and Settings and the Services page, where the
+     * reseller is in the middle of something and must be left where they are.
+     * Only the wizard advances; a request that came from anywhere else stays
+     * put. (The Services page used to be sent to the wizard, which — with setup
+     * finished — sent it on to the dashboard.) With no referrer there is
+     * nothing to go back to, so it advances.
      */
     private function afterSave(Request $request): RedirectResponse
     {
-        if (str_contains((string) $request->headers->get('referer'), '/settings')) {
-            return back(fallback: route('settings'));
+        $referer = (string) $request->headers->get('referer');
+
+        if ($referer !== '' && ! str_contains($referer, '/onboarding')) {
+            return back(fallback: route('services.index'));
         }
 
         return redirect()->route('onboarding');

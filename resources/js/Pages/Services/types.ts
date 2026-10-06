@@ -5,6 +5,13 @@ export type ServiceRow = {
     id: number;
     name: string;
     description: string | null;
+    /** What the bot tells a customer about this service before they order. */
+    quality: string | null;
+    speed: string | null;
+    /** Free text, in the reseller's own words. */
+    dropInfo: string | null;
+    refillInfo: string | null;
+    linkInstructions: string | null;
     platform: string;
     category: string | null;
     providerServiceId: string | null;

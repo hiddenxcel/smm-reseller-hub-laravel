@@ -352,6 +352,13 @@ class ServiceQuery
             'id' => $service->id,
             'name' => $service->name,
             'description' => $service->description,
+            'quality' => $service->quality,
+            'speed' => $service->speed,
+            'dropInfo' => $service->drop_info,
+            'refillInfo' => $service->refill_info,
+            // Loaded into the edit form: without it saving any edit wrote the
+            // link help back as empty.
+            'linkInstructions' => $service->link_instructions,
             'platform' => $service->platform,
             'category' => $service->category,
             'providerServiceId' => $service->provider_service_id,

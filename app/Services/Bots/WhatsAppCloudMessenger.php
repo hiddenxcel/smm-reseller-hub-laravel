@@ -19,13 +19,6 @@ class WhatsAppCloudMessenger implements BotMessenger
 {
     private const GRAPH_VERSION = 'v22.0';
 
-    /** Meta truncates past these; doing it here keeps ids and labels aligned. */
-    private const LIST_TITLE_LIMIT = 24;
-
-    private const LIST_DESCRIPTION_LIMIT = 72;
-
-    private const BUTTON_TITLE_LIMIT = 20;
-
     public function __construct(
         private string $phoneNumberId,
         private string $token,
@@ -38,7 +31,7 @@ class WhatsAppCloudMessenger implements BotMessenger
 
     public function sendText(string $to, string $message, ?string $templateKey = null): bool
     {
-        $message = $this->applyTemplate($templateKey, $message);
+        $message = WhatsAppLimits::fit($this->applyTemplate($templateKey, $message), WhatsAppLimits::TEXT);
 
         $sent = $this->send([
             'messaging_product' => 'whatsapp',
@@ -90,16 +83,16 @@ class WhatsAppCloudMessenger implements BotMessenger
             'type' => 'interactive',
             'interactive' => [
                 'type' => 'list',
-                'body' => ['text' => $bodyText],
-                'footer' => ['text' => $this->footer],
+                'body' => ['text' => WhatsAppLimits::fit($bodyText, WhatsAppLimits::INTERACTIVE_BODY)],
+                'footer' => ['text' => WhatsAppLimits::fit($this->footer, WhatsAppLimits::FOOTER)],
                 'action' => [
-                    'button' => $buttonText,
+                    'button' => WhatsAppLimits::fit($buttonText, WhatsAppLimits::LIST_BUTTON),
                     'sections' => [[
-                        'title' => $sectionTitle,
+                        'title' => WhatsAppLimits::fit($sectionTitle, WhatsAppLimits::SECTION_TITLE),
                         'rows' => array_map(fn (array $row) => [
                             'id' => $row['id'],
-                            'title' => mb_substr($row['title'], 0, self::LIST_TITLE_LIMIT),
-                            'description' => mb_substr($row['description'] ?? '', 0, self::LIST_DESCRIPTION_LIMIT),
+                            'title' => WhatsAppLimits::fit($row['title'], WhatsAppLimits::ROW_TITLE),
+                            'description' => WhatsAppLimits::fit($row['description'] ?? '', WhatsAppLimits::ROW_DESCRIPTION),
                         ], $rows),
                     ]],
                 ],
@@ -120,14 +113,14 @@ class WhatsAppCloudMessenger implements BotMessenger
             'type' => 'interactive',
             'interactive' => [
                 'type' => 'button',
-                'body' => ['text' => $bodyText],
-                'footer' => ['text' => $this->footer],
+                'body' => ['text' => WhatsAppLimits::fit($bodyText, WhatsAppLimits::INTERACTIVE_BODY)],
+                'footer' => ['text' => WhatsAppLimits::fit($this->footer, WhatsAppLimits::FOOTER)],
                 'action' => [
                     'buttons' => array_map(fn (array $button) => [
                         'type' => 'reply',
                         'reply' => [
                             'id' => $button['id'],
-                            'title' => mb_substr($button['title'], 0, self::BUTTON_TITLE_LIMIT),
+                            'title' => WhatsAppLimits::fit($button['title'], WhatsAppLimits::BUTTON_TITLE),
                         ],
                     ], $buttons),
                 ],
@@ -147,8 +140,7 @@ class WhatsAppCloudMessenger implements BotMessenger
             'messaging_product' => 'whatsapp',
             'to' => $to,
             'type' => 'image',
-            // WhatsApp refuses captions past 1024 characters.
-            'image' => ['link' => $imageUrl, 'caption' => mb_substr($caption, 0, 1024)],
+            'image' => ['link' => $imageUrl, 'caption' => WhatsAppLimits::fit($caption, WhatsAppLimits::CAPTION)],
         ]);
 
         $this->logOutbound($to, "[image] {$caption}", $templateKey);

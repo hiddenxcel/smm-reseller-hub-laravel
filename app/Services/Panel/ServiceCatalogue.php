@@ -44,8 +44,13 @@ class ServiceCatalogue
     /** What a service costs plus this much is what we suggest charging. */
     private const SUGGESTED_MARGIN = 1.30;
 
-    /** Panels can return thousands; more than this is unusable in a picker. */
-    private const MAX_SERVICES = 300;
+    /**
+     * Panels can return thousands, and a picker with more than this is
+     * unusable — but a limit too low hides services the reseller is looking
+     * for: at 300, a panel of 465 showed only its first 300 and a search for
+     * anything past them found nothing.
+     */
+    private const MAX_SERVICES = 2000;
 
     public function forPanel(TenantPanel $panel): CatalogueResult
     {
@@ -61,13 +66,15 @@ class ServiceCatalogue
             ->pluck('provider_service_id')
             ->all();
 
-        $services = (new Collection($response->get('services', [])))
+        $all = $response->get('services', []);
+
+        $services = (new Collection($all))
             ->take(self::MAX_SERVICES)
             ->map(fn (array $service) => $this->normalise($service, $alreadyImported))
             ->filter()
             ->values();
 
-        return CatalogueResult::loaded($services->all());
+        return CatalogueResult::loaded($services->all(), count($all));
     }
 
     /**

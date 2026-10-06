@@ -1,3 +1,4 @@
+import { CharCount, WHATSAPP, fitToLimit } from '@/components/CharLimit';
 import { Button } from '@/components/ui/button';
 import { useForm } from '@inertiajs/react';
 import { Loader2, X } from 'lucide-react';
@@ -50,12 +51,15 @@ export default function ServiceForm({
         description: '',
         provider_service_id: '',
         panel_id: '' as string | number,
-        unit_label: 'Followers',
         cost_price: '',
         my_price: '',
         min_quantity: 100,
         max_quantity: 100000,
         link_instructions: '',
+        quality: '',
+        speed: '',
+        drop_info: '',
+        refill_info: '',
     });
 
     // A value outside the list, or the blank placeholder "Other" sets, means "type your own".
@@ -74,12 +78,15 @@ export default function ServiceForm({
             description: service?.description ?? '',
             provider_service_id: service?.providerServiceId ?? '',
             panel_id: service?.panelId ?? '',
-            unit_label: service?.unitLabel ?? 'Followers',
             cost_price: service?.cost != null ? String(service.cost) : '',
             my_price: service ? String(service.price) : '',
             min_quantity: service?.minQuantity ?? 100,
             max_quantity: service?.maxQuantity ?? 100000,
-            link_instructions: '',
+            link_instructions: service?.linkInstructions ?? '',
+            quality: service?.quality ?? '',
+            speed: service?.speed ?? '',
+            drop_info: service?.dropInfo ?? '',
+            refill_info: service?.refillInfo ?? '',
         });
         form.reset();
         form.clearErrors();
@@ -149,6 +156,21 @@ export default function ServiceForm({
                                 onChange={(event) => form.setData('name', event.target.value)}
                                 placeholder="Instagram Followers — 30 day refill"
                                 className={inputClass}
+                            />
+                            {/* The bot's list shows 24 characters of a name. A longer one is
+                                cut, so the reseller sees exactly what customers will. */}
+                            {form.data.name.trim().length > WHATSAPP.listTitle && (
+                                <p className="mt-1 text-xs text-[#9a6700] dark:text-[#e3b341]">
+                                    In the bot's list customers see{' '}
+                                    <span className="font-medium">
+                                        “{fitToLimit(form.data.name, WHATSAPP.listTitle)}”
+                                    </span>
+                                </p>
+                            )}
+                            <CharCount
+                                value={form.data.name}
+                                limit={WHATSAPP.listTitle}
+                                over="Put the important words first: the list shows only the start."
                             />
                         </Field>
 
@@ -275,7 +297,7 @@ export default function ServiceForm({
                             </p>
                         )}
 
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 gap-3">
                             <Field label="Minimum" error={form.errors.min_quantity} required>
                                 <input
                                     type="number"
@@ -299,16 +321,6 @@ export default function ServiceForm({
                                     className={`${inputClass} font-data tabular-nums`}
                                 />
                             </Field>
-
-                            <Field label="Unit" error={form.errors.unit_label}>
-                                <input
-                                    value={form.data.unit_label}
-                                    onChange={(event) =>
-                                        form.setData('unit_label', event.target.value)
-                                    }
-                                    className={inputClass}
-                                />
-                            </Field>
                         </div>
 
                         <Field label="Description" error={form.errors.description}>
@@ -318,19 +330,90 @@ export default function ServiceForm({
                                     form.setData('description', event.target.value)
                                 }
                                 rows={2}
-                                placeholder="What the customer gets"
+                                maxLength={WHATSAPP.description}
+                                placeholder="What the customer gets, in a sentence or two"
                                 className={`${inputClass} h-auto py-2`}
+                            />
+                            <CharCount
+                                value={form.data.description}
+                                limit={WHATSAPP.description}
+                                near="Shown to the customer on the service's card — keep it short."
+                                over="Too long for the card."
                             />
                         </Field>
 
+                        {/* What a customer reads on the service's card, before they pick
+                            a quantity. Each line shows only when it is filled in. */}
+                        <fieldset className="space-y-3 rounded-xl border border-border bg-muted/30 p-3.5">
+                            <legend className="px-1.5 text-xs font-semibold">
+                                What customers see before ordering
+                            </legend>
+
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <Field label="Quality" error={form.errors.quality}>
+                                    <input
+                                        value={form.data.quality}
+                                        onChange={(event) => form.setData('quality', event.target.value)}
+                                        maxLength={80}
+                                        placeholder="High quality, real accounts"
+                                        className={inputClass}
+                                    />
+                                </Field>
+
+                                <Field label="Speed (average time)" error={form.errors.speed}>
+                                    <input
+                                        value={form.data.speed}
+                                        onChange={(event) => form.setData('speed', event.target.value)}
+                                        maxLength={80}
+                                        placeholder="Starts instantly · 1–6 hours"
+                                        className={inputClass}
+                                    />
+                                </Field>
+
+                                <Field label="Drop" error={form.errors.drop_info}>
+                                    <input
+                                        value={form.data.drop_info}
+                                        onChange={(event) => form.setData('drop_info', event.target.value)}
+                                        maxLength={80}
+                                        placeholder="No drop"
+                                        className={inputClass}
+                                    />
+                                </Field>
+
+                                <Field label="Refill" error={form.errors.refill_info}>
+                                    <input
+                                        value={form.data.refill_info}
+                                        onChange={(event) => form.setData('refill_info', event.target.value)}
+                                        maxLength={80}
+                                        placeholder="30 days"
+                                        className={inputClass}
+                                    />
+                                </Field>
+                            </div>
+
+
+                            <p className="text-xs text-muted-foreground">
+                                Price, order size and the link the customer must send are added
+                                for you. Write them in your own words. Leave a line empty and it is simply not shown.
+                            </p>
+                        </fieldset>
+
                         <Field label="Link help" error={form.errors.link_instructions}>
-                            <input
+                            <textarea
                                 value={form.data.link_instructions}
                                 onChange={(event) =>
                                     form.setData('link_instructions', event.target.value)
                                 }
+                                rows={3}
+                                maxLength={WHATSAPP.linkHelp}
                                 placeholder="Send your profile link, not a post link"
-                                className={inputClass}
+                                className={`${inputClass} h-auto py-2`}
+                            />
+                            <CharCount
+                                value={form.data.link_instructions}
+                                limit={WHATSAPP.linkHelp}
+                                near="Close to the limit: WhatsApp keeps this and the greeting in one 1,024-character caption."
+                                over="Too long for the caption."
                             />
                         </Field>
                     </form>
