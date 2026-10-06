@@ -36,7 +36,7 @@ return [
     'menu_support_title' => '🎧 Destek',
     'menu_support_desc' => 'Yardım alın',
     'menu_settings_title' => '⚙️ Ayarlar',
-    'menu_settings_desc' => 'Dil',
+    'menu_settings_desc' => 'Dil · Para birimi',
     'menu_group_title' => '👥 Grubumuz',
     'menu_group_desc' => 'Güncellemelerimize katılın',
     'menu_website_title' => '🌐 Web Sitesi',

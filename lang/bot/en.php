@@ -36,7 +36,7 @@ return [
     'menu_support_title' => '🎧 Support',
     'menu_support_desc' => 'Get help',
     'menu_settings_title' => '⚙️ Settings',
-    'menu_settings_desc' => 'Language',
+    'menu_settings_desc' => 'Language · Currency',
     'menu_group_title' => '👥 Our Group',
     'menu_group_desc' => 'Join our updates',
     'menu_website_title' => '🌐 Website',

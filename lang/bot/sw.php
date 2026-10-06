@@ -33,7 +33,7 @@ return [
     'menu_support_title' => '🎧 Huduma Kwa Wateja',
     'menu_support_desc' => 'Pata msaada',
     'menu_settings_title' => '⚙️ Mipangilio',
-    'menu_settings_desc' => 'Lugha',
+    'menu_settings_desc' => 'Lugha · Sarafu',
     'menu_group_title' => '👥 Grupu Letu',
     'menu_group_desc' => 'Jiunge na taarifa zetu',
     'menu_website_title' => '🌐 Tovuti',

@@ -36,7 +36,7 @@ return [
     'menu_support_title' => '🎧 सहायता',
     'menu_support_desc' => 'मदद पाएँ',
     'menu_settings_title' => '⚙️ सेटिंग्स',
-    'menu_settings_desc' => 'भाषा',
+    'menu_settings_desc' => 'भाषा · मुद्रा',
     'menu_group_title' => '👥 हमारा ग्रुप',
     'menu_group_desc' => 'हमारे अपडेट से जुड़ें',
     'menu_website_title' => '🌐 वेबसाइट',

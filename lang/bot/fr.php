@@ -33,7 +33,7 @@ return [
     'menu_support_title' => '🎧 Assistance',
     'menu_support_desc' => 'Obtenir de l\'aide',
     'menu_settings_title' => '⚙️ Paramètres',
-    'menu_settings_desc' => 'Langue',
+    'menu_settings_desc' => 'Langue · Devise',
     'menu_group_title' => '👥 Notre groupe',
     'menu_group_desc' => 'Rejoignez nos actualités',
     'menu_website_title' => '🌐 Site web',
