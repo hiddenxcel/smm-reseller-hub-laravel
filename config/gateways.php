@@ -203,6 +203,42 @@ return [
             ['name' => 'webhook_secret', 'label' => 'Secret key', 'store' => 'webhook_secret'],
         ],
     ],
+    // ---- PayU (India): UPI, cards, net banking, wallets, charged in INR ----
+    //
+    // PayU takes the order as a POSTed form, so the customer's link goes to a
+    // page of ours that submits it (see PaymentFormController). The result
+    // comes back signed with the merchant salt, which is what confirms it.
+    // The optional third value "test" switches to PayU's sandbox.
+
+    'payu' => [
+        'label' => 'PayU (UPI, India)',
+        'type' => 'card',
+        'ready' => true,
+        'webhook_setup' => true,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'Merchant key', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Merchant salt', 'store' => 'webhook_secret'],
+            ['name' => 'extra', 'label' => 'Mode (type test for the sandbox, leave blank for live)', 'store' => 'extra', 'optional' => true],
+        ],
+    ],
+    // ---- Paytm (India): UPI, cards, net banking, wallets, charged in INR ----
+    //
+    // Two steps: our server initiates the transaction with Paytm, then the
+    // customer's browser posts the returned token to Paytm's payment page —
+    // through a page of ours, since a chat can only carry a link. The result
+    // comes back signed with the merchant key, which is what confirms it.
+    // "test" in the third slot switches to Paytm's sandbox.
+
+    'paytm' => [
+        'label' => 'Paytm (UPI, India)',
+        'type' => 'card',
+        'ready' => true,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'Merchant ID', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Merchant key', 'store' => 'webhook_secret'],
+            ['name' => 'extra', 'label' => 'Mode (type test for the sandbox, leave blank for live)', 'store' => 'extra', 'optional' => true],
+        ],
+    ],
     'cryptomus' => [
         'label' => 'Cryptomus (USDT / Crypto)',
         'type' => 'crypto',
@@ -305,6 +341,59 @@ return [
 
     // ---- selectable now, wired later ----
 
+    // UPI and other Indian methods through providers that need an approved
+    // merchant account. Keys can be saved ahead of time; none takes a payment
+    // until it is built and tried against a real account.
+
+    'bharatpe' => [
+        'label' => 'BharatPe (UPI, India)',
+        'type' => 'card',
+        'ready' => false,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'Merchant ID', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Secret key', 'store' => 'webhook_secret', 'optional' => true],
+        ],
+    ],
+    'ebanx' => [
+        'label' => 'EBANX (UPI, India)',
+        'type' => 'card',
+        'ready' => false,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'Integration key', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret', 'optional' => true],
+        ],
+    ],
+
+    'adyen' => [
+        'label' => 'Adyen (UPI, India)',
+        'type' => 'card',
+        'ready' => false,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'API key', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'HMAC key', 'store' => 'webhook_secret', 'optional' => true],
+            ['name' => 'extra', 'label' => 'Merchant account', 'store' => 'extra'],
+        ],
+    ],
+
+    'ppro' => [
+        'label' => 'PPRO (UPI, India)',
+        'type' => 'card',
+        'ready' => false,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'API token', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret', 'optional' => true],
+        ],
+    ],
+
+    'nomupay' => [
+        'label' => 'Nomu Pay (UPI, India)',
+        'type' => 'card',
+        'ready' => false,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'API key', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Webhook secret', 'store' => 'webhook_secret', 'optional' => true],
+        ],
+    ],
     'zenopay' => [
         'label' => 'ZenoPay (Mobile Money)',
         'type' => 'mobile',

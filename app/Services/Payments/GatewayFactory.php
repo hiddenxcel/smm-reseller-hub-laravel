@@ -40,6 +40,10 @@ class GatewayFactory
                 => new FimipayClient($apiKey, $secret, $credentials->gateway),
             // AnyPay: the project id and the project's secret key.
             'anypay' => new AnypayClient($apiKey, $secret),
+            // PayU: merchant key and salt, and "test" in the third slot for the sandbox.
+            'payu' => new PayuClient($apiKey, $secret, $extra),
+            // Paytm: merchant id and merchant key, and "test" in the third slot for the sandbox.
+            'paytm' => new PaytmClient($apiKey, $secret, $extra),
             'nowpayments' => new NowPaymentsClient($apiKey, $secret),
             'binance' => new BinancePayClient($apiKey, $secret),
             // Cryptomus and Heleket have no webhook secret of their own, so

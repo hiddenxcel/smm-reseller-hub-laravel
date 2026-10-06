@@ -27,12 +27,16 @@ class BotPayment extends Model
         'amount',
         'status',
         'binance_order_id',
+        'pending_order',
+        'last_checked_at',
     ];
 
     protected function casts(): array
     {
         return [
             'amount' => 'decimal:2',
+            'pending_order' => 'array',
+            'last_checked_at' => 'datetime',
         ];
     }
 

@@ -10,6 +10,8 @@ use App\Services\Payments\AnypayClient;
 use App\Services\Payments\BinancePayClient;
 use App\Services\Payments\CryptomusClient;
 use App\Services\Payments\FimipayClient;
+use App\Services\Payments\PaytmClient;
+use App\Services\Payments\PayuClient;
 use App\Services\Payments\Gateway;
 use App\Services\Payments\GatewayFactory;
 use App\Services\Payments\NowPaymentsClient;
@@ -166,6 +168,10 @@ class PaymentWebhookController extends Controller
             'order_id',
             // AnyPay: the number we gave it as the order.
             'pay_id',
+            // PayU: the transaction id we gave it.
+            'txnid',
+            // Paytm: the order id we gave it.
+            'ORDERID',
             'orderId',
             'merchant_order_id',
             'invoice_id',
@@ -282,7 +288,7 @@ class PaymentWebhookController extends Controller
 
         // AnyPay's fields arrive as form or query parameters, not as a body to
         // hash, so it is checked on the parameters.
-        if ($client instanceof AnypayClient) {
+        if ($client instanceof AnypayClient || $client instanceof PayuClient || $client instanceof PaytmClient) {
             return $client->verifyParams($request->all());
         }
 
@@ -325,6 +331,14 @@ class PaymentWebhookController extends Controller
 
         if ($gateway === 'anypay') {
             return AnypayClient::isPaid($payload);
+        }
+
+        if ($gateway === 'payu') {
+            return PayuClient::isPaid($payload);
+        }
+
+        if ($gateway === 'paytm') {
+            return PaytmClient::isPaid($payload);
         }
 
         // Binance Pay before anything else. Its envelope carries a top-level

@@ -34,6 +34,27 @@ Schedule::command('panels:check')
     ->runInBackground();
 
 /*
+| Every two minutes: a customer whose order was cancelled is waiting for
+| their money, and a panel is asked about a hundred orders in one call, so
+| this is cheap. withoutOverlapping so a slow panel cannot make two runs
+| refund the same order twice (the refund is idempotent anyway).
+*/
+Schedule::command('orders:sync')
+    ->everyTwoMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+/*
+| Every minute: someone who has just paid is looking at their phone. The
+| command spaces its questions out by the payment's age, so a quiet minute
+| costs almost nothing.
+*/
+Schedule::command('payments:reconcile')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+/*
 | The public demo, put back the way visitors expect to find it.
 |
 | Registered only when an account is actually configured: this command

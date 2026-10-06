@@ -28,6 +28,8 @@ class StartTopup
      * @param  string  $gateway  the one the customer picked; blank lets the
      *                           reseller's default decide, which is what a
      *                           single-gateway shop wants
+     * @param  array{service: array, link: string, quantity: int, amount: string}|null  $pendingOrder
+     *                           the order this payment is for, placed when it clears
      */
     public function handle(
         int $tenantId,
@@ -36,6 +38,7 @@ class StartTopup
         string $currency,
         string $phone = '',
         string $gateway = '',
+        ?array $pendingOrder = null,
     ): TopupResult {
         // A named gateway is still looked up through the factory, so a customer
         // replying with the code of one that has since been paused gets the
@@ -64,6 +67,9 @@ class StartTopup
             'transaction_ref' => $this->reference(),
             'amount' => $amount,
             'status' => 'pending',
+            // What the customer is paying for, if anything, so that paying
+            // finishes it however the conversation has moved on since.
+            'pending_order' => $pendingOrder,
         ]);
 
         $initiation = $client->initiate(new PaymentRequest(

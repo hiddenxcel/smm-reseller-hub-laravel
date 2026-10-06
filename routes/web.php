@@ -15,6 +15,7 @@ use App\Http\Controllers\Onboarding\SetupPaymentsController;
 use App\Http\Controllers\Onboarding\SkipStepController;
 use App\Http\Controllers\Onboarding\TestBotController;
 use App\Http\Controllers\OrderBotController;
+use App\Http\Controllers\PaymentFormController;
 use App\Http\Controllers\OrderBotGatewaysController;
 use App\Http\Controllers\OrderBotInboxController;
 use App\Http\Controllers\OrderBotProvidersController;
@@ -63,6 +64,8 @@ Route::get('/contact', [PublicPageController::class, 'contact'])->name('contact'
 
 // Where a payment gateway returns a customer to. See the controller: it claims
 // nothing about the payment, only sends them back to the chat.
+// Where a payment link for a form-posting gateway (PayU) lands; signed and short-lived.
+Route::get('/pay/form', PaymentFormController::class)->name('payment.form');
 Route::get('/payment/thanks', [PublicPageController::class, 'paymentThanks'])->name('payment.thanks');
 
 // Throttled: the form sends mail, so an unthrottled endpoint is a way to

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Webhooks\BillingWebhookController;
+use App\Http\Controllers\Webhooks\PaymentReturnController;
 use App\Http\Controllers\Webhooks\PaymentWebhookController;
 use App\Http\Controllers\Webhooks\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +33,12 @@ Route::prefix('webhooks')->group(function () {
     // unsigned request of either kind is refused all the same.
     Route::match(['get', 'post'], 'payment/{gateway}', PaymentWebhookController::class)
         ->name('webhooks.payment');
+
+    // Where PayU sends the customer's browser back (surl and furl). The
+    // response is verified like any notification, then the customer is sent on
+    // to a thank-you page.
+    Route::match(['get', 'post'], 'payment-return/{gateway}', PaymentReturnController::class)
+        ->name('webhooks.payment.return');
 
     // Subscriptions, on a separate path from the one above. Same gateways,
     // opposite direction: this is a reseller paying the platform, on the
