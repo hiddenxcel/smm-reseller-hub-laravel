@@ -117,7 +117,7 @@ class RentNumber
      * two numbers both claiming the order bot would leave an inbound message
      * with no single answer to "whose bot is this?".
      */
-    private function assertBotTypeIsFree(Tenant $tenant, string $botType): void
+    public function assertBotTypeIsFree(Tenant $tenant, string $botType): void
     {
         $conflict = TenantWhatsApp::withoutTenantScope()
             ->where('tenant_id', $tenant->id)

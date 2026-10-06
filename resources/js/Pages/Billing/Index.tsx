@@ -23,6 +23,7 @@ export default function BillingIndex({
     currency,
     credit,
     numbers,
+    preselect,
     invoices,
 }: BillingPageProps) {
     const expiring = services.filter(
@@ -77,6 +78,7 @@ export default function BillingIndex({
                         currency={currency}
                         credit={credit}
                     numbers={numbers}
+                    preselect={preselect}
                 />
 
                 <Section title="Payments">

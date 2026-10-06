@@ -28,7 +28,18 @@ import VoiceButton from './VoiceButton';
  * Server-rendered pages mount this, so nothing here may touch the browser
  * during render; see `mounted`.
  */
-export default function AssistantWidget({ demoNumber }: { demoNumber?: string | null }) {
+export default function AssistantWidget({
+    demoNumber,
+    inApp = false,
+}: {
+    demoNumber?: string | null;
+    /**
+     * Mounted inside the signed-in app rather than on the public site. Someone
+     * who already has an account is not being sold to, so the sales peek stays
+     * away; the chat itself is the same.
+     */
+    inApp?: boolean;
+}) {
     const { url } = usePage();
     const page = url.split('?')[0] || '/';
 
@@ -182,7 +193,13 @@ export default function AssistantWidget({ demoNumber }: { demoNumber?: string | 
 
     return (
         <>
-            <AssistantBubble open={open} unread={unread} locale={locale} onOpen={show} />
+            <AssistantBubble
+                open={open}
+                unread={unread}
+                locale={locale}
+                onOpen={show}
+                peekEnabled={!inApp}
+            />
 
             {/* Only on a phone, where the panel is the whole screen. On a
                 desktop the page behind stays readable and usable on purpose. */}

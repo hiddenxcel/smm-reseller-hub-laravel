@@ -1,4 +1,5 @@
 import AppLogo from '@/components/AppLogo';
+import AssistantWidget from '@/components/assistant/AssistantWidget';
 import DemoBanner from '@/components/DemoBanner';
 import ImpersonationBanner from '@/components/ImpersonationBanner';
 import { Toaster } from '@/components/ui/sonner';
@@ -164,7 +165,8 @@ export default function AuthenticatedLayout({
      */
     bleed = false,
 }: PropsWithChildren<{ header?: ReactNode; bleed?: boolean }>) {
-    const tenant = usePage().props.auth.user;
+    const { auth, assistantEnabled } = usePage().props;
+    const tenant = auth.user;
 
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -209,13 +211,17 @@ export default function AuthenticatedLayout({
                         </header>
                     )}
 
-                    <main className={bleed ? '' : 'px-4 py-6 sm:px-8 sm:py-8'}>
+                    <main className={bleed ? '' : 'px-4 pt-6 pb-24 sm:px-8 sm:pt-8'}>
                         {children}
                     </main>
                 </div>
             </div>
 
             <Toaster position="bottom-right" />
+
+            {/* The same assistant as the public site, for questions that come
+                up while setting a shop up. Hidden without a key behind it. */}
+            {assistantEnabled && <AssistantWidget inApp />}
         </div>
     );
 }

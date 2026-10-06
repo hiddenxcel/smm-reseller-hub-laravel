@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Announcement;
 use App\Models\SupportTicket;
 use App\Services\Admin\Impersonation;
+use App\Services\Assistant\AssistantKey;
 use App\Services\Demo\DemoAccount;
 use App\Services\Team\TeamAccess;
 use Illuminate\Http\Request;
@@ -74,6 +75,9 @@ class HandleInertiaRequests extends Middleware
             // badge. Email tells them once; this is what tells them on the
             // visit after that.
             'supportUnread' => fn () => $this->supportUnread(),
+            // Whether the chat assistant has anything behind it. The same switch
+            // the public pages use, so it appears and disappears everywhere at once.
+            'assistantEnabled' => fn () => AssistantKey::widgetEnabled(),
             // One-shot messages from the action just performed, shown as
             // toasts. Closures so the session is only read on a response that
             // actually carries one.

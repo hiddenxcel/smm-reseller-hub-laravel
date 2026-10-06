@@ -48,14 +48,17 @@ export function Cart({
     currency,
     credit,
     numbers,
+    preselect,
 }: Omit<BillingPageProps, 'invoices'>) {
     const [months, setMonths] = useState(terms[0]?.months ?? 1);
 
     const form = useForm({
-        services: [] as string[],
+        // A number chosen on the setup screen arrives here selected, with the
+        // bot it needs, but nothing is bought until the reseller pays.
+        services: preselect ? [preselect.service] : ([] as string[]),
         months: terms[0]?.months ?? 1,
         gateway: gateways[0]?.code ?? '',
-        numberId: '' as number | string,
+        numberId: (preselect?.numberId ?? '') as number | string,
         phone: '',
     });
 

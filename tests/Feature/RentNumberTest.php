@@ -6,9 +6,11 @@ use App\Enums\ServiceKey;
 use App\Models\BotService;
 use App\Models\NumberRental;
 use App\Models\PlatformNumber;
+use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\TenantPanel;
 use App\Models\TenantWhatsApp;
+use App\Services\Billing\ActivatePurchase;
 use App\Services\Numbers\RentNumber;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
@@ -42,19 +44,15 @@ class RentNumberTest extends TestCase
 
     // ---- claiming --------------------------------------------------------
 
-    public function test_renting_attaches_a_working_number_to_the_tenant(): void
+    public function test_paying_attaches_a_working_number_to_the_tenant(): void
     {
         $number = PlatformNumber::factory()->create([
             'display_number' => '255700000999',
             'phone_number_id' => 'platform-1',
         ]);
 
-        $this->actingAs($this->tenant, 'tenant')
-            ->post(route('onboarding.whatsapp.rent'), [
-                'platform_number_id' => $number->id,
-                'bot_type' => 'order',
-            ])
-            ->assertRedirect(route('onboarding'));
+        // The number is handed over by the payment, not by a button.
+        app(ActivatePurchase::class)->apply($this->paidInvoiceFor($number));
 
         $this->assertDatabaseHas('tenant_whatsapp', [
             'tenant_id' => $this->tenant->id,
@@ -70,8 +68,105 @@ class RentNumberTest extends TestCase
             'platform_number_id' => $number->id,
             'status' => 'active',
         ]);
+
+        $this->assertSame('rented', $number->fresh()->status);
     }
 
+    /** A cart of one bot and one number, already paid. */
+    private function paidInvoiceFor(PlatformNumber $number): SubscriptionPayment
+    {
+        return SubscriptionPayment::withoutTenantScope()->create([
+            'tenant_id' => $this->tenant->id,
+            'gateway' => 'snippe',
+            'transaction_ref' => 'SUB-TEST'.$number->id,
+            'amount' => '10.00',
+            'currency' => 'USD',
+            'months' => 1,
+            'items' => [
+                ['type' => 'service', 'key' => 'order_bot', 'months' => 1],
+                ['type' => 'number', 'key' => (string) $number->id, 'bot_type' => 'order'],
+            ],
+            'status' => 'pending',
+        ]);
+    }
+
+    // ---- choosing is not renting -----------------------------------------
+
+    public function test_choosing_a_number_does_not_rent_it(): void
+    {
+        $number = PlatformNumber::factory()->create(['phone_number_id' => 'platform-1']);
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->post(route('onboarding.whatsapp.rent'), [
+                'platform_number_id' => $number->id,
+                'bot_type' => 'order',
+            ])
+            ->assertRedirect(route('billing', ['number' => $number->id, 'bot' => 'order']));
+
+        // Nothing was paid, so nothing changed hands.
+        $this->assertSame('available', $number->fresh()->status);
+        $this->assertDatabaseCount('number_rentals', 0);
+        $this->assertDatabaseMissing('tenant_whatsapp', ['phone_number_id' => 'platform-1']);
+        $this->assertDatabaseMissing('subscriptions', [
+            'tenant_id' => $this->tenant->id,
+            'service_key' => ServiceKey::NumberRental->value,
+        ]);
+    }
+
+    public function test_a_chosen_number_stays_available_to_everyone_until_it_is_paid_for(): void
+    {
+        $number = PlatformNumber::factory()->create();
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->post(route('onboarding.whatsapp.rent'), ['platform_number_id' => $number->id]);
+
+        $this->assertSame(
+            [$number->id],
+            PlatformNumber::where('status', 'available')->pluck('id')->all(),
+        );
+    }
+
+    public function test_choosing_arrives_at_the_cart_with_the_number_selected_and_unpaid(): void
+    {
+        $number = PlatformNumber::factory()->create();
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->get(route('billing', ['number' => $number->id, 'bot' => 'support']))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('preselect.numberId', $number->id)
+                ->where('preselect.service', 'support_bot'));
+    }
+
+    public function test_a_number_that_is_no_longer_free_is_not_preselected(): void
+    {
+        $number = PlatformNumber::factory()->rented()->create();
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->get(route('billing', ['number' => $number->id]))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('preselect', null));
+    }
+
+    public function test_choosing_a_bot_another_number_already_runs_is_refused_before_paying(): void
+    {
+        TenantWhatsApp::factory()->for($this->tenant)->create(['bot_type' => 'order', 'status' => 'active']);
+        $number = PlatformNumber::factory()->create();
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->post(route('onboarding.whatsapp.rent'), ['platform_number_id' => $number->id, 'bot_type' => 'order'])
+            ->assertSessionHasErrors('platform_number_id');
+    }
+
+    public function test_a_payment_that_never_clears_rents_nothing(): void
+    {
+        $number = PlatformNumber::factory()->create();
+        $invoice = $this->paidInvoiceFor($number);
+
+        // Abandoned, not paid.
+        $invoice->update(['status' => 'failed']);
+
+        $this->assertSame('available', $number->fresh()->status);
+        $this->assertDatabaseCount('number_rentals', 0);
+    }
     public function test_the_platform_token_is_copied_but_never_exposed(): void
     {
         $number = PlatformNumber::factory()->create([

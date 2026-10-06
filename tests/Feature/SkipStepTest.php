@@ -59,10 +59,11 @@ class SkipStepTest extends TestCase
 
         $this->assertSame(['panel'], $this->skipped());
 
-        // The wizard now offers the next step instead of the skipped one.
+        // The wizard now offers the next step instead of the skipped one. Not
+        // the import step: it builds on the panel that was just put off.
         $this->actingAs($this->tenant, 'tenant')
             ->get(route('onboarding'))
-            ->assertRedirect(route('onboarding.step', OnboardingStep::ImportServices->value));
+            ->assertRedirect(route('onboarding.step', OnboardingStep::ConnectWhatsApp->value));
     }
 
     public function test_a_skipped_step_is_not_a_finished_step(): void
@@ -87,6 +88,45 @@ class SkipStepTest extends TestCase
 
         $this->assertFalse($progress->isReadyToGoLive());
         $this->assertCount(4, $progress->outstanding());
+    }
+
+    public function test_continuing_after_skipping_the_panel_does_not_loop(): void
+    {
+        // The reported case: panel skipped, services not. Import needs a panel,
+        // so "Continue setup" used to bounce between the two for ever.
+        $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.skip', 'panel'));
+
+        $this->actingAs($this->tenant, 'tenant')
+            ->get(route('onboarding'))
+            ->assertRedirect(route('onboarding.step', 'whatsapp'));
+    }
+
+    public function test_opening_the_import_step_without_a_panel_goes_to_the_panel_step(): void
+    {
+        $this->actingAs($this->tenant, 'tenant')
+            ->get(route('onboarding.step', 'services'))
+            ->assertRedirect(route('onboarding.step', 'panel'));
+    }
+
+    public function test_the_import_step_stays_outstanding_while_it_is_passed_over(): void
+    {
+        $this->actingAs($this->tenant, 'tenant')->post(route('onboarding.skip', 'panel'));
+
+        $progress = OnboardingProgress::for($this->tenant->fresh());
+
+        $this->assertTrue($progress->isBlocked(OnboardingStep::ImportServices));
+        $this->assertFalse($progress->isComplete(OnboardingStep::ImportServices));
+        $this->assertContains(OnboardingStep::ImportServices, $progress->outstanding());
+    }
+
+    public function test_the_import_step_is_offered_again_once_the_panel_is_connected(): void
+    {
+        TenantPanel::factory()->for($this->tenant)->create(['status' => 'active']);
+
+        $progress = OnboardingProgress::for($this->tenant->fresh());
+
+        $this->assertFalse($progress->isBlocked(OnboardingStep::ImportServices));
+        $this->assertSame(OnboardingStep::ImportServices, $progress->currentStep());
     }
 
     public function test_skipping_the_last_remaining_step_lands_on_the_dashboard(): void

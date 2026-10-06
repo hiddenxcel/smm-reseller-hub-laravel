@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { MARKS, formatDay, niceCeiling } from './chart-tokens';
 
 export type TrendPoint = {
@@ -15,7 +15,27 @@ type Props = {
     label: string;
 };
 
-const VIEWBOX = { width: 720, height: 220 };
+// The drawing is scaled to the card, so on a phone a 720-wide drawing shrinks
+// its labels to a size nobody can read. A narrower, taller drawing keeps text
+// close to its real size there.
+const VIEWBOX_WIDE = { width: 720, height: 220 };
+const VIEWBOX_NARROW = { width: 360, height: 250 };
+
+function useCompact(): boolean {
+    const [compact, setCompact] = useState(false);
+
+    useEffect(() => {
+        const query = window.matchMedia('(max-width: 639px)');
+        const update = () => setCompact(query.matches);
+
+        update();
+        query.addEventListener('change', update);
+
+        return () => query.removeEventListener('change', update);
+    }, []);
+
+    return compact;
+}
 const PADDING = { top: 16, right: 16, bottom: 28, left: 48 };
 
 /**
@@ -29,6 +49,8 @@ const PADDING = { top: 16, right: 16, bottom: 28, left: 48 };
 export default function TrendChart({ points, variant = 'area', formatValue, label }: Props) {
     const gradientId = useId();
     const [hovered, setHovered] = useState<number | null>(null);
+    const compact = useCompact();
+    const VIEWBOX = compact ? VIEWBOX_NARROW : VIEWBOX_WIDE;
 
     const plotWidth = VIEWBOX.width - PADDING.left - PADDING.right;
     const plotHeight = VIEWBOX.height - PADDING.top - PADDING.bottom;
@@ -194,9 +216,12 @@ export default function TrendChart({ points, variant = 'area', formatValue, labe
                         />
                     ))}
 
-                    {/* Every third day, so labels never collide. */}
+                    {/* Every third day (every fourth on a phone, counted back
+                        from today), so labels never collide. */}
                     {points.map((point, index) =>
-                        index % 3 === 0 || index === points.length - 1 ? (
+                        (compact
+                            ? (points.length - 1 - index) % 4 === 0
+                            : index % 3 === 0 || index === points.length - 1) ? (
                             <text
                                 key={`x-${point.date}`}
                                 x={xFor(index)}

@@ -225,9 +225,11 @@ class OnboardingController extends Controller
             ->orderBy('id')
             ->first();
 
-        // No panel means the previous step is not really done; send them back.
+        // No panel means the previous step is not really done; send them to
+        // it. Straight to it, not back to the wizard's front door: that sends
+        // them here again whenever the panel step was skipped.
         if ($panel === null) {
-            return redirect()->route('onboarding');
+            return redirect()->route('onboarding.step', OnboardingStep::ConnectPanel->value);
         }
 
         $catalogue = $this->catalogue->forPanel($panel);

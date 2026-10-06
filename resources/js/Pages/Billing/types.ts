@@ -56,5 +56,7 @@ export type BillingPageProps = {
     /** Referral credit, in whole currency units rather than cents. */
     credit: number;
     numbers: RentableNumber[];
+    /** A number picked on the setup screen: not rented, only waiting to be paid for. */
+    preselect: { numberId: number; service: string } | null;
     invoices: Invoice[];
 };

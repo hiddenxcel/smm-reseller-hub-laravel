@@ -165,7 +165,7 @@ function RentCard({ rentable }: { rentable: RentableNumber[] }) {
                                 )
                             }
                         >
-                            Rent
+                            Choose &amp; pay
                         </Button>
                     </li>
                 ))}

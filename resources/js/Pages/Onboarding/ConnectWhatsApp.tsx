@@ -264,11 +264,12 @@ function RentPanel({ rentable }: { rentable: RentableNumber[] }) {
             <Button type="submit" size="lg" disabled={processing} className="w-full">
                 {processing && <Loader2 className="size-4 animate-spin" />}
                 {chosen && chosen.price > 0
-                    ? `Rent for ${chosen.currency} ${chosen.price.toFixed(2)}`
-                    : 'Rent this number'}
+                    ? `Choose this number — ${chosen.currency} ${chosen.price.toFixed(2)}`
+                    : 'Choose this number'}
             </Button>
 
             <p className="text-xs text-muted-foreground">
+                You pay on the next screen, and the number is yours only once the payment clears.
                 We keep the Meta app and the access token — you never have to touch either.
             </p>
         </form>

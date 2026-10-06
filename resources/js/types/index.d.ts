@@ -84,6 +84,8 @@ export type PageProps<
     announcements: Announcement[];
     /** Support tickets whose last word was ours — the sidebar badge. */
     supportUnread: number;
+    /** Whether the chat assistant has a key behind it; hidden when it has not. */
+    assistantEnabled: boolean;
     flash: Flash;
     /**
      * Laravel's route list, shared for `route()`. In the browser it also

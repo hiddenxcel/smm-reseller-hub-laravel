@@ -227,30 +227,36 @@ export default function Dashboard({
 
                 <Overview kpis={kpis} />
 
-                <Trends trend={trend} />
+                {/* Side by side from a laptop up: the chart keeps a sensible
+                    height instead of stretching to the full width of a
+                    monitor, and the 30-day summary sits where the eye lands
+                    next. */}
+                <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+                    <Trends trend={trend} className="lg:col-span-2" />
+
+                    <Panel title="Last 30 days">
+                        <div className="space-y-6">
+                            <div>
+                                <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+                                    Order outcomes
+                                </h3>
+                                <StatusMixBar counts={statusMix} />
+                            </div>
+
+                            <div>
+                                <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+                                    Top services
+                                </h3>
+                                <TopServices services={topServices.slice(0, 3)} />
+                            </div>
+                        </div>
+                    </Panel>
+                </div>
 
                 {showProfit && <ProfitCard profit={profit} />}
 
-                <Panel title="Last 30 days">
-                    <div className="grid gap-6 lg:grid-cols-5 lg:gap-8">
-                        <div className="lg:col-span-2">
-                            <h3 className="mb-3 text-sm font-medium text-muted-foreground">
-                                Order outcomes
-                            </h3>
-                            <StatusMixBar counts={statusMix} />
-                        </div>
-
-                        <div className="lg:col-span-3">
-                            <h3 className="mb-3 text-sm font-medium text-muted-foreground">
-                                Top services
-                            </h3>
-                            <TopServices services={topServices.slice(0, 5)} />
-                        </div>
-                    </div>
-                </Panel>
-
                 <div
-                    className={`grid gap-4 sm:gap-6 ${recentTickets.length > 0 ? 'lg:grid-cols-3' : ''}`}
+                    className={`grid grid-cols-1 gap-4 sm:gap-6 ${recentTickets.length > 0 ? 'lg:grid-cols-3' : ''}`}
                 >
                     <Panel
                         title="Recent orders"
@@ -346,7 +352,7 @@ function Panel({
     children: ReactNode;
 }) {
     return (
-        <section className={`rounded-2xl border border-border bg-card p-4 sm:p-5 ${className}`}>
+        <section className={`min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-5 ${className}`}>
             <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-baseline gap-2">
                     <h2 className="font-heading shrink-0 font-bold">{title}</h2>
@@ -564,7 +570,7 @@ function Figure({
  * stacked on a phone. Every chart keeps a table twin — a tooltip must never be
  * the only way to reach a value.
  */
-function Trends({ trend }: { trend: Props['trend'] }) {
+function Trends({ trend, className = '' }: { trend: Props['trend']; className?: string }) {
     const [metric, setMetric] = useState<'revenue' | 'orders'>('revenue');
     const [showTable, setShowTable] = useState(false);
 
@@ -580,6 +586,7 @@ function Trends({ trend }: { trend: Props['trend'] }) {
         <Panel
             title="Trends"
             hint="Last 14 days"
+            className={className}
             action={
                 <div className="flex items-center gap-1">
                     <div className="inline-flex rounded-lg bg-muted p-0.5 text-xs font-medium">

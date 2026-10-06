@@ -58,8 +58,32 @@ class BillingController extends Controller
             'currency' => (string) config('billing.currency', 'USD'),
             'credit' => (float) $tenant->referral_credit,
             'numbers' => $this->rentableNumbers(),
+            'preselect' => $this->preselect($request),
             'invoices' => $this->invoices($tenantId),
         ]);
+    }
+
+    /**
+     * A number chosen on the setup screen, carried here to be paid for.
+     *
+     * Only a number that is still free is honoured, and only as a starting
+     * point: the cart is the reseller's to change, and nothing is bought until
+     * they pay.
+     *
+     * @return array{numberId: int, service: string}|null
+     */
+    private function preselect(Request $request): ?array
+    {
+        $numberId = (int) $request->query('number');
+
+        if ($numberId <= 0 || ! PlatformNumber::where('status', 'available')->whereKey($numberId)->exists()) {
+            return null;
+        }
+
+        return [
+            'numberId' => $numberId,
+            'service' => $request->query('bot') === 'support' ? 'support_bot' : 'order_bot',
+        ];
     }
 
     /**

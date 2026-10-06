@@ -75,12 +75,27 @@ class OnboardingProgress
     public function currentStep(): ?OnboardingStep
     {
         foreach (OnboardingStep::ordered() as $step) {
-            if (! $this->isComplete($step) && ! $this->isSkipped($step)) {
+            if (! $this->isComplete($step) && ! $this->isSkipped($step) && ! $this->isBlocked($step)) {
                 return $step;
             }
         }
 
         return null;
+    }
+
+    /**
+     * A step that cannot be done yet because the one it builds on is not.
+     *
+     * Importing services needs a connected panel. When the panel step was put
+     * off, the import step has nothing to work with — sending the reseller
+     * there would only bounce them back, and the two would send each other
+     * round in circles. It is passed over like a skipped step, and stays
+     * outstanding.
+     */
+    public function isBlocked(OnboardingStep $step): bool
+    {
+        return $step === OnboardingStep::ImportServices
+            && ! $this->isComplete(OnboardingStep::ConnectPanel);
     }
 
     /** Steps the reseller chose to come back to later. */

@@ -30,18 +30,21 @@ export default function AssistantBubble({
     unread,
     locale,
     onOpen,
+    peekEnabled = true,
 }: {
     open: boolean;
     unread: boolean;
     locale: Locale;
     onOpen: () => void;
+    /** Off inside the signed-in app, where nobody is being invited to sign up. */
+    peekEnabled?: boolean;
 }) {
     const copy = t(locale);
 
     const [peek, setPeek] = useState(false);
 
     useEffect(() => {
-        if (open) {
+        if (open || !peekEnabled) {
             return;
         }
 
@@ -73,7 +76,7 @@ export default function AssistantBubble({
             window.clearTimeout(show);
             window.clearTimeout(hide);
         };
-    }, [open]);
+    }, [open, peekEnabled]);
 
     return (
         <div

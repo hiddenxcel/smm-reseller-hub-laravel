@@ -1,6 +1,7 @@
 import AppLogo from '@/components/AppLogo';
+import AssistantWidget from '@/components/assistant/AssistantWidget';
 import { Button } from '@/components/ui/button';
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Check, SkipForward } from 'lucide-react';
 import { PropsWithChildren } from 'react';
 
@@ -29,6 +30,7 @@ type Props = PropsWithChildren<{
 export default function OnboardingLayout({ step, steps, completed, canSkip = true, children }: Props) {
     const total = steps.length;
     const percent = Math.round((completed / total) * 100);
+    const { assistantEnabled } = usePage().props;
 
     return (
         <div className="min-h-dvh bg-background">
@@ -57,7 +59,7 @@ export default function OnboardingLayout({ step, steps, completed, canSkip = tru
                 </div>
             </header>
 
-            <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 lg:grid-cols-[220px_1fr]">
+            <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-4 py-10 lg:grid-cols-[220px_minmax(0,1fr)]">
                 <nav aria-label="Setup steps">
                     <ol className="space-y-1">
                         {steps.map((item, index) => {
@@ -76,7 +78,7 @@ export default function OnboardingLayout({ step, steps, completed, canSkip = tru
                     </ol>
                 </nav>
 
-                <main>
+                <main className="min-w-0">
                     {children}
 
                     {canSkip && (
@@ -87,6 +89,9 @@ export default function OnboardingLayout({ step, steps, completed, canSkip = tru
                     )}
                 </main>
             </div>
+
+            {/* Setup is where people stall, so the answers are one tap away. */}
+            {assistantEnabled && <AssistantWidget inApp />}
         </div>
     );
 }
