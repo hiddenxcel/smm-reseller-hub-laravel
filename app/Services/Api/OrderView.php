@@ -26,7 +26,7 @@ final class OrderView
             'charge' => (string) ($order->charge ?? $order->amount ?? '0'),
             'start_count' => '0',
             'status' => self::label($order),
-            'remains' => '0',
+            'remains' => (string) ($order->remains ?? 0),
             'currency' => 'USD',
         ];
     }
@@ -41,10 +41,15 @@ final class OrderView
             return 'Canceled';
         }
 
+        // Failed before the provider ever had it: still pending to whoever asks.
+        if (! $order->reachedProvider() && OrderStatus::fold($order->status) === OrderStatus::FAILED) {
+            return 'Pending';
+        }
+
         return match (OrderStatus::fold($order->status)) {
             OrderStatus::COMPLETED => 'Completed',
             OrderStatus::PROCESSING => 'In progress',
-            OrderStatus::FAILED => 'Canceled',
+            OrderStatus::FAILED => str_contains(mb_strtolower((string) $order->status), 'partial') ? 'Partial' : 'Canceled',
             default => 'Pending',
         };
     }

@@ -15,6 +15,8 @@ export type Setup = {
     groupUrl: string;
     websiteUrl: string;
     supportMode: 'admin' | 'ai';
+    /** Send the customer's money back when the provider cancels an order or delivers only part of it. */
+    autoRefund: boolean;
     staff: string[];
     ai: {
         active: boolean;

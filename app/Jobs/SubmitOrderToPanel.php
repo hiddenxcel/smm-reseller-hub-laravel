@@ -46,7 +46,7 @@ class SubmitOrderToPanel implements ShouldQueue
             ->first();
 
         if ($panel === null) {
-            $order->update(['order_error' => 'Panel no longer connected']);
+            $order->update(['order_error' => 'Panel no longer connected', 'status' => 'Failed']);
 
             return;
         }
@@ -69,6 +69,27 @@ class SubmitOrderToPanel implements ShouldQueue
             'provider_order_id' => $result->get('order_id'),
             'status' => 'processing',
             'order_error' => null,
+        ]);
+    }
+
+    /**
+     * Every attempt has been refused.
+     *
+     * The order is marked failed so the reseller sees it and can resend it —
+     * the customer is not told: to them it is still pending. Nothing is
+     * refunded, because the provider never had it.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        $order = BotOrder::withoutTenantScope()->find($this->orderId);
+
+        if ($order === null || $order->provider_order_id !== null) {
+            return;
+        }
+
+        $order->update([
+            'status' => 'Failed',
+            'order_error' => $order->order_error ?: mb_substr($exception->getMessage(), 0, 250),
         ]);
     }
 }

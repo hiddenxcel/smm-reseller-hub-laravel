@@ -130,6 +130,7 @@ class OrderBotController extends Controller
             'groupUrl' => Arr::get($settings, 'shop.group_url', ''),
             'websiteUrl' => Arr::get($settings, 'shop.website_url', ''),
             'supportMode' => Arr::get($settings, 'shop.support_mode', 'admin') === 'ai' ? 'ai' : 'admin',
+            'autoRefund' => (bool) Arr::get($settings, 'shop.auto_refund', true),
             'staff' => Arr::get($settings, 'staff.numbers', []),
             'ai' => [
                 'active' => $aiActive,
@@ -218,10 +219,15 @@ class OrderBotController extends Controller
             'supportMode' => ['required', Rule::in(['admin', 'ai'])],
             'staff' => ['array'],
             'staff.*' => ['string', 'max:20'],
+            'autoRefund' => ['sometimes', 'boolean'],
         ]);
 
         $tenantId = (int) $request->user()->id;
         $settings = BotSettings::for($tenantId, self::BOT);
+
+        if (array_key_exists('autoRefund', $data)) {
+            Arr::set($settings, 'shop.auto_refund', (bool) $data['autoRefund']);
+        }
 
         Arr::set($settings, 'shop.lang', $data['lang']);
         Arr::set($settings, 'shop.group_url', $data['groupUrl'] ?? '');

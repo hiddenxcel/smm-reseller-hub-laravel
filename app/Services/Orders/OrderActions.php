@@ -77,7 +77,9 @@ class OrderActions
      */
     public static function retry(BotOrder $order): ActionResult
     {
-        $order->update(['order_error' => null]);
+        // Back to pending, so the customer's view and the reseller's list agree
+        // that it is on its way again; the job moves it on or fails it again.
+        $order->update(['order_error' => null, 'status' => 'Pending']);
 
         SubmitOrderToPanel::dispatch($order->id);
 
@@ -119,7 +121,13 @@ class OrderActions
 
         $order->update(['status' => 'Canceled']);
 
-        return ActionResult::ok('Cancellation requested.');
+        // The provider has the order and has cancelled it: the customer is
+        // owed their money back (if the shop has refunds switched on).
+        $refunded = app(RefundOrder::class)->handle($order);
+
+        return ActionResult::ok(
+            $refunded === null ? 'Cancellation requested.' : "Cancelled, and {$refunded} returned to the customer's wallet.",
+        );
     }
 
     /**

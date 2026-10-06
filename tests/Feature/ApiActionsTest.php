@@ -294,10 +294,13 @@ class ApiActionsTest extends TestCase
             'In progress' => 'In progress',
             'PROCESSING' => 'In progress',
             'COMPLETE' => 'Completed',
-            'Partially refunded' => 'Canceled',
+            'Canceled' => 'Canceled',
+            // The standard status for an order delivered in part.
+            'Partially refunded' => 'Partial',
             null => 'Pending',
         ] as $panelSaid => $expected) {
-            $order = BotOrder::factory()->create([
+            // Placed with the panel: its word is what is being normalised.
+            $order = BotOrder::factory()->submitted()->create([
                 'tenant_id' => $this->tenant->id,
                 'customer_id' => $this->customer->id,
                 'status' => $panelSaid === '' ? null : $panelSaid,

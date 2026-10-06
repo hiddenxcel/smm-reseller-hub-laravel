@@ -86,6 +86,46 @@ class SmmProviderClient
         ]);
     }
 
+    /**
+     * Where several orders have got to, in one call (`orders` is a
+     * comma-separated list, and the answer is keyed by order id).
+     *
+     * A panel that answers with something else — or an order it does not know —
+     * simply leaves that id out, so the caller only acts on what it was told.
+     *
+     * @param  list<string>  $orderIds
+     * @return array<string, array{status: ?string, remains: ?int}>|null null when the panel could not be asked
+     */
+    public function checkStatuses(array $orderIds): ?array
+    {
+        if ($orderIds === []) {
+            return [];
+        }
+
+        $result = $this->call(['action' => 'status', 'orders' => implode(',', $orderIds)]);
+
+        if ($result->failed) {
+            return null;
+        }
+
+        $statuses = [];
+
+        foreach ($orderIds as $id) {
+            $entry = $result->data[$id] ?? null;
+
+            if (! is_array($entry) || isset($entry['error']) || ! isset($entry['status'])) {
+                continue;
+            }
+
+            $statuses[$id] = [
+                'status' => (string) $entry['status'],
+                'remains' => isset($entry['remains']) && is_numeric($entry['remains']) ? (int) $entry['remains'] : null,
+            ];
+        }
+
+        return $statuses;
+    }
+
     public function refill(string $orderId): PanelResponse
     {
         $result = $this->call(['action' => 'refill', 'order' => $orderId]);

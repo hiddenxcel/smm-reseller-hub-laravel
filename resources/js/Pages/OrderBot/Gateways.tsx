@@ -1,5 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
+import { ChevronDown } from 'lucide-react';
+import { useState } from 'react';
 import { FamilyCard } from './FamilyCard';
 import { GatewayCard } from './GatewayCard';
 import { FamilyState, GatewayOption } from './types';
@@ -26,6 +28,10 @@ export default function OrderBotGateways({
 }) {
     const ready = gateways.filter((gateway) => gateway.ready);
     const pending = gateways.filter((gateway) => !gateway.ready);
+    // Folded by default: they cannot take a payment, and a long list of them
+    // buries the ones that can. Open already when the reseller has keys saved
+    // against one, so that is never hidden from them.
+    const [showPending, setShowPending] = useState(pending.some((gateway) => gateway.connected));
 
     return (
         <AuthenticatedLayout
@@ -52,18 +58,35 @@ export default function OrderBotGateways({
                 </div>
 
                 {pending.length > 0 && (
-                    <div className="space-y-4 border-t border-border pt-6">
-                        <div>
-                            <h2 className="font-heading font-bold">Not wired up yet</h2>
-                            <p className="text-sm text-muted-foreground">
-                                You can save your keys now, but these cannot take a payment
-                                until we finish connecting them.
-                            </p>
-                        </div>
+                    <div className="border-t border-border pt-6">
+                        <button
+                            type="button"
+                            onClick={() => setShowPending((open) => !open)}
+                            aria-expanded={showPending}
+                            className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-card px-5 py-4 text-left transition-colors hover:bg-accent/50"
+                        >
+                            <span>
+                                <span className="font-heading block font-bold">
+                                    Coming soon · {pending.length}
+                                </span>
+                                <span className="block text-sm text-muted-foreground">
+                                    You can save your keys now, but these cannot take a payment
+                                    until we finish connecting them.
+                                </span>
+                            </span>
+                            <ChevronDown
+                                className={`size-5 shrink-0 text-muted-foreground transition-transform ${showPending ? 'rotate-180' : ''}`}
+                                aria-hidden
+                            />
+                        </button>
 
-                        {pending.map((gateway) => (
-                            <GatewayCard key={gateway.code} gateway={gateway} />
-                        ))}
+                        {showPending && (
+                            <div className="mt-4 space-y-4">
+                                {pending.map((gateway) => (
+                                    <GatewayCard key={gateway.code} gateway={gateway} />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

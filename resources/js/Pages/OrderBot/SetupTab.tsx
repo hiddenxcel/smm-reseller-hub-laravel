@@ -211,6 +211,7 @@ function HelpForm({ data }: { data: Setup }) {
         groupUrl: data.groupUrl,
         websiteUrl: data.websiteUrl,
         supportMode: data.supportMode,
+        autoRefund: data.autoRefund,
         staff: data.staff,
     });
 
@@ -244,6 +245,32 @@ function HelpForm({ data }: { data: Setup }) {
                         />
                     </Field>
                 </div>
+            </Card>
+
+            <Card
+                title="Automatic refunds"
+                description="What happens to a customer's money when the provider cannot deliver."
+            >
+                <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                        type="checkbox"
+                        checked={form.data.autoRefund}
+                        onChange={(event) => form.setData('autoRefund', event.target.checked)}
+                        className="mt-1 size-4 accent-primary"
+                    />
+                    <span>
+                        <span className="block text-sm font-medium">
+                            Refund customers automatically
+                        </span>
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                            If the provider cancels an order, the customer gets the full amount
+                            back in their wallet. If it delivers only part, they get back the
+                            share that was not delivered. They are told on WhatsApp. An order the
+                            provider never received is not refunded: it stays failed for you to
+                            resend, and the customer still sees it as pending.
+                        </span>
+                    </span>
+                </label>
             </Card>
 
             <Card
