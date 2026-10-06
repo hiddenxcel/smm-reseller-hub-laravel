@@ -223,6 +223,20 @@ function CredentialsForm({
             }}
             className="mt-4 space-y-4 border-t border-border pt-4"
         >
+            {gateway.webhookUrl && (
+                <Field
+                    label="Notification URL"
+                    hint="Paste this into your provider's project settings so it can tell us when a customer has paid."
+                >
+                    <input
+                        readOnly
+                        value={gateway.webhookUrl}
+                        onFocus={(event) => event.currentTarget.select()}
+                        className={inputClass}
+                    />
+                </Field>
+            )}
+
             {gateway.fields.map((field) => (
                 <Field
                     key={field.name}

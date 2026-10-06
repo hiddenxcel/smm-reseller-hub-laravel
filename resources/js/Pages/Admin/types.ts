@@ -530,6 +530,22 @@ export type GatewayField = {
     required?: boolean;
 };
 
+/** A provider that is one account for several markets: one key pair, a switch per market. */
+export type FamilyStatus = {
+    family: string;
+    label: string;
+    intro: string;
+    keyLabel: string;
+    secretLabel: string;
+    secretRequired: boolean;
+    source: 'env' | 'database' | 'none';
+    keySaved: boolean;
+    webhookSecretSaved: boolean;
+    /** Last four characters of the key, enough to tell two apart. */
+    hint: string | null;
+    markets: Array<{ code: string; label: string; on: boolean }>;
+};
+
 export type GatewayStatus = {
     code: string;
     label: string;

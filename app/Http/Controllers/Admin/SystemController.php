@@ -12,9 +12,12 @@ use App\Services\Admin\AuditQuery;
 use App\Services\Admin\Backups;
 use App\Services\Admin\SecurityOverview;
 use App\Services\Billing\PlatformGateways;
+use App\Services\Payments\GatewayFamilies;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -40,7 +43,9 @@ class SystemController extends AdminController
             // gateway has them, where they came from, and the last four
             // characters so an owner can tell which key is in place without
             // the key being recoverable from a screenshot or a cached page.
+            'families' => array_map(PlatformGateways::familyState(...), GatewayFamilies::families()),
             'gateways' => collect(config('billing.gateways', []))
+                ->reject(fn (array $gateway, string $code) => GatewayFamilies::familyOf($code) !== null)
                 ->map(fn (array $gateway, string $code) => [
                     'code' => $code,
                     'label' => $gateway['label'],
@@ -151,6 +156,76 @@ class SystemController extends AdminController
                 ? "{$gateway} saved — resellers can pay with it."
                 : "{$gateway} saved, but it still needs more before it will work.",
         );
+    }
+
+    /**
+     * A family's keys, once, and which markets are switched on.
+     *
+     * One merchant account serves every market of a family (FimiPay, Snippe),
+     * so the keys are written to every market's row and a switch is just that
+     * row's `enabled` flag. A blank field keeps what is stored, as on every
+     * gateway form here.
+     */
+    public function saveFamily(Request $request, string $family): RedirectResponse
+    {
+        $this->authoriseOwner();
+
+        abort_unless(GatewayFamilies::exists($family), 404);
+
+        $definition = GatewayFamilies::FAMILIES[$family];
+        $codes = GatewayFamilies::codes($family);
+
+        $validated = $request->validate([
+            'api_key' => ['nullable', 'string', 'max:255'],
+            'webhook_secret' => ['nullable', 'string', 'max:255'],
+            'markets' => ['present', 'array'],
+            'markets.*' => ['string', Rule::in($codes)],
+        ]);
+
+        $shared = PlatformGateways::sharedKeys($family);
+
+        // An environment value always wins, so saving here would look like it
+        // worked and change nothing.
+        if ($shared['source'] === 'env') {
+            return back()->with('error', "{$definition['label']} is set in the server environment, which takes precedence. Remove it from .env to manage it here.");
+        }
+
+        $apiKey = filled($validated['api_key'] ?? null) ? $validated['api_key'] : $shared['api_key'];
+        $webhookSecret = filled($validated['webhook_secret'] ?? null) ? $validated['webhook_secret'] : $shared['webhook_secret'];
+
+        $missing = [];
+
+        if (blank($apiKey)) {
+            $missing['api_key'] = "{$definition['keyLabel']} is required.";
+        }
+
+        if ($definition['secretRequired'] && blank($webhookSecret)) {
+            $missing['webhook_secret'] = "{$definition['secretLabel']} is required.";
+        }
+
+        if ($missing !== []) {
+            throw ValidationException::withMessages($missing);
+        }
+
+        foreach ($codes as $code) {
+            $row = PlatformGatewayCredential::firstOrNew(['gateway' => $code]);
+            $row->api_key_enc = $apiKey;
+            $row->webhook_secret_enc = $webhookSecret;
+            $row->enabled = in_array($code, $validated['markets'], true);
+            $row->superadmin_id = $this->admin()->id;
+            $row->save();
+        }
+
+        AdminAudit::record('billing.family.update', [
+            'family' => $family,
+            'markets' => $validated['markets'],
+            'fields_changed' => collect(['api_key', 'webhook_secret'])
+                ->filter(fn (string $field) => filled($validated[$field] ?? null))
+                ->values()
+                ->all(),
+        ]);
+
+        return back()->with('success', "{$definition['label']} saved.");
     }
 
     // ---- security --------------------------------------------------------

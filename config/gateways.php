@@ -183,6 +183,26 @@ return [
         ],
     ],
 
+    // ---- AnyPay (anypay.io): cards and crypto on a hosted page ----
+    //
+    // The customer is sent a signed link to AnyPay's payment form. AnyPay
+    // reports the result to ONE notification URL per project, which the
+    // reseller pastes into their AnyPay project — it is shown on the form.
+    // The secret key signs both the link and the notification, so it is what
+    // proves a notification is genuine.
+
+    'anypay' => [
+        'label' => 'AnyPay (cards & crypto)',
+        'type' => 'card',
+        'ready' => true,
+        // The reseller must paste our notification URL into their AnyPay
+        // project; the gateways page shows it.
+        'webhook_setup' => true,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'Project ID', 'store' => 'api_key'],
+            ['name' => 'webhook_secret', 'label' => 'Secret key', 'store' => 'webhook_secret'],
+        ],
+    ],
     'cryptomus' => [
         'label' => 'Cryptomus (USDT / Crypto)',
         'type' => 'crypto',

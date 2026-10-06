@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Tenant;
 use App\Models\TenantPaymentGateway;
+use App\Services\Payments\GatewayFamilies;
 use App\Services\Payments\Gateway;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
@@ -49,7 +50,9 @@ class OrderBotGatewaysTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('OrderBot/Gateways')
-                ->has('gateways', count(config('gateways'))),
+                // A family's markets (FimiPay, Snippe) are one card, not a row each.
+                ->has('gateways', count(config('gateways')) - count(GatewayFamilies::codes('fimipay')) - count(GatewayFamilies::codes('snippe')))
+                ->has('families', 2),
             );
     }
 
@@ -62,7 +65,7 @@ class OrderBotGatewaysTest extends TestCase
      */
     public function test_it_reports_which_gateways_are_wired_up(): void
     {
-        $codes = collect(array_keys(config('gateways')));
+        $codes = collect(array_keys(config('gateways')))->reject(fn (string $code) => GatewayFamilies::familyOf($code) !== null);
         $wired = $codes->first(fn (string $code) => Gateway::isReady($code));
         $unwired = $codes->first(fn (string $code) => ! Gateway::isReady($code));
 
@@ -82,7 +85,7 @@ class OrderBotGatewaysTest extends TestCase
 
     public function test_a_stored_key_never_reaches_the_browser(): void
     {
-        $this->connect('snippe', ['api_key_enc' => 'super-secret-key']);
+        $this->connect('nowpayments', ['api_key_enc' => 'super-secret-key']);
 
         $response = $this->actingAs($this->tenant)->get(route('order-bot.gateways'));
 
@@ -93,18 +96,18 @@ class OrderBotGatewaysTest extends TestCase
     /** The form needs to know a value exists without being shown it. */
     public function test_it_reports_which_fields_have_something_saved(): void
     {
-        $this->connect('snippe', ['api_key_enc' => 'k', 'webhook_secret_enc' => null]);
+        $this->connect('nowpayments', ['api_key_enc' => 'k', 'webhook_secret_enc' => null]);
 
         $response = $this->actingAs($this->tenant)->get(route('order-bot.gateways'));
 
         $response->assertOk();
         $response->assertInertia(function (AssertableInertia $page) {
-            $snippe = collect($page->toArray()['props']['gateways'])
-                ->firstWhere('code', 'snippe');
+            $gateway = collect($page->toArray()['props']['gateways'])
+                ->firstWhere('code', 'nowpayments');
 
-            $this->assertTrue($snippe['connected']);
-            $this->assertTrue(collect($snippe['fields'])->firstWhere('name', 'api_key')['saved']);
-            $this->assertFalse(collect($snippe['fields'])->firstWhere('name', 'webhook_secret')['saved']);
+            $this->assertTrue($gateway['connected']);
+            $this->assertTrue(collect($gateway['fields'])->firstWhere('name', 'api_key')['saved']);
+            $this->assertFalse(collect($gateway['fields'])->firstWhere('name', 'webhook_secret')['saved']);
         });
     }
 
@@ -113,7 +116,7 @@ class OrderBotGatewaysTest extends TestCase
         $other = Tenant::factory()->create();
         TenantPaymentGateway::withoutTenantScope()->create([
             'tenant_id' => $other->id,
-            'gateway' => 'snippe',
+            'gateway' => 'nowpayments',
             'api_key_enc' => 'theirs',
             'webhook_secret_enc' => 'theirs',
             'status' => 'active',
@@ -123,10 +126,10 @@ class OrderBotGatewaysTest extends TestCase
 
         $response->assertOk();
         $response->assertInertia(function (AssertableInertia $page) {
-            $snippe = collect($page->toArray()['props']['gateways'])
-                ->firstWhere('code', 'snippe');
+            $gateway = collect($page->toArray()['props']['gateways'])
+                ->firstWhere('code', 'nowpayments');
 
-            $this->assertFalse($snippe['connected']);
+            $this->assertFalse($gateway['connected']);
         });
     }
 

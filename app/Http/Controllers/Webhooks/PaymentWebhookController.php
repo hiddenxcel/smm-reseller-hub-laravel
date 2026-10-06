@@ -6,6 +6,7 @@ use App\Actions\Payments\CompleteTopup;
 use App\Http\Controllers\Controller;
 use App\Models\BotPayment;
 use App\Models\TenantPaymentGateway;
+use App\Services\Payments\AnypayClient;
 use App\Services\Payments\BinancePayClient;
 use App\Services\Payments\CryptomusClient;
 use App\Services\Payments\FimipayClient;
@@ -44,6 +45,18 @@ class PaymentWebhookController extends Controller
     ) {}
 
     public function __invoke(Request $request, string $gateway): Response
+    {
+        $response = $this->process($request, $gateway);
+
+        // AnyPay keeps retrying until it is told exactly "OK".
+        if ($gateway === 'anypay' && $response->getStatusCode() === 200) {
+            return response('OK', 200)->header('Content-Type', 'text/plain');
+        }
+
+        return $response;
+    }
+
+    private function process(Request $request, string $gateway): Response
     {
         if (! Gateway::exists($gateway)) {
             return $this->ack('unknown gateway');
@@ -151,6 +164,8 @@ class PaymentWebhookController extends Controller
             'data.metadata.order_id',
             'metadata.order_id',
             'order_id',
+            // AnyPay: the number we gave it as the order.
+            'pay_id',
             'orderId',
             'merchant_order_id',
             'invoice_id',
@@ -265,6 +280,12 @@ class PaymentWebhookController extends Controller
     {
         $client = $this->factory->make($credentials);
 
+        // AnyPay's fields arrive as form or query parameters, not as a body to
+        // hash, so it is checked on the parameters.
+        if ($client instanceof AnypayClient) {
+            return $client->verifyParams($request->all());
+        }
+
         if (! $client instanceof WebhookVerifier) {
             return false;
         }
@@ -300,6 +321,10 @@ class PaymentWebhookController extends Controller
         // adding them there would change what every other gateway credits.
         if (str_starts_with($gateway, 'snippe')) {
             return SnippeClient::isCompleted($payload);
+        }
+
+        if ($gateway === 'anypay') {
+            return AnypayClient::isPaid($payload);
         }
 
         // Binance Pay before anything else. Its envelope carries a top-level

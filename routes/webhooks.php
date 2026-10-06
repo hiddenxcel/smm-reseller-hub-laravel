@@ -28,7 +28,9 @@ Route::prefix('webhooks')->group(function () {
 
     // One URL per gateway, shared by every reseller. Which reseller a payment
     // belongs to comes from our reference in the payload, not the URL.
-    Route::post('payment/{gateway}', PaymentWebhookController::class)
+    // GET as well as POST: AnyPay does not say which it uses, and an
+    // unsigned request of either kind is refused all the same.
+    Route::match(['get', 'post'], 'payment/{gateway}', PaymentWebhookController::class)
         ->name('webhooks.payment');
 
     // Subscriptions, on a separate path from the one above. Same gateways,

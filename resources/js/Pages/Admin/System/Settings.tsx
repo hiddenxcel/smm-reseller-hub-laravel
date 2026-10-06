@@ -2,14 +2,15 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { Check, Lock, X } from 'lucide-react';
 import { useState } from 'react';
-import { GatewayStatus, PlatformSettings } from '../types';
+import { FamilyStatus, GatewayStatus, PlatformSettings } from '../types';
 
 type Props = {
     settings: PlatformSettings;
     gateways: GatewayStatus[];
+    families: FamilyStatus[];
 };
 
-export default function Settings({ settings, gateways }: Props) {
+export default function Settings({ settings, gateways, families }: Props) {
     const { data, setData, post, processing, errors, isDirty } = useForm({
         company_name: settings.company_name ?? '',
         support_email: settings.support_email ?? '',
@@ -181,6 +182,9 @@ export default function Settings({ settings, gateways }: Props) {
                 </div>
 
                 <div className="mt-4 space-y-3">
+                    {families.map((family) => (
+                        <FamilyCard key={family.family} family={family} />
+                    ))}
                     {gateways.map((gateway) => (
                         <GatewayCard key={gateway.code} gateway={gateway} />
                     ))}
@@ -317,6 +321,157 @@ function GatewayCard({ gateway }: { gateway: GatewayStatus }) {
                         />
                         Offer this to resellers at checkout
                     </label>
+
+                    <button
+                        type="submit"
+                        disabled={processing}
+                        className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                    >
+                        {processing ? 'Saving…' : 'Save'}
+                    </button>
+                </form>
+            )}
+        </div>
+    );
+}
+
+/**
+ * One merchant account for every market of a provider (FimiPay, Snippe), so
+ * the keys are entered once and each market is only a switch. Like the other cards, values are
+ * write-only — blank means "keep what is stored".
+ */
+function FamilyCard({ family }: { family: FamilyStatus }) {
+    const [open, setOpen] = useState(false);
+
+    const { data, setData, post, processing, errors, reset } = useForm({
+        api_key: '',
+        webhook_secret: '',
+        markets: family.markets.filter((market) => market.on).map((market) => market.code),
+    });
+
+    const locked = family.source === 'env';
+    const onCount = family.markets.filter((market) => market.on).length;
+
+    const toggle = (code: string) =>
+        setData(
+            'markets',
+            data.markets.includes(code)
+                ? data.markets.filter((current) => current !== code)
+                : [...data.markets, code],
+        );
+
+    const submit = (event: React.FormEvent) => {
+        event.preventDefault();
+
+        post(route('admin.settings.family.save', family.family), {
+            preserveScroll: true,
+            onSuccess: () => {
+                reset('api_key', 'webhook_secret');
+                setOpen(false);
+            },
+        });
+    };
+
+    return (
+        <div className="rounded-lg border border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
+                <div className="min-w-0">
+                    <span className="block truncate text-sm font-medium">{family.label}</span>
+                    <span className="block font-mono text-xs text-muted-foreground">
+                        one key · {onCount} of {family.markets.length} markets on
+                        {family.hint && ` · key ${family.hint}`}
+                    </span>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-3">
+                    {family.keySaved ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-[#006300] dark:text-[#0ca30c]">
+                            <Check className="size-3.5" />
+                            {locked ? 'From env' : 'Keys saved'}
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                            <X className="size-3.5" />
+                            No keys
+                        </span>
+                    )}
+
+                    {! locked && (
+                        <button
+                            type="button"
+                            onClick={() => setOpen((value) => ! value)}
+                            className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-accent"
+                        >
+                            {open ? 'Cancel' : 'Manage'}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {locked && (
+                <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+                    Set in the server environment, which takes precedence. Remove it
+                    from .env to manage {family.label} here.
+                </p>
+            )}
+
+            {open && ! locked && (
+                <form onSubmit={submit} className="space-y-3 border-t border-border p-3">
+                    <p className="text-xs text-muted-foreground">
+                        The platform's {family.label} account serves every market. Enter
+                        the keys once, then switch on the markets resellers may pay in.
+                    </p>
+
+                    <div>
+                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                            {family.keyLabel}
+                        </label>
+                        <input
+                            type="password"
+                            autoComplete="new-password"
+                            value={data.api_key}
+                            onChange={(e) => setData('api_key', e.target.value)}
+                            placeholder={family.keySaved ? 'Leave blank to keep' : ''}
+                            className={inputClass}
+                        />
+                        {errors.api_key && (
+                            <p className="mt-1 text-xs text-destructive">{errors.api_key}</p>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                            {family.secretLabel}
+                        </label>
+                        <input
+                            type="password"
+                            autoComplete="new-password"
+                            value={data.webhook_secret}
+                            onChange={(e) => setData('webhook_secret', e.target.value)}
+                            placeholder={family.webhookSecretSaved ? 'Leave blank to keep' : ''}
+                            className={inputClass}
+                        />
+                        {errors.webhook_secret && (
+                            <p className="mt-1 text-xs text-destructive">{errors.webhook_secret}</p>
+                        )}
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                        {family.markets.map((market) => (
+                            <label
+                                key={market.code}
+                                className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={data.markets.includes(market.code)}
+                                    onChange={() => toggle(market.code)}
+                                    className="size-3.5 accent-primary"
+                                />
+                                {market.label}
+                            </label>
+                        ))}
+                    </div>
 
                     <button
                         type="submit"

@@ -6,6 +6,7 @@ use App\Models\PlatformGatewayCredential;
 use App\Services\Payments\BinancePayClient;
 use App\Services\Payments\CryptomusClient;
 use App\Services\Payments\FimipayClient;
+use App\Services\Payments\GatewayFamilies;
 use App\Services\Payments\HeleketClient;
 use App\Services\Payments\NowPaymentsClient;
 use App\Services\Payments\PaymentGateway;
@@ -83,6 +84,10 @@ class PlatformGateways
      */
     public static function keys(string $code): array
     {
+        if ($family = GatewayFamilies::familyOf($code)) {
+            return self::familyKeys($code, $family);
+        }
+
         $fromEnv = config("services.billing.{$code}", []);
 
         if (filled(Arr::get($fromEnv, 'api_key'))) {
@@ -107,6 +112,108 @@ class PlatformGateways
         ];
     }
 
+    /**
+     * A family is one merchant account sold in several markets (see
+     * GatewayFamilies), so its keys are held once. A market is "on" when its
+     * own row is enabled (or its own environment value is set); the keys it
+     * uses are its own if it has any, otherwise the ones saved against any
+     * other market of the family.
+     *
+     * @return array<string, string|null>
+     */
+    private static function familyKeys(string $code, string $family): array
+    {
+        $fromEnv = config("services.billing.{$code}", []);
+        $row = PlatformGatewayCredential::all()->get($code);
+
+        if (filled(Arr::get($fromEnv, 'api_key'))) {
+            return $fromEnv;
+        }
+
+        if ($row === null || ! $row->enabled) {
+            return $fromEnv;
+        }
+
+        $shared = self::sharedKeys($family);
+        $hasOwn = filled($row->api_key_enc);
+
+        return [
+            ...$fromEnv,
+            'api_key' => $hasOwn ? $row->api_key_enc : $shared['api_key'],
+            'webhook_secret' => $hasOwn ? $row->webhook_secret_enc : $shared['webhook_secret'],
+            'ipn_secret' => $hasOwn ? $row->webhook_secret_enc : $shared['webhook_secret'],
+        ];
+    }
+
+    /**
+     * The one set of keys for a family: an environment value if any market has
+     * one, otherwise the first saved row that holds a key, switched on or not.
+     *
+     * @return array{api_key: ?string, webhook_secret: ?string, source: string}
+     */
+    public static function sharedKeys(string $family): array
+    {
+        foreach (GatewayFamilies::codes($family) as $code) {
+            $env = config("services.billing.{$code}", []);
+
+            if (filled(Arr::get($env, 'api_key'))) {
+                return [
+                    'api_key' => $env['api_key'],
+                    'webhook_secret' => Arr::get($env, 'webhook_secret'),
+                    'source' => 'env',
+                ];
+            }
+        }
+
+        foreach (GatewayFamilies::codes($family) as $code) {
+            $row = PlatformGatewayCredential::all()->get($code);
+
+            if ($row !== null && filled($row->api_key_enc)) {
+                return [
+                    'api_key' => $row->api_key_enc,
+                    'webhook_secret' => $row->webhook_secret_enc,
+                    'source' => 'database',
+                ];
+            }
+        }
+
+        return ['api_key' => null, 'webhook_secret' => null, 'source' => 'none'];
+    }
+
+    /**
+     * A family as the console shows it: one key pair and a switch per market.
+     * Never the keys themselves — only the last four characters.
+     *
+     * @return array<string, mixed>
+     */
+    public static function familyState(string $family): array
+    {
+        $shared = self::sharedKeys($family);
+        $definition = GatewayFamilies::FAMILIES[$family];
+
+        return [
+            'family' => $family,
+            'label' => $definition['label'],
+            'intro' => $definition['intro'],
+            'keyLabel' => $definition['keyLabel'],
+            'secretLabel' => $definition['secretLabel'],
+            'secretRequired' => $definition['secretRequired'],
+            'source' => $shared['source'],
+            'keySaved' => filled($shared['api_key']),
+            'webhookSecretSaved' => filled($shared['webhook_secret']),
+            'hint' => filled($shared['api_key']) ? '…'.mb_substr((string) $shared['api_key'], -4) : null,
+            'markets' => array_map(function (string $code) {
+                $row = PlatformGatewayCredential::all()->get($code);
+
+                return [
+                    'code' => $code,
+                    'label' => GatewayFamilies::marketLabel($code),
+                    'on' => filled(Arr::get(config("services.billing.{$code}", []), 'api_key'))
+                        || ($row !== null && $row->enabled),
+                ];
+            }, GatewayFamilies::codes($family)),
+        ];
+    }
     public static function exists(string $code): bool
     {
         return Arr::has(config('billing.gateways', []), $code);

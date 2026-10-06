@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\TenantPaymentGateway;
 use App\Services\Payments\Gateway;
 use App\Services\Payments\GatewayCredentials;
+use App\Services\Payments\GatewayFamilies;
 use App\Services\Payments\GatewayFactory;
 use App\Services\Payments\IpnRegistrar;
 use Illuminate\Http\RedirectResponse;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -39,7 +41,14 @@ class OrderBotGatewaysController extends Controller
             ->keyBy('gateway');
 
         return Inertia::render('OrderBot/Gateways', [
-            'gateways' => $this->gateways($connected),
+            // A family (FimiPay, Snippe) is one account with a switch per
+            // market, so it is shown as one card and kept out of the
+            // per-gateway list.
+            'gateways' => array_values(array_filter(
+                $this->gateways($connected),
+                fn (array $gateway) => GatewayFamilies::familyOf($gateway['code']) === null,
+            )),
+            'families' => array_map(fn (string $family) => $this->family($family, $connected), GatewayFamilies::families()),
         ]);
     }
 
@@ -69,6 +78,11 @@ class OrderBotGatewaysController extends Controller
                 // Pesapal issues its IPN id from an API call, so the reseller
                 // is given a button rather than a value to hunt for.
                 'registersIpn' => $code === 'pesapal',
+                // Where the provider must be told to send its notifications, for
+                // the ones that take a single URL set in their own dashboard.
+                'webhookUrl' => Arr::get(Gateway::all(), "{$code}.webhook_setup", false)
+                    ? route('webhooks.payment', $code)
+                    : null,
                 'connected' => $row !== null,
                 'status' => $row?->status,
                 'isDefault' => (bool) $row?->is_default,
@@ -81,6 +95,97 @@ class OrderBotGatewaysController extends Controller
         }, array_keys(Gateway::all())));
     }
 
+    /**
+     * A family as the reseller sees it: one pair of keys, and which markets are on.
+     *
+     * @param  Collection<string, TenantPaymentGateway>  $connected
+     * @return array<string, mixed>
+     */
+    private function family(string $family, $connected): array
+    {
+        $definition = GatewayFamilies::FAMILIES[$family];
+        $rows = collect(GatewayFamilies::codes($family))->map(fn (string $code) => $connected->get($code))->filter();
+
+        return [
+            'family' => $family,
+            'label' => $definition['label'],
+            'intro' => $definition['intro'],
+            'keyLabel' => $definition['keyLabel'],
+            'secretLabel' => $definition['secretLabel'],
+            'secretRequired' => $definition['secretRequired'],
+            'keySaved' => $rows->contains(fn (TenantPaymentGateway $row) => $row->api_key_enc !== null),
+            'webhookSecretSaved' => $rows->contains(fn (TenantPaymentGateway $row) => $row->webhook_secret_enc !== null),
+            'markets' => array_map(fn (string $code) => [
+                'code' => $code,
+                'label' => GatewayFamilies::marketLabel($code),
+                'on' => $connected->get($code)?->status === 'active',
+                'isDefault' => (bool) $connected->get($code)?->is_default,
+            ], GatewayFamilies::codes($family)),
+        ];
+    }
+
+    /**
+     * Save a family's keys once and say which markets are switched on.
+     *
+     * Every market is a row of its own so the rest of the platform (checkout,
+     * the default gateway, payments) needs no special case — but the keys are
+     * the same on all of them, so they are written to all of them here and the
+     * reseller never types them twice. A blank field keeps what is stored.
+     */
+    public function saveFamily(Request $request, string $family): RedirectResponse
+    {
+        abort_unless(GatewayFamilies::exists($family), 404);
+
+        $definition = GatewayFamilies::FAMILIES[$family];
+        $codes = GatewayFamilies::codes($family);
+
+        $validated = $request->validate([
+            'credentials' => ['required', 'array'],
+            'credentials.api_key' => ['nullable', 'string', 'max:500'],
+            'credentials.webhook_secret' => ['nullable', 'string', 'max:500'],
+            'markets' => ['present', 'array'],
+            'markets.*' => ['string', Rule::in($codes)],
+        ]);
+
+        $tenantId = (int) $request->user()->id;
+
+        $rows = TenantPaymentGateway::withoutTenantScope()
+            ->where('tenant_id', $tenantId)
+            ->whereIn('gateway', $codes)
+            ->get();
+
+        $apiKey = trim((string) ($validated['credentials']['api_key'] ?? ''))
+            ?: $rows->first(fn (TenantPaymentGateway $row) => $row->api_key_enc !== null)?->api_key_enc;
+        $webhookSecret = trim((string) ($validated['credentials']['webhook_secret'] ?? ''))
+            ?: $rows->first(fn (TenantPaymentGateway $row) => $row->webhook_secret_enc !== null)?->webhook_secret_enc;
+
+        $missing = [];
+
+        if ($apiKey === null) {
+            $missing['credentials.api_key'] = "{$definition['keyLabel']} is required.";
+        }
+
+        if ($definition['secretRequired'] && $webhookSecret === null) {
+            $missing['credentials.webhook_secret'] = "{$definition['secretLabel']} is required.";
+        }
+
+        if ($missing !== []) {
+            throw ValidationException::withMessages($missing);
+        }
+
+        foreach ($codes as $code) {
+            TenantPaymentGateway::updateOrCreate(
+                ['tenant_id' => $tenantId, 'gateway' => $code],
+                [
+                    'api_key_enc' => $apiKey,
+                    'webhook_secret_enc' => $webhookSecret,
+                    'status' => in_array($code, $validated['markets'], true) ? 'active' : 'inactive',
+                ],
+            );
+        }
+
+        return back()->with('success', "{$definition['label']} saved.");
+    }
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([

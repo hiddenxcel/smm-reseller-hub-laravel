@@ -51,6 +51,12 @@ class FimipayClient implements PaymentGateway, StatusCheckable, WebhookVerifier
         private string $code = 'fimipay_usd',
     ) {}
 
+    /** @return array<int, string> every FimiPay gateway code, one per market */
+    public static function codes(): array
+    {
+        return array_keys(self::MARKETS);
+    }
+
     public static function isFimipay(?string $code): bool
     {
         return isset(self::MARKETS[(string) $code]);

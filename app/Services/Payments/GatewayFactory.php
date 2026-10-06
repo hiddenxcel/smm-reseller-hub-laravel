@@ -38,6 +38,8 @@ class GatewayFactory
             // FimiPay likewise: one class, a market per gateway.
             'fimipay_ng', 'fimipay_gh', 'fimipay_cm', 'fimipay_za', 'fimipay_usd'
                 => new FimipayClient($apiKey, $secret, $credentials->gateway),
+            // AnyPay: the project id and the project's secret key.
+            'anypay' => new AnypayClient($apiKey, $secret),
             'nowpayments' => new NowPaymentsClient($apiKey, $secret),
             'binance' => new BinancePayClient($apiKey, $secret),
             // Cryptomus and Heleket have no webhook secret of their own, so

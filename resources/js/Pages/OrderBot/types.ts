@@ -97,11 +97,26 @@ export type GatewayOption = {
     verify: boolean;
     /** Its notification id comes from an API call, not from a dashboard. */
     registersIpn: boolean;
+    /** Where the provider must be told to send notifications, when it takes one URL set in its own dashboard. */
+    webhookUrl: string | null;
     connected: boolean;
     status: string | null;
     /** The one customers are sent to. At most one per reseller. */
     isDefault: boolean;
     fields: GatewayField[];
+};
+
+export type FamilyState = {
+    family: string;
+    label: string;
+    intro: string;
+    keyLabel: string;
+    secretLabel: string;
+    secretRequired: boolean;
+    /** Whether a secret key is stored — never the key itself. */
+    keySaved: boolean;
+    webhookSecretSaved: boolean;
+    markets: Array<{ code: string; label: string; on: boolean; isDefault: boolean }>;
 };
 
 export type PanelLimit = {

@@ -171,6 +171,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/order-bot/payments', [PaymentsController::class, 'index'])->name('order-bot.payments');
     Route::get('/order-bot/gateways', [OrderBotGatewaysController::class, 'index'])->name('order-bot.gateways');
     Route::post('/order-bot/gateways', [OrderBotGatewaysController::class, 'store'])->name('order-bot.gateways.store');
+    Route::post('/order-bot/gateways/family/{family}', [OrderBotGatewaysController::class, 'saveFamily'])->name('order-bot.gateways.family');
     Route::post('/order-bot/gateways/{gateway}/toggle', [OrderBotGatewaysController::class, 'toggle'])->name('order-bot.gateways.toggle');
     Route::post('/order-bot/gateways/{gateway}/default', [OrderBotGatewaysController::class, 'setDefault'])->name('order-bot.gateways.default');
     Route::post('/order-bot/gateways/pesapal/register-ipn', [OrderBotGatewaysController::class, 'registerIpn'])->name('order-bot.gateways.register-ipn');

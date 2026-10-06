@@ -1,7 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
+import { FamilyCard } from './FamilyCard';
 import { GatewayCard } from './GatewayCard';
-import { GatewayOption } from './types';
+import { FamilyState, GatewayOption } from './types';
 
 /**
  * The gateways a reseller's own customers pay through.
@@ -16,7 +17,13 @@ import { GatewayOption } from './types';
  * that looks connected and silently never takes a payment is worse than one
  * that is honestly marked unfinished.
  */
-export default function OrderBotGateways({ gateways }: { gateways: GatewayOption[] }) {
+export default function OrderBotGateways({
+    gateways,
+    families,
+}: {
+    gateways: GatewayOption[];
+    families: FamilyState[];
+}) {
     const ready = gateways.filter((gateway) => gateway.ready);
     const pending = gateways.filter((gateway) => !gateway.ready);
 
@@ -36,6 +43,9 @@ export default function OrderBotGateways({ gateways }: { gateways: GatewayOption
 
             <div className="space-y-6">
                 <div className="space-y-4">
+                    {families.map((family) => (
+                        <FamilyCard key={family.family} family={family} />
+                    ))}
                     {ready.map((gateway) => (
                         <GatewayCard key={gateway.code} gateway={gateway} />
                     ))}

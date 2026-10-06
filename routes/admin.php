@@ -193,6 +193,8 @@ Route::middleware(['auth:superadmin', 'admin'])->group(function () {
 
     // The platform's own merchant credentials. Owner-only in the controller:
     // these keys decide where a reseller's subscription payment lands.
+    Route::post('settings/families/{family}', [SystemController::class, 'saveFamily'])
+        ->name('settings.family.save');
     Route::post('settings/gateways/{gateway}', [SystemController::class, 'saveGateway'])
         ->name('settings.gateway.save');
 
