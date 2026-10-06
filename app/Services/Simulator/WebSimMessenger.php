@@ -69,6 +69,12 @@ class WebSimMessenger implements BotMessenger
         return true;
     }
 
+    /** The simulator has no picture bubble; the caption carries the instructions. */
+    public function sendImage(string $to, string $imageUrl, string $caption, ?string $templateKey = null): bool
+    {
+        return $this->sendText($to, $caption, $templateKey);
+    }
+
     public function markReadWithTyping(string $messageId): bool
     {
         return true;

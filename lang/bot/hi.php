@@ -59,17 +59,22 @@ return [
     'lang_name_hi' => 'हिन्दी',
 
     // ---- New order flow ------------------------------------------------------
-    'choose_platform' => '👇 एक प्लेटफ़ॉर्म चुनें:',
+    'choose_platform' => '👇 *प्लेटफ़ॉर्म चुनें*' . "\n" .
+        'ठीक है {name}, चलिए आपका अकाउंट बढ़ाते हैं! 🚀' . "\n\n" .
+        'आज आप किस प्लेटफ़ॉर्म को बढ़ाना चाहेंगे?',
     'btn_platforms' => 'प्लेटफ़ॉर्म',
     'platforms_header' => 'प्लेटफ़ॉर्म',
     'pick_platform_again' => 'कृपया सूची से एक प्लेटफ़ॉर्म चुनें। इसे फिर देखने के लिए *hi* भेजें।',
-    'choose_category' => '*{platform}* — एक श्रेणी चुनें:',
+    'choose_category' => '📂 *श्रेणी चुनें*' . "\n" .
+        'आपने *{platform}* चुना है। आपको कौन सी श्रेणी चाहिए?',
     'categories_header' => 'श्रेणियाँ',
     'category_other' => 'अन्य',
     'pick_category_again' => 'कृपया सूची से एक श्रेणी चुनें। फिर से शुरू करने के लिए *hi* भेजें।',
-    'choose_service' => '{heading} — एक सेवा चुनें:',
+    'choose_service' => '🎯 *{heading_upper} सेवाएँ चुनें*' . "\n" .
+        'बढ़िया चुनाव {name}! आपने {heading} चुना है।' . "\n\n" .
+        'आपके अकाउंट को ठीक-ठीक क्या चाहिए? 👇',
     'services_header' => 'सेवाएँ',
-    'btn_services' => 'सेवाएँ',
+    'btn_services' => 'सेवा चुनें',
     'per_1k' => '/ 1k',
     'pick_service_again' => 'कृपया सूची से एक सेवा चुनें। फिर से शुरू करने के लिए *hi* भेजें।',
     'service_paused_label' => 'अनुपलब्ध',
@@ -80,7 +85,48 @@ return [
     'qty_custom_title' => 'कस्टम मात्रा',
     'qty_custom_prompt' => '🔢 एक मात्रा दर्ज करें ({min} – {max})।',
     'qty_out_of_range' => 'कृपया {min} और {max} के बीच एक मात्रा दर्ज करें।',
-    'send_link' => '🔗 *{service}* के लिए *लिंक* भेजें (प्रोफ़ाइल या पोस्ट URL)।',
+    'link_request' => '🔗 *अपना लिंक भेजें*' . "\n\n" .
+        'नमस्ते {name}, आप {qty} ऑर्डर कर रहे हैं।' . "\n\n" .
+        '{image_note}📱 चरण:' . "\n" . '{steps}' . "\n\n" .
+        '📌 उदाहरण: {example}' . "\n\n" .
+        'मुख्य मेनू पर लौटने के लिए "#" भेजें।',
+    'link_see_image' => '👉 सही प्रारूप के लिए ऊपर की तस्वीर देखें।' . "\n\n",
+    'link_steps_generic' => '1️⃣ अपना {platform} अकाउंट या पोस्ट खोलें' . "\n" .
+        '2️⃣ शेयर आइकन दबाएँ' . "\n" .
+        '3️⃣ Copy link चुनें' . "\n" .
+        '4️⃣ लिंक नीचे पेस्ट करें',
+    'link_steps_instagram_profile' => '1️⃣ अपनी Instagram प्रोफ़ाइल खोलें' . "\n" .
+        '2️⃣ Share profile दबाएँ' . "\n" .
+        '3️⃣ Copy link चुनें' . "\n" .
+        '4️⃣ लिंक नीचे पेस्ट करें',
+    'link_steps_instagram_post' => '1️⃣ अपनी Instagram पोस्ट खोलें' . "\n" .
+        '2️⃣ शेयर आइकन (✈️) दबाएँ' . "\n" .
+        '3️⃣ Copy link चुनें' . "\n" .
+        '4️⃣ लिंक नीचे पेस्ट करें',
+    'link_steps_tiktok_profile' => '1️⃣ अपना TikTok अकाउंट खोलें' . "\n" .
+        '2️⃣ ऊपर शेयर आइकन दबाएँ' . "\n" .
+        '3️⃣ Copy link चुनें' . "\n" .
+        '4️⃣ लिंक नीचे पेस्ट करें',
+    'link_steps_tiktok_post' => '1️⃣ अपना TikTok वीडियो खोलें' . "\n" .
+        '2️⃣ शेयर आइकन (✈️) दबाएँ' . "\n" .
+        '3️⃣ Copy link चुनें' . "\n" .
+        '4️⃣ लिंक नीचे पेस्ट करें',
+    'link_steps_facebook_profile' => '1️⃣ अपना Facebook अकाउंट खोलें' . "\n" .
+        '2️⃣ तीन डॉट्स दबाएँ' . "\n" .
+        '3️⃣ Copy link चुनें' . "\n" .
+        '4️⃣ लिंक नीचे पेस्ट करें',
+    'link_steps_facebook_post' => '1️⃣ अपनी Facebook पोस्ट खोलें' . "\n" .
+        '2️⃣ शेयर आइकन दबाएँ' . "\n" .
+        '3️⃣ Copy link चुनें' . "\n" .
+        '4️⃣ लिंक नीचे पेस्ट करें',
+    'link_steps_youtube_profile' => '1️⃣ अपना YouTube चैनल खोलें' . "\n" .
+        '2️⃣ Share दबाएँ' . "\n" .
+        '3️⃣ Copy link चुनें' . "\n" .
+        '4️⃣ लिंक नीचे पेस्ट करें',
+    'link_steps_youtube_post' => '1️⃣ अपना YouTube वीडियो खोलें' . "\n" .
+        '2️⃣ Share दबाएँ' . "\n" .
+        '3️⃣ Copy link चुनें' . "\n" .
+        '4️⃣ लिंक नीचे पेस्ट करें',
     'invalid_link' => 'यह एक मान्य लिंक नहीं लगता। कृपया पूरा URL भेजें (https://…)।',
     'confirm_order' => "✅ अपने ऑर्डर की पुष्टि करें:\n\n*{service}*\nलिंक: {link}\nमात्रा: {qty}\nकुल: *{total}*",
     'btn_confirm' => 'पुष्टि करें',

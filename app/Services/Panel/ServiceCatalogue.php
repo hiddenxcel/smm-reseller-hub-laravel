@@ -121,7 +121,7 @@ class ServiceCatalogue
     /** Followers/likes/views and friends, taken from what is left of the name. */
     private function guessCategory(string $remainder): ?string
     {
-        $known = ['followers', 'likes', 'views', 'subscribers', 'comments', 'shares', 'saves', 'plays'];
+        $known = ['followers', 'likes', 'views', 'subscribers', 'comments', 'shares', 'saves', 'plays', 'members', 'reactions', 'watch time'];
         $haystack = mb_strtolower($remainder);
 
         foreach ($known as $category) {

@@ -102,10 +102,10 @@ class OrderBotHandler implements BotHandler
         match ($state) {
             OrderState::MainMenu => $this->onMenuChoice($from, $text, $customer),
             OrderState::SelectLanguage => $this->onLanguageChosen($from, $text, $customer),
-            OrderState::SelectPlatform => $this->onPlatformChosen($from, $text),
-            OrderState::SelectCategory => $this->onCategoryChosen($from, $text, $context),
+            OrderState::SelectPlatform => $this->onPlatformChosen($from, $text, $customer),
+            OrderState::SelectCategory => $this->onCategoryChosen($from, $text, $context, $customer),
             OrderState::SelectService => $this->onServiceChosen($from, $text, $context),
-            OrderState::SelectQuantity => $this->onQuantityChosen($from, $text, $context),
+            OrderState::SelectQuantity => $this->onQuantityChosen($from, $text, $context, $customer),
             OrderState::SendLink => $this->onLinkGiven($from, $text, $context),
             OrderState::Confirm => $this->onConfirmed($from, $text, $context, $customer),
             OrderState::ReferralCode => $this->onReferralCodeGiven($from, $text, $customer),
@@ -177,7 +177,7 @@ class OrderBotHandler implements BotHandler
         $choice = str_starts_with($text, 'main:') ? substr($text, 5) : '';
 
         match ($choice) {
-            'new_order' => $this->startOrder($from),
+            'new_order' => $this->startOrder($from, $customer),
             'profile' => $this->showProfile($from, $customer),
             'referral' => $this->showReferral($from, $customer),
             'track' => $this->showRecentOrders($from),
@@ -397,7 +397,7 @@ class OrderBotHandler implements BotHandler
 
     // ---- ordering: platform, category, service ---------------------------
 
-    private function startOrder(string $from): void
+    private function startOrder(string $from, BotCustomer $customer): void
     {
         // Paused services still count towards a platform being offered: the
         // customer should see "Instagram" and then find one option greyed out,
@@ -428,7 +428,7 @@ class OrderBotHandler implements BotHandler
 
         $this->messenger->sendList(
             $from,
-            $this->t('choose_platform'),
+            $this->t('choose_platform', ['name' => $customer->name ?: $this->t('default_customer_name')]),
             $this->t('btn_platforms'),
             $this->t('platforms_header'),
             $rows,
@@ -436,7 +436,7 @@ class OrderBotHandler implements BotHandler
         );
     }
 
-    private function onPlatformChosen(string $from, string $text): void
+    private function onPlatformChosen(string $from, string $text, BotCustomer $customer): void
     {
         $platform = str_starts_with($text, 'plat_') ? substr($text, 5) : $text;
 
@@ -452,15 +452,15 @@ class OrderBotHandler implements BotHandler
         $hasUncategorised = $services->contains(fn (BotService $s) => blank($s->category));
         $buckets = $categories->count() + ($hasUncategorised ? 1 : 0);
 
-        // Only worth a category step when it actually narrows things down and
-        // still fits in one list.
-        if ($categories->count() > 1 && $buckets <= self::MAX_LIST_ROWS) {
+        // A category step whenever the reseller has typed their services, as long as
+        // it fits in one list.
+        if ($categories->isNotEmpty() && $buckets <= self::MAX_LIST_ROWS) {
             $this->askCategory($from, $platform, $categories, $hasUncategorised);
 
             return;
         }
 
-        $this->showServices($from, $platform, null, $services);
+        $this->showServices($from, $platform, null, $services, $customer);
     }
 
     private function askCategory(string $from, string $platform, $categories, bool $hasUncategorised): void
@@ -490,7 +490,7 @@ class OrderBotHandler implements BotHandler
         );
     }
 
-    private function onCategoryChosen(string $from, string $text, array $context): void
+    private function onCategoryChosen(string $from, string $text, array $context, BotCustomer $customer): void
     {
         $platform = $context['platform'] ?? '';
         $category = str_starts_with($text, 'cat_') ? rawurldecode(substr($text, 4)) : $text;
@@ -507,10 +507,10 @@ class OrderBotHandler implements BotHandler
             return;
         }
 
-        $this->showServices($from, $platform, $category ?: null, $services);
+        $this->showServices($from, $platform, $category ?: null, $services, $customer);
     }
 
-    private function showServices(string $from, string $platform, ?string $category, $services): void
+    private function showServices(string $from, string $platform, ?string $category, $services, BotCustomer $customer): void
     {
         $rows = [];
         $catalogue = [];
@@ -546,6 +546,7 @@ class OrderBotHandler implements BotHandler
                 // that moves next week must not rewrite last week's margin.
                 'cost_price' => $service->cost_price === null ? null : (string) $service->cost_price,
                 'paused' => $isPaused,
+                'link_instructions' => $service->link_instructions,
             ];
         }
 
@@ -555,11 +556,15 @@ class OrderBotHandler implements BotHandler
             'services' => $catalogue,
         ]);
 
-        $heading = $category !== null ? "*{$platform} · {$category}*" : "*{$platform}*";
+        $heading = $category !== null ? "{$platform} · {$category}" : $platform;
 
         $this->messenger->sendList(
             $from,
-            $this->t('choose_service', ['heading' => $heading]),
+            $this->t('choose_service', [
+                'heading' => $heading,
+                'heading_upper' => mb_strtoupper($heading),
+                'name' => $customer->name ?: $this->t('default_customer_name'),
+            ]),
             $this->t('btn_services'),
             $this->t('services_header'),
             $rows,
@@ -626,7 +631,7 @@ class OrderBotHandler implements BotHandler
         );
     }
 
-    private function onQuantityChosen(string $from, string $text, array $context): void
+    private function onQuantityChosen(string $from, string $text, array $context, BotCustomer $customer): void
     {
         $service = $context['service'];
         $choice = str_starts_with($text, 'qty_') ? substr($text, 4) : $text;
@@ -653,7 +658,39 @@ class OrderBotHandler implements BotHandler
 
         $context['quantity'] = $quantity;
         $this->moveTo($from, OrderState::SendLink, $context);
-        $this->say($from, 'send_link', ['service' => $service['name']], 'SEND_LINK');
+        $this->askForLink($from, $context, $customer);
+    }
+
+    /**
+     * Ask for the link with the steps to copy it and, where there is one, a
+     * picture of the taps. A reseller's own instructions on the service take
+     * the place of the built-in steps but the picture still goes with them.
+     */
+    private function askForLink(string $from, array $context, BotCustomer $customer): void
+    {
+        $service = $context['service'];
+        $platform = (string) ($context['platform'] ?? '');
+        $guide = LinkGuide::for($platform, $context['category'] ?? null, (string) ($service['unit'] ?? ''));
+
+        $steps = filled($service['link_instructions'] ?? null)
+            ? (string) $service['link_instructions']
+            : $this->t($guide['stepsKey'], ['platform' => $platform]);
+
+        $message = $this->t('link_request', [
+            'name' => $customer->name ?: $this->t('default_customer_name'),
+            'qty' => $this->quantityLabel((int) $context['quantity']).' '.$service['unit'],
+            'image_note' => $guide['imageUrl'] !== null ? $this->t('link_see_image') : '',
+            'steps' => $steps,
+            'example' => $guide['example'],
+        ]);
+
+        if ($guide['imageUrl'] === null) {
+            $this->messenger->sendText($from, $message, 'SEND_LINK');
+
+            return;
+        }
+
+        $this->messenger->sendImage($from, $guide['imageUrl'], $message, 'SEND_LINK');
     }
 
     private function onLinkGiven(string $from, string $text, array $context): void

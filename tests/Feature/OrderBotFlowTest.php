@@ -164,7 +164,7 @@ class OrderBotFlowTest extends TestCase
         $this->assertSame('3.00', (string) $customer->fresh()->balance);
     }
 
-    public function test_the_category_step_is_skipped_when_there_is_only_one(): void
+    public function test_the_category_step_appears_even_with_only_one(): void
     {
         $this->service(['category' => 'Followers']);
 
@@ -172,7 +172,84 @@ class OrderBotFlowTest extends TestCase
         $this->send('main:new_order');
         $this->send('plat_Instagram');
 
+        $this->assertSame(OrderState::SelectCategory->value, $this->state());
+    }
+
+    public function test_the_category_step_is_skipped_when_no_service_has_one(): void
+    {
+        $this->service(['category' => null]);
+
+        $this->send('hi');
+        $this->send('main:new_order');
+        $this->send('plat_Instagram');
+
         $this->assertSame(OrderState::SelectService->value, $this->state());
+    }
+
+    public function test_the_link_request_carries_a_guide_image_and_the_customers_name(): void
+    {
+        config(['app.url' => 'https://hub.test']);
+        $this->service(['category' => 'Followers', 'platform' => 'Instagram', 'unit_label' => 'Followers']);
+        BotCustomer::factory()->for($this->tenant)->create(['phone' => self::CUSTOMER, 'name' => 'Juma']);
+
+        $this->send('hi');
+        $this->send('main:new_order');
+        $this->send('plat_Instagram');
+        $this->send('cat_Followers');
+        $this->send('svc_'.array_key_first($this->context()['services']));
+        $this->send('qty_500');
+
+        $last = end($this->messenger->sent);
+        $this->assertSame('image', $last['type']);
+        $this->assertSame('https://hub.test/assets/instructions/instagram_profile.png', $last['imageUrl']);
+        $this->assertStringContainsString('Hi Juma', $last['body']);
+        $this->assertStringContainsString('500 Followers', $last['body']);
+        $this->assertStringContainsString('Share profile', $last['body']);
+        $this->assertStringContainsString('https://www.instagram.com/yourname', $last['body']);
+    }
+
+    public function test_a_likes_order_gets_the_post_guide_not_the_profile_one(): void
+    {
+        $this->service(['category' => 'Likes', 'platform' => 'Instagram', 'unit_label' => 'Followers']);
+
+        $this->send('hi');
+        $this->send('main:new_order');
+        $this->send('plat_Instagram');
+        $this->send('cat_Likes');
+        $this->send('svc_'.array_key_first($this->context()['services']));
+        $this->send('qty_500');
+
+        $this->assertStringEndsWith('instagram_post.png', end($this->messenger->sent)['imageUrl']);
+    }
+
+    public function test_an_unknown_platform_gets_generic_steps_and_no_image(): void
+    {
+        $this->service(['category' => null, 'platform' => 'Snapchat']);
+
+        $this->send('hi');
+        $this->send('main:new_order');
+        $this->send('plat_Snapchat');
+        $this->send('svc_'.array_key_first($this->context()['services']));
+        $this->send('qty_500');
+
+        $last = end($this->messenger->sent);
+        $this->assertSame('text', $last['type']);
+        $this->assertStringContainsString('Snapchat', $last['body']);
+    }
+
+    public function test_a_resellers_own_link_instructions_replace_the_built_in_steps(): void
+    {
+        $this->service(['category' => null, 'link_instructions' => 'Send your @username only.']);
+
+        $this->send('hi');
+        $this->send('main:new_order');
+        $this->send('plat_Instagram');
+        $this->send('svc_'.array_key_first($this->context()['services']));
+        $this->send('qty_500');
+
+        $body = end($this->messenger->sent)['body'];
+        $this->assertStringContainsString('Send your @username only.', $body);
+        $this->assertStringNotContainsString('Copy link', $body);
     }
 
     public function test_the_category_step_appears_when_there_are_several(): void

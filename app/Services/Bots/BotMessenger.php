@@ -32,5 +32,8 @@ interface BotMessenger
     /** @param array<int, array{id: string, title: string}> $buttons */
     public function sendButtons(string $to, string $bodyText, array $buttons, ?string $templateKey = null): bool;
 
+    /** A picture with a caption, from a public URL. */
+    public function sendImage(string $to, string $imageUrl, string $caption, ?string $templateKey = null): bool;
+
     public function markReadWithTyping(string $messageId): bool;
 }

@@ -6,6 +6,21 @@ import { FormEvent, useEffect } from 'react';
 import { price } from './bits';
 import { ServiceRow } from './types';
 
+/** What the customer picks after the platform; each type becomes its own list in the bot. */
+const CATEGORY_TYPES = [
+    'Followers',
+    'Likes',
+    'Views',
+    'Comments',
+    'Shares',
+    'Saves',
+    'Subscribers',
+    'Members',
+    'Reactions',
+    'Watch Time',
+];
+const CUSTOM_CATEGORY = '__custom__';
+
 /**
  * Add a service, or edit one.
  *
@@ -42,6 +57,10 @@ export default function ServiceForm({
         max_quantity: 100000,
         link_instructions: '',
     });
+
+    // A value outside the list, or the blank placeholder "Other" sets, means "type your own".
+    const isCustomCategory =
+        form.data.category !== '' && !CATEGORY_TYPES.includes(form.data.category);
 
     useEffect(() => {
         if (!open) {
@@ -146,14 +165,38 @@ export default function ServiceForm({
                             </Field>
 
                             <Field label="Category" error={form.errors.category}>
-                                <input
-                                    value={form.data.category}
-                                    onChange={(event) =>
-                                        form.setData('category', event.target.value)
+                                <select
+                                    value={
+                                        isCustomCategory ? CUSTOM_CATEGORY : form.data.category
                                     }
-                                    placeholder="Followers"
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'category',
+                                            event.target.value === CUSTOM_CATEGORY
+                                                ? ' '
+                                                : event.target.value,
+                                        )
+                                    }
                                     className={inputClass}
-                                />
+                                >
+                                    <option value="">No category</option>
+                                    {CATEGORY_TYPES.map((type) => (
+                                        <option key={type} value={type}>
+                                            {type}
+                                        </option>
+                                    ))}
+                                    <option value={CUSTOM_CATEGORY}>Other (type your own)…</option>
+                                </select>
+                                {isCustomCategory && (
+                                    <input
+                                        value={form.data.category.trim() === '' ? '' : form.data.category}
+                                        onChange={(event) =>
+                                            form.setData('category', event.target.value || ' ')
+                                        }
+                                        placeholder="e.g. Story Views"
+                                        className={`${inputClass} mt-2`}
+                                    />
+                                )}
                             </Field>
                         </div>
 

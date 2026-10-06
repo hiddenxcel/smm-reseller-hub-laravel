@@ -61,17 +61,22 @@ return [
     'lang_name_hi' => 'हिन्दी',
 
     // ---- New order flow ------------------------------------------------------
-    'choose_platform' => '👇 Choose a platform:',
+    'choose_platform' => '👇 *CHOOSE PLATFORM*' . "\n" .
+        'Alright {name}, let\'s grow your account! 🚀' . "\n\n" .
+        'Which platform would you like to grow today?',
     'btn_platforms' => 'Platforms',
     'platforms_header' => 'Platforms',
     'pick_platform_again' => 'Please pick a platform from the list. Send *hi* to see it again.',
-    'choose_category' => '*{platform}* — choose a category:',
+    'choose_category' => '📂 *CHOOSE CATEGORY*' . "\n" .
+        'You picked *{platform}*. What category do you need?',
     'categories_header' => 'Categories',
     'category_other' => 'Other',
     'pick_category_again' => 'Please pick a category from the list. Send *hi* to start over.',
-    'choose_service' => '{heading} — choose a service:',
+    'choose_service' => '🎯 *CHOOSE {heading_upper} SERVICES*' . "\n" .
+        'Great choice {name}! You picked {heading}.' . "\n\n" .
+        'What exactly does your account need? 👇',
     'services_header' => 'Services',
-    'btn_services' => 'Services',
+    'btn_services' => 'Choose Service',
     'per_1k' => '/ 1k',
     'pick_service_again' => 'Please pick a service from the list. Send *hi* to start over.',
     'service_paused_label' => 'Unavailable',
@@ -82,7 +87,48 @@ return [
     'qty_custom_title' => 'Custom amount',
     'qty_custom_prompt' => '🔢 Enter a quantity ({min} – {max}).',
     'qty_out_of_range' => 'Please enter a quantity between {min} and {max}.',
-    'send_link' => '🔗 Send the *link* for *{service}* (profile or post URL).',
+    'link_request' => '🔗 *SEND YOUR LINK*' . "\n\n" .
+        'Hi {name}, you\'re ordering {qty}.' . "\n\n" .
+        '{image_note}📱 Steps:' . "\n" . '{steps}' . "\n\n" .
+        '📌 Example: {example}' . "\n\n" .
+        'Send "#" to return to the main menu.',
+    'link_see_image' => '👉 See the image above for the correct format.' . "\n\n",
+    'link_steps_generic' => '1️⃣ Open your {platform} account or post' . "\n" .
+        '2️⃣ Tap the share icon' . "\n" .
+        '3️⃣ Choose Copy link' . "\n" .
+        '4️⃣ Paste the link below',
+    'link_steps_instagram_profile' => '1️⃣ Open your Instagram profile' . "\n" .
+        '2️⃣ Tap Share profile' . "\n" .
+        '3️⃣ Choose Copy link' . "\n" .
+        '4️⃣ Paste the link below',
+    'link_steps_instagram_post' => '1️⃣ Open your Instagram post' . "\n" .
+        '2️⃣ Tap the share icon (✈️)' . "\n" .
+        '3️⃣ Choose Copy link' . "\n" .
+        '4️⃣ Paste the link below',
+    'link_steps_tiktok_profile' => '1️⃣ Open your TikTok account' . "\n" .
+        '2️⃣ Tap the share icon at the top' . "\n" .
+        '3️⃣ Choose Copy link' . "\n" .
+        '4️⃣ Paste the link below',
+    'link_steps_tiktok_post' => '1️⃣ Open your TikTok video' . "\n" .
+        '2️⃣ Tap the share icon (✈️)' . "\n" .
+        '3️⃣ Choose Copy link' . "\n" .
+        '4️⃣ Paste the link below',
+    'link_steps_facebook_profile' => '1️⃣ Open your Facebook account' . "\n" .
+        '2️⃣ Tap the three dots' . "\n" .
+        '3️⃣ Choose Copy link' . "\n" .
+        '4️⃣ Paste the link below',
+    'link_steps_facebook_post' => '1️⃣ Open your Facebook post' . "\n" .
+        '2️⃣ Tap the share icon' . "\n" .
+        '3️⃣ Choose Copy link' . "\n" .
+        '4️⃣ Paste the link below',
+    'link_steps_youtube_profile' => '1️⃣ Open your YouTube channel' . "\n" .
+        '2️⃣ Tap Share' . "\n" .
+        '3️⃣ Choose Copy link' . "\n" .
+        '4️⃣ Paste the link below',
+    'link_steps_youtube_post' => '1️⃣ Open your YouTube video' . "\n" .
+        '2️⃣ Tap Share' . "\n" .
+        '3️⃣ Choose Copy link' . "\n" .
+        '4️⃣ Paste the link below',
     'invalid_link' => "That doesn't look like a valid link. Please send the full URL (https://…).",
     'confirm_order' => "✅ Confirm your order:\n\n*{service}*\nLink: {link}\nQuantity: {qty}\nTotal: *{total}*",
     'btn_confirm' => 'Confirm',

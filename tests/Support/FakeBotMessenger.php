@@ -56,6 +56,13 @@ class FakeBotMessenger implements BotMessenger
         return true;
     }
 
+    public function sendImage(string $to, string $imageUrl, string $caption, ?string $templateKey = null): bool
+    {
+        $this->sent[] = ['type' => 'image', 'to' => $to, 'body' => $caption, 'imageUrl' => $imageUrl, 'templateKey' => $templateKey];
+
+        return true;
+    }
+
     public function markReadWithTyping(string $messageId): bool
     {
         $this->markedRead[] = $messageId;

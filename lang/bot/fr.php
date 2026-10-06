@@ -56,17 +56,22 @@ return [
     'lang_name_hi' => 'हिन्दी',
 
     // ---- New order flow ------------------------------------------------------
-    'choose_platform' => '👇 Choisissez une plateforme :',
+    'choose_platform' => '👇 *CHOISISSEZ UNE PLATEFORME*' . "\n" .
+        'D\'accord {name}, développons votre compte ! 🚀' . "\n\n" .
+        'Quelle plateforme souhaitez-vous développer aujourd\'hui ?',
     'btn_platforms' => 'Plateformes',
     'platforms_header' => 'Plateformes',
     'pick_platform_again' => 'Veuillez choisir une plateforme dans la liste. Envoyez *hi* pour la revoir.',
-    'choose_category' => '*{platform}* — choisissez une catégorie :',
+    'choose_category' => '📂 *CHOISISSEZ UNE CATÉGORIE*' . "\n" .
+        'Vous avez choisi *{platform}*. De quelle catégorie avez-vous besoin ?',
     'categories_header' => 'Catégories',
     'category_other' => 'Autre',
     'pick_category_again' => 'Veuillez choisir une catégorie dans la liste. Envoyez *hi* pour recommencer.',
-    'choose_service' => '{heading} — choisissez un service :',
+    'choose_service' => '🎯 *CHOISISSEZ LES SERVICES {heading_upper}*' . "\n" .
+        'Excellent choix {name} ! Vous avez choisi {heading}.' . "\n\n" .
+        'De quoi votre compte a-t-il exactement besoin ? 👇',
     'services_header' => 'Services',
-    'btn_services' => 'Services',
+    'btn_services' => 'Choisir un service',
     'per_1k' => '/ 1k',
     'pick_service_again' => 'Veuillez choisir un service dans la liste. Envoyez *hi* pour recommencer.',
     'service_paused_label' => 'Indisponible',
@@ -77,7 +82,48 @@ return [
     'qty_custom_title' => 'Montant personnalisé',
     'qty_custom_prompt' => '🔢 Saisissez une quantité ({min} – {max}).',
     'qty_out_of_range' => 'Veuillez saisir une quantité entre {min} et {max}.',
-    'send_link' => '🔗 Envoyez le *lien* pour *{service}* (URL du profil ou de la publication).',
+    'link_request' => '🔗 *ENVOYEZ VOTRE LIEN*' . "\n\n" .
+        'Bonjour {name}, vous commandez {qty}.' . "\n\n" .
+        '{image_note}📱 Étapes :' . "\n" . '{steps}' . "\n\n" .
+        '📌 Exemple : {example}' . "\n\n" .
+        'Envoyez "#" pour revenir au menu principal.',
+    'link_see_image' => '👉 Voyez l\'image ci-dessus pour le bon format.' . "\n\n",
+    'link_steps_generic' => '1️⃣ Ouvrez votre compte ou publication {platform}' . "\n" .
+        '2️⃣ Touchez l\'icône de partage' . "\n" .
+        '3️⃣ Choisissez Copier le lien' . "\n" .
+        '4️⃣ Collez le lien ci-dessous',
+    'link_steps_instagram_profile' => '1️⃣ Ouvrez votre profil Instagram' . "\n" .
+        '2️⃣ Touchez Partager le profil' . "\n" .
+        '3️⃣ Choisissez Copier le lien' . "\n" .
+        '4️⃣ Collez le lien ci-dessous',
+    'link_steps_instagram_post' => '1️⃣ Ouvrez votre publication Instagram' . "\n" .
+        '2️⃣ Touchez l\'icône de partage (✈️)' . "\n" .
+        '3️⃣ Choisissez Copier le lien' . "\n" .
+        '4️⃣ Collez le lien ci-dessous',
+    'link_steps_tiktok_profile' => '1️⃣ Ouvrez votre compte TikTok' . "\n" .
+        '2️⃣ Touchez l\'icône de partage en haut' . "\n" .
+        '3️⃣ Choisissez Copier le lien' . "\n" .
+        '4️⃣ Collez le lien ci-dessous',
+    'link_steps_tiktok_post' => '1️⃣ Ouvrez votre vidéo TikTok' . "\n" .
+        '2️⃣ Touchez l\'icône de partage (✈️)' . "\n" .
+        '3️⃣ Choisissez Copier le lien' . "\n" .
+        '4️⃣ Collez le lien ci-dessous',
+    'link_steps_facebook_profile' => '1️⃣ Ouvrez votre compte Facebook' . "\n" .
+        '2️⃣ Touchez les trois points' . "\n" .
+        '3️⃣ Choisissez Copier le lien' . "\n" .
+        '4️⃣ Collez le lien ci-dessous',
+    'link_steps_facebook_post' => '1️⃣ Ouvrez votre publication Facebook' . "\n" .
+        '2️⃣ Touchez l\'icône de partage' . "\n" .
+        '3️⃣ Choisissez Copier le lien' . "\n" .
+        '4️⃣ Collez le lien ci-dessous',
+    'link_steps_youtube_profile' => '1️⃣ Ouvrez votre chaîne YouTube' . "\n" .
+        '2️⃣ Touchez Partager' . "\n" .
+        '3️⃣ Choisissez Copier le lien' . "\n" .
+        '4️⃣ Collez le lien ci-dessous',
+    'link_steps_youtube_post' => '1️⃣ Ouvrez votre vidéo YouTube' . "\n" .
+        '2️⃣ Touchez Partager' . "\n" .
+        '3️⃣ Choisissez Copier le lien' . "\n" .
+        '4️⃣ Collez le lien ci-dessous',
     'invalid_link' => "Cela ne ressemble pas à un lien valide. Veuillez envoyer l'URL complète (https://…).",
     'confirm_order' => "✅ Confirmez votre commande :\n\n*{service}*\nLien : {link}\nQuantité : {qty}\nTotal : *{total}*",
     'btn_confirm' => 'Confirmer',

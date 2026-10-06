@@ -139,6 +139,23 @@ class WhatsAppCloudMessenger implements BotMessenger
         return $sent;
     }
 
+    public function sendImage(string $to, string $imageUrl, string $caption, ?string $templateKey = null): bool
+    {
+        $caption = $this->applyTemplate($templateKey, $caption);
+
+        $sent = $this->send([
+            'messaging_product' => 'whatsapp',
+            'to' => $to,
+            'type' => 'image',
+            // WhatsApp refuses captions past 1024 characters.
+            'image' => ['link' => $imageUrl, 'caption' => mb_substr($caption, 0, 1024)],
+        ]);
+
+        $this->logOutbound($to, "[image] {$caption}", $templateKey);
+
+        return $sent;
+    }
+
     public function markReadWithTyping(string $messageId): bool
     {
         return $this->send([

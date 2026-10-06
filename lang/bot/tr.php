@@ -59,17 +59,22 @@ return [
     'lang_name_hi' => 'हिन्दी',
 
     // ---- New order flow ------------------------------------------------------
-    'choose_platform' => '👇 Bir platform seçin:',
+    'choose_platform' => '👇 *PLATFORM SEÇİN*' . "\n" .
+        'Tamam {name}, hesabınızı büyütelim! 🚀' . "\n\n" .
+        'Bugün hangi platformu büyütmek istersiniz?',
     'btn_platforms' => 'Platformlar',
     'platforms_header' => 'Platformlar',
     'pick_platform_again' => 'Lütfen listeden bir platform seçin. Tekrar görmek için *hi* yazın.',
-    'choose_category' => '*{platform}* — bir kategori seçin:',
+    'choose_category' => '📂 *KATEGORİ SEÇİN*' . "\n" .
+        '*{platform}* seçtiniz. Hangi kategoriye ihtiyacınız var?',
     'categories_header' => 'Kategoriler',
     'category_other' => 'Diğer',
     'pick_category_again' => 'Lütfen listeden bir kategori seçin. Yeniden başlamak için *hi* yazın.',
-    'choose_service' => '{heading} — bir hizmet seçin:',
+    'choose_service' => '🎯 *{heading_upper} HİZMETLERİNİ SEÇİN*' . "\n" .
+        'Harika seçim {name}! {heading} seçtiniz.' . "\n\n" .
+        'Hesabınıza tam olarak ne gerekiyor? 👇',
     'services_header' => 'Hizmetler',
-    'btn_services' => 'Hizmetler',
+    'btn_services' => 'Hizmet Seç',
     'per_1k' => '/ 1k',
     'pick_service_again' => 'Lütfen listeden bir hizmet seçin. Yeniden başlamak için *hi* yazın.',
     'service_paused_label' => 'Kullanılamıyor',
@@ -80,7 +85,48 @@ return [
     'qty_custom_title' => 'Özel miktar',
     'qty_custom_prompt' => '🔢 Bir miktar girin ({min} – {max}).',
     'qty_out_of_range' => 'Lütfen {min} ile {max} arasında bir miktar girin.',
-    'send_link' => "🔗 *{service}* için *bağlantıyı* gönderin (profil veya gönderi URL'si).",
+    'link_request' => '🔗 *BAĞLANTINIZI GÖNDERİN*' . "\n\n" .
+        'Merhaba {name}, {qty} sipariş veriyorsunuz.' . "\n\n" .
+        '{image_note}📱 Adımlar:' . "\n" . '{steps}' . "\n\n" .
+        '📌 Örnek: {example}' . "\n\n" .
+        'Ana menüye dönmek için "#" gönderin.',
+    'link_see_image' => '👉 Doğru biçim için yukarıdaki görsele bakın.' . "\n\n",
+    'link_steps_generic' => '1️⃣ {platform} hesabınızı veya gönderinizi açın' . "\n" .
+        '2️⃣ Paylaş simgesine dokunun' . "\n" .
+        '3️⃣ Bağlantıyı kopyala seçeneğini seçin' . "\n" .
+        '4️⃣ Bağlantıyı aşağıya yapıştırın',
+    'link_steps_instagram_profile' => '1️⃣ Instagram profilinizi açın' . "\n" .
+        '2️⃣ Profili paylaş seçeneğine dokunun' . "\n" .
+        '3️⃣ Bağlantıyı kopyala seçeneğini seçin' . "\n" .
+        '4️⃣ Bağlantıyı aşağıya yapıştırın',
+    'link_steps_instagram_post' => '1️⃣ Instagram gönderinizi açın' . "\n" .
+        '2️⃣ Paylaş simgesine (✈️) dokunun' . "\n" .
+        '3️⃣ Bağlantıyı kopyala seçeneğini seçin' . "\n" .
+        '4️⃣ Bağlantıyı aşağıya yapıştırın',
+    'link_steps_tiktok_profile' => '1️⃣ TikTok hesabınızı açın' . "\n" .
+        '2️⃣ Üstteki paylaş simgesine dokunun' . "\n" .
+        '3️⃣ Bağlantıyı kopyala seçeneğini seçin' . "\n" .
+        '4️⃣ Bağlantıyı aşağıya yapıştırın',
+    'link_steps_tiktok_post' => '1️⃣ TikTok videonuzu açın' . "\n" .
+        '2️⃣ Paylaş simgesine (✈️) dokunun' . "\n" .
+        '3️⃣ Bağlantıyı kopyala seçeneğini seçin' . "\n" .
+        '4️⃣ Bağlantıyı aşağıya yapıştırın',
+    'link_steps_facebook_profile' => '1️⃣ Facebook hesabınızı açın' . "\n" .
+        '2️⃣ Üç noktaya dokunun' . "\n" .
+        '3️⃣ Bağlantıyı kopyala seçeneğini seçin' . "\n" .
+        '4️⃣ Bağlantıyı aşağıya yapıştırın',
+    'link_steps_facebook_post' => '1️⃣ Facebook gönderinizi açın' . "\n" .
+        '2️⃣ Paylaş simgesine dokunun' . "\n" .
+        '3️⃣ Bağlantıyı kopyala seçeneğini seçin' . "\n" .
+        '4️⃣ Bağlantıyı aşağıya yapıştırın',
+    'link_steps_youtube_profile' => '1️⃣ YouTube kanalınızı açın' . "\n" .
+        '2️⃣ Paylaş seçeneğine dokunun' . "\n" .
+        '3️⃣ Bağlantıyı kopyala seçeneğini seçin' . "\n" .
+        '4️⃣ Bağlantıyı aşağıya yapıştırın',
+    'link_steps_youtube_post' => '1️⃣ YouTube videonuzu açın' . "\n" .
+        '2️⃣ Paylaş seçeneğine dokunun' . "\n" .
+        '3️⃣ Bağlantıyı kopyala seçeneğini seçin' . "\n" .
+        '4️⃣ Bağlantıyı aşağıya yapıştırın',
     'invalid_link' => "Bu geçerli bir bağlantı gibi görünmüyor. Lütfen tam URL'yi gönderin (https://…).",
     'confirm_order' => "✅ Siparişinizi onaylayın:\n\n*{service}*\nBağlantı: {link}\nMiktar: {qty}\nToplam: *{total}*",
     'btn_confirm' => 'Onayla',

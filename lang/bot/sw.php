@@ -56,17 +56,22 @@ return [
     'lang_name_hi' => 'हिन्दी',
 
     // ---- New order flow ------------------------------------------------------
-    'choose_platform' => '👇 Chagua mtandao:',
+    'choose_platform' => '👇 *CHAGUA MTANDAO*' . "\n" .
+        'Sawa {name}, tukuze akaunti yako! 🚀' . "\n\n" .
+        'Ungependa kukuza mtandao gani leo?',
     'btn_platforms' => 'Mitandao',
     'platforms_header' => 'Mitandao',
     'pick_platform_again' => 'Tafadhali chagua mtandao kwenye orodha. Tuma *hi* kuiona tena.',
-    'choose_category' => '*{platform}* — chagua kategoria:',
+    'choose_category' => '📂 *CHAGUA KUNDI*' . "\n" .
+        'Umechagua *{platform}*. Unahitaji kundi gani?',
     'categories_header' => 'Kategoria',
     'category_other' => 'Nyingine',
     'pick_category_again' => 'Tafadhali chagua kategoria kwenye orodha. Tuma *hi* kuanza upya.',
-    'choose_service' => '{heading} — chagua huduma:',
+    'choose_service' => '🎯 *CHAGUA HUDUMA ZA {heading_upper}*' . "\n" .
+        'Chaguo zuri {name}! Umechagua {heading}.' . "\n\n" .
+        'Akaunti yako inahitaji nini hasa? 👇',
     'services_header' => 'Huduma',
-    'btn_services' => 'Huduma',
+    'btn_services' => 'Chagua Huduma',
     'per_1k' => '/ 1k',
     'pick_service_again' => 'Tafadhali chagua huduma kwenye orodha. Tuma *hi* kuanza upya.',
     'service_paused_label' => 'Haipatikani',
@@ -77,7 +82,48 @@ return [
     'qty_custom_title' => 'Kiasi chako',
     'qty_custom_prompt' => '🔢 Andika kiasi ({min} – {max}).',
     'qty_out_of_range' => 'Tafadhali andika kiasi kati ya {min} na {max}.',
-    'send_link' => '🔗 Tuma *link* ya *{service}* (URL ya profaili au post).',
+    'link_request' => '🔗 *TUMA LINK YAKO*' . "\n\n" .
+        'Habari {name}, unaagiza {qty}.' . "\n\n" .
+        '{image_note}📱 Hatua:' . "\n" . '{steps}' . "\n\n" .
+        '📌 Mfano: {example}' . "\n\n" .
+        'Tuma "#" kurudi kwenye menyu kuu.',
+    'link_see_image' => '👉 Angalia picha hapo juu kuona muundo sahihi.' . "\n\n",
+    'link_steps_generic' => '1️⃣ Fungua akaunti au post yako ya {platform}' . "\n" .
+        '2️⃣ Bonyeza alama ya kushiriki (share)' . "\n" .
+        '3️⃣ Chagua Copy link' . "\n" .
+        '4️⃣ Bandika link hapa chini',
+    'link_steps_instagram_profile' => '1️⃣ Fungua profaili yako ya Instagram' . "\n" .
+        '2️⃣ Bonyeza Share profile' . "\n" .
+        '3️⃣ Chagua Copy link' . "\n" .
+        '4️⃣ Bandika link hapa chini',
+    'link_steps_instagram_post' => '1️⃣ Fungua post yako ya Instagram' . "\n" .
+        '2️⃣ Bonyeza alama ya kushiriki (✈️)' . "\n" .
+        '3️⃣ Chagua Copy link' . "\n" .
+        '4️⃣ Bandika link hapa chini',
+    'link_steps_tiktok_profile' => '1️⃣ Fungua akaunti yako ya TikTok' . "\n" .
+        '2️⃣ Bonyeza alama ya kushiriki juu' . "\n" .
+        '3️⃣ Chagua Copy link' . "\n" .
+        '4️⃣ Bandika link hapa chini',
+    'link_steps_tiktok_post' => '1️⃣ Fungua video yako ya TikTok' . "\n" .
+        '2️⃣ Bonyeza alama ya kushiriki (✈️)' . "\n" .
+        '3️⃣ Chagua Copy link' . "\n" .
+        '4️⃣ Bandika link hapa chini',
+    'link_steps_facebook_profile' => '1️⃣ Fungua akaunti yako ya Facebook' . "\n" .
+        '2️⃣ Bonyeza nukta tatu' . "\n" .
+        '3️⃣ Chagua Copy link' . "\n" .
+        '4️⃣ Bandika link hapa chini',
+    'link_steps_facebook_post' => '1️⃣ Fungua post yako ya Facebook' . "\n" .
+        '2️⃣ Bonyeza alama ya kushiriki' . "\n" .
+        '3️⃣ Chagua Copy link' . "\n" .
+        '4️⃣ Bandika link hapa chini',
+    'link_steps_youtube_profile' => '1️⃣ Fungua channel yako ya YouTube' . "\n" .
+        '2️⃣ Bonyeza Share' . "\n" .
+        '3️⃣ Chagua Copy link' . "\n" .
+        '4️⃣ Bandika link hapa chini',
+    'link_steps_youtube_post' => '1️⃣ Fungua video yako ya YouTube' . "\n" .
+        '2️⃣ Bonyeza Share' . "\n" .
+        '3️⃣ Chagua Copy link' . "\n" .
+        '4️⃣ Bandika link hapa chini',
     'invalid_link' => 'Hiyo haionekani kuwa link sahihi. Tafadhali tuma URL kamili (https://…).',
     'confirm_order' => "✅ Thibitisha oda yako:\n\n*{service}*\nLink: {link}\nKiasi: {qty}\nJumla: *{total}*",
     'btn_confirm' => 'Thibitisha',
