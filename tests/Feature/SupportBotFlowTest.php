@@ -388,6 +388,38 @@ class SupportBotFlowTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_an_order_the_bot_did_not_place_is_left_to_the_panel(): void
+    {
+        $this->withPanel();
+        Http::fake(['*' => Http::response(['refill' => '77'])]);
+
+        $this->askRefill('120066');
+
+        $this->assertStringContainsString('Refill for *#120066* submitted', json_encode($this->toCustomer()));
+    }
+
+    public function test_the_panels_refusal_is_passed_on_for_an_order_the_bot_did_not_place(): void
+    {
+        $this->withPanel();
+        Http::fake(['*' => Http::response(['error' => 'Refill not available for this service'])]);
+
+        $this->askRefill('120066');
+
+        $this->assertStringContainsString('Refill not available for this service', json_encode($this->toCustomer()));
+    }
+
+    public function test_an_unknown_order_can_be_refused_or_handed_to_the_team(): void
+    {
+        $this->withPanel();
+        BotSettings::save($this->tenant->id, 'support', ['refill' => ['unknown_order' => 'refuse']]);
+        Http::fake();
+
+        $this->askRefill('120066');
+
+        $this->assertStringContainsString('no refill guarantee', json_encode($this->toCustomer()));
+        Http::assertNothingSent();
+    }
+
     public function test_turning_automatic_reading_off_leaves_only_the_rules(): void
     {
         $this->withPanel();
@@ -645,6 +677,9 @@ class SupportBotFlowTest extends TestCase
             'keyword' => '30 days',
             'refill_days' => 30,
         ]);
+        // Not ours, so unknown to us: refused here, to show the other
+        // tenant's service name was not borrowed to grant it.
+        BotSettings::save($this->tenant->id, 'support', ['refill' => ['unknown_order' => 'refuse']]);
 
         Http::fake();
 

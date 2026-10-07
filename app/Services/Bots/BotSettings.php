@@ -38,6 +38,10 @@ class BotSettings
             'auto_read' => true,
             // For a service that says nothing: refuse, allow, or human.
             'default' => 'refuse',
+            // For an order the bot did not place (made on the panel's own
+            // site): its service is unknown, so nothing can be read from it.
+            // The panel itself knows if the order may be refilled.
+            'unknown_order' => 'allow',
         ],
         'shop' => [
             'currency' => 'USD',

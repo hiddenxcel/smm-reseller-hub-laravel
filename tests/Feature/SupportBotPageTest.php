@@ -186,15 +186,16 @@ class SupportBotPageTest extends TestCase
     public function test_the_refill_policy_can_be_saved(): void
     {
         $this->actingAs($this->tenant)
-            ->post(route('support-bot.refill-policy'), ['autoRead' => false, 'default' => 'human'])
+            ->post(route('support-bot.refill-policy'), ['autoRead' => false, 'default' => 'human', 'unknownOrder' => 'refuse'])
             ->assertRedirect();
 
         $settings = BotSettings::for($this->tenant->id, 'support');
         $this->assertFalse($settings['refill']['auto_read']);
         $this->assertSame('human', $settings['refill']['default']);
+        $this->assertSame('refuse', $settings['refill']['unknown_order']);
 
         $this->actingAs($this->tenant)
-            ->post(route('support-bot.refill-policy'), ['autoRead' => true, 'default' => 'whatever'])
+            ->post(route('support-bot.refill-policy'), ['autoRead' => true, 'default' => 'whatever', 'unknownOrder' => 'allow'])
             ->assertSessionHasErrors('default');
     }
 

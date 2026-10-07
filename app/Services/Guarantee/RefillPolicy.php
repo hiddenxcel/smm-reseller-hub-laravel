@@ -37,23 +37,33 @@ class RefillPolicy
         private GuaranteeMatcher $rules,
         private bool $autoRead,
         private string $default,
+        private string $unknownOrder = self::DEFAULT_ALLOW,
     ) {}
 
     public static function forTenant(int $tenantId): self
     {
         $settings = BotSettings::for($tenantId, 'support');
         $default = (string) Arr::get($settings, 'refill.default', self::DEFAULT_REFUSE);
+        $unknown = (string) Arr::get($settings, 'refill.unknown_order', self::DEFAULT_ALLOW);
 
         return new self(
             GuaranteeMatcher::forTenant($tenantId),
             (bool) Arr::get($settings, 'refill.auto_read', true),
             in_array($default, self::DEFAULTS, true) ? $default : self::DEFAULT_REFUSE,
+            in_array($unknown, self::DEFAULTS, true) ? $unknown : self::DEFAULT_ALLOW,
         );
     }
 
     public function decide(?BotOrder $order): RefillDecision
     {
-        $name = (string) ($order?->service_name ?? '');
+        // An order the bot never placed has no service we can see: no name to
+        // match a rule against and no promise to read, so the only honest
+        // answers are to let the panel decide, to refuse, or to ask a person.
+        if ($order === null) {
+            return $this->answer($this->unknownOrder, 'panel');
+        }
+
+        $name = (string) ($order->service_name ?? '');
 
         $verdict = $this->rules->evaluate($name);
 
@@ -80,10 +90,15 @@ class RefillPolicy
             }
         }
 
-        return match ($this->default) {
-            self::DEFAULT_ALLOW => RefillDecision::allow(null, false, 'default'),
+        return $this->answer($this->default, 'default');
+    }
+
+    private function answer(string $policy, string $source): RefillDecision
+    {
+        return match ($policy) {
+            self::DEFAULT_ALLOW => RefillDecision::allow(null, false, $source),
             self::DEFAULT_HUMAN => RefillDecision::human(),
-            default => RefillDecision::refuse('default'),
+            default => RefillDecision::refuse($source),
         };
     }
 

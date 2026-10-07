@@ -50,6 +50,8 @@ export type RefillPolicy = {
     autoRead: boolean;
     /** For a service that says nothing: refuse, allow, or ask a person. */
     default: 'refuse' | 'allow' | 'human';
+    /** For an order the bot did not place, so its service is unknown. */
+    unknownOrder: 'refuse' | 'allow' | 'human';
 };
 
 export type PanelOption = { id: number; name: string };

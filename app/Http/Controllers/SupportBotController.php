@@ -218,6 +218,7 @@ class SupportBotController extends Controller
         return [
             'autoRead' => (bool) Arr::get($settings, 'refill.auto_read', true),
             'default' => (string) Arr::get($settings, 'refill.default', 'refuse'),
+            'unknownOrder' => (string) Arr::get($settings, 'refill.unknown_order', 'allow'),
         ];
     }
 
@@ -226,12 +227,17 @@ class SupportBotController extends Controller
         $data = $request->validate([
             'autoRead' => ['required', 'boolean'],
             'default' => ['required', Rule::in(RefillPolicy::DEFAULTS)],
+            'unknownOrder' => ['required', Rule::in(RefillPolicy::DEFAULTS)],
         ]);
 
         $tenantId = (int) $request->user()->id;
         $settings = BotSettings::for($tenantId, self::BOT);
 
-        $settings['refill'] = ['auto_read' => $data['autoRead'], 'default' => $data['default']];
+        $settings['refill'] = [
+            'auto_read' => $data['autoRead'],
+            'default' => $data['default'],
+            'unknown_order' => $data['unknownOrder'],
+        ];
 
         BotSettings::save($tenantId, self::BOT, $settings);
 

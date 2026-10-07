@@ -72,7 +72,7 @@ export default function SupportBotIndex(props: SupportBotPageProps) {
                     <RulesTab
                         rules={props.rules}
                         panels={props.panels ?? []}
-                        policy={props.refillPolicy ?? { autoRead: true, default: 'refuse' }}
+                        policy={props.refillPolicy ?? { autoRead: true, default: 'refuse', unknownOrder: 'allow' }}
                     />
                 )}
                 {tab === 'templates' && props.templates && (

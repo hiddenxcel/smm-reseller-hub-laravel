@@ -99,7 +99,11 @@ const DEFAULT_CHOICES: Array<{ value: RefillPolicy['default']; label: string; no
  * the bot reads that. The default below covers a service that says nothing.
  */
 function AutomaticCard({ policy }: { policy: RefillPolicy }) {
-    const form = useForm({ autoRead: policy.autoRead, default: policy.default });
+    const form = useForm({
+        autoRead: policy.autoRead,
+        default: policy.default,
+        unknownOrder: policy.unknownOrder,
+    });
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -144,6 +148,28 @@ function AutomaticCard({ policy }: { policy: RefillPolicy }) {
                     </select>
                     <p className="mt-1.5 text-xs text-muted-foreground">
                         {DEFAULT_CHOICES.find((choice) => choice.value === form.data.default)?.note}
+                    </p>
+                </Field>
+
+                <Field label="Orders not placed through this bot">
+                    <select
+                        className={inputClass}
+                        value={form.data.unknownOrder}
+                        onChange={(event) =>
+                            form.setData(
+                                'unknownOrder',
+                                event.target.value as RefillPolicy['default'],
+                            )
+                        }
+                    >
+                        <option value="allow">Let the panel decide</option>
+                        <option value="refuse">Refuse</option>
+                        <option value="human">Ask my team</option>
+                    </select>
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                        An order made on your panel's own site has no service name the bot can
+                        read. “Let the panel decide” sends the refill and tells the customer
+                        what the panel answers.
                     </p>
                 </Field>
 
