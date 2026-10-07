@@ -82,6 +82,7 @@ export type SupportBotPageProps = {
     tabs: string[];
     status: BotStatus;
     overview?: Overview;
+    numbers?: import('../OrderBot/NumberTab').BotNumbersData;
     rules?: Rule[];
     panels?: PanelOption[];
     templates?: Templates;

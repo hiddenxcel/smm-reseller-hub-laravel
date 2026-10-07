@@ -54,10 +54,10 @@ function BotCard({ data, status }: { data: Setup; status: BotStatus }) {
     const link = digits === '' ? null : `https://wa.me/${digits}`;
 
     const missing = [
-        !data.checks.subscription && { label: 'Subscription', fix: 'Get it' },
-        !data.checks.panel && { label: 'Panel', fix: 'Connect' },
-        !data.checks.whatsapp && { label: 'WhatsApp number', fix: 'Connect' },
-    ].filter(Boolean) as Array<{ label: string; fix: string }>;
+        !data.checks.subscription && { label: 'Subscription', fix: 'Get it', href: route('onboarding') },
+        !data.checks.panel && { label: 'Panel', fix: 'Connect', href: route('onboarding') },
+        !data.checks.whatsapp && { label: 'WhatsApp number', fix: 'Connect', href: route('order-bot', 'number') },
+    ].filter(Boolean) as Array<{ label: string; fix: string; href: string }>;
 
     return (
         <Card title="Your bot">
@@ -119,7 +119,7 @@ function BotCard({ data, status }: { data: Setup; status: BotStatus }) {
                                 {item.label}
                             </span>
                             <Link
-                                href={route('onboarding')}
+                                href={item.href}
                                 className="shrink-0 text-xs font-semibold text-primary"
                             >
                                 {item.fix}

@@ -1,7 +1,8 @@
 import SegmentedTabs from '@/components/SegmentedTabs';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { LayoutGrid, MessageSquareText, Settings2, ShieldCheck } from 'lucide-react';
+import { LayoutGrid, MessageSquareText, Phone, Settings2, ShieldCheck } from 'lucide-react';
+import { NumberTab } from '../OrderBot/NumberTab';
 import { StatusPill } from '../OrderBot/bits';
 import { OverviewTab } from './OverviewTab';
 import { RulesTab } from './RulesTab';
@@ -11,6 +12,7 @@ import { SupportBotPageProps } from './types';
 
 const TABS = {
     overview: { label: 'Overview', icon: LayoutGrid },
+    number: { label: 'Number', icon: Phone },
     rules: { label: 'Rules', icon: ShieldCheck },
     templates: { label: 'Wording', icon: MessageSquareText },
     settings: { label: 'Settings', icon: Settings2 },
@@ -65,6 +67,7 @@ export default function SupportBotIndex(props: SupportBotPageProps) {
                 {tab === 'overview' && props.overview && (
                     <OverviewTab data={props.overview} status={status} />
                 )}
+                {tab === 'number' && props.numbers && <NumberTab data={props.numbers} />}
                 {tab === 'rules' && props.rules && (
                     <RulesTab rules={props.rules} panels={props.panels ?? []} />
                 )}

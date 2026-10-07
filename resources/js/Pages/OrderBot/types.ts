@@ -170,6 +170,7 @@ export type OrderBotPageProps = {
     tabs: string[];
     status: BotStatus;
     setup?: Setup;
+    numbers?: import('./NumberTab').BotNumbersData;
     languages?: Language[];
     currencies?: CurrencyOption[];
     commands?: Commands;

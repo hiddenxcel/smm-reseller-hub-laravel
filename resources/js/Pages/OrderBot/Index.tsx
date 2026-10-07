@@ -1,9 +1,10 @@
 import SegmentedTabs from '@/components/SegmentedTabs';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { Bot, ScrollText, Settings2, SlidersHorizontal } from 'lucide-react';
+import { Bot, Phone, ScrollText, Settings2, SlidersHorizontal } from 'lucide-react';
 import { CommandsTab } from './CommandsTab';
 import { LogsTab } from './LogsTab';
+import { NumberTab } from './NumberTab';
 import { SettingsTab } from './SettingsTab';
 import { SetupTab } from './SetupTab';
 import { StatusPill } from './bits';
@@ -11,6 +12,7 @@ import { OrderBotPageProps } from './types';
 
 const TABS = {
     setup: { label: 'Setup', icon: Bot },
+    number: { label: 'Number', icon: Phone },
     commands: { label: 'Commands', icon: SlidersHorizontal },
     logs: { label: 'Logs', icon: ScrollText },
     settings: { label: 'Settings', icon: Settings2 },
@@ -64,6 +66,7 @@ export default function OrderBotIndex(props: OrderBotPageProps) {
                 {tab === 'setup' && props.setup && (
                     <SetupTab data={props.setup} status={status} />
                 )}
+                {tab === 'number' && props.numbers && <NumberTab data={props.numbers} />}
                 {tab === 'commands' && props.commands && props.spam && (
                     <CommandsTab commands={props.commands} spam={props.spam} />
                 )}

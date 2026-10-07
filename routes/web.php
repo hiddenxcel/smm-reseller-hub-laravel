@@ -180,7 +180,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/order-bot/gateways/pesapal/register-ipn', [OrderBotGatewaysController::class, 'registerIpn'])->name('order-bot.gateways.register-ipn');
     Route::delete('/order-bot/gateways/{gateway}', [OrderBotGatewaysController::class, 'destroy'])->name('order-bot.gateways.destroy');
     Route::get('/order-bot/{tab?}', [OrderBotController::class, 'show'])
-        ->whereIn('tab', ['setup', 'commands', 'logs', 'settings'])
+        ->whereIn('tab', ['setup', 'number', 'commands', 'logs', 'settings'])
         ->name('order-bot');
     Route::post('/order-bot/setup', [OrderBotController::class, 'updateSetup'])->name('order-bot.setup');
     Route::post('/order-bot/test-numbers', [OrderBotController::class, 'updateTestNumbers'])->name('order-bot.test-numbers');
@@ -203,7 +203,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/support-bot/settings', [SupportBotController::class, 'updateSettings'])->name('support-bot.settings');
     Route::post('/support-bot/test-numbers', [SupportBotController::class, 'updateTestNumbers'])->name('support-bot.test-numbers');
     Route::get('/support-bot/{tab?}', [SupportBotController::class, 'show'])
-        ->whereIn('tab', ['overview', 'rules', 'templates', 'settings'])
+        ->whereIn('tab', ['overview', 'number', 'rules', 'templates', 'settings'])
         ->name('support-bot');
 
     // Billing — the reseller paying US, as opposed to their customers paying

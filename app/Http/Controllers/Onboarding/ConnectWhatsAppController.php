@@ -121,7 +121,13 @@ class ConnectWhatsAppController extends Controller
      */
     private function afterSave(Request $request): RedirectResponse
     {
-        if (str_contains((string) $request->headers->get('referer'), '/settings')) {
+        $referer = (string) $request->headers->get('referer');
+
+        if (str_contains($referer, '/order-bot') || str_contains($referer, '/support-bot')) {
+            return back(fallback: route('order-bot', 'number'));
+        }
+
+        if (str_contains($referer, '/settings')) {
             return back(fallback: route('settings'));
         }
 

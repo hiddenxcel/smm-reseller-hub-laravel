@@ -33,7 +33,7 @@ class SupportBotController extends Controller
 {
     private const BOT = 'support';
 
-    private const TABS = ['overview', 'rules', 'templates', 'settings'];
+    private const TABS = ['overview', 'number', 'rules', 'templates', 'settings'];
 
     /**
      * Messages a reseller may reword, and what each one is for.
@@ -69,6 +69,7 @@ class SupportBotController extends Controller
             'status' => $this->status($tenantId),
 
             ...match ($tab) {
+                'number' => ['numbers' => \App\Services\Numbers\BotNumbers::for($tenantId, self::BOT)],
                 'rules' => ['rules' => $this->rules($tenantId), 'panels' => $this->panels($tenantId)],
                 'templates' => [
                     'templates' => $this->templates($tenantId, $settings),

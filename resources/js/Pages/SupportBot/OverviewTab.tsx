@@ -24,7 +24,7 @@ export function OverviewTab({ data, status }: { data: Overview; status: BotStatu
             label: 'WhatsApp number',
             why: 'No number connected for the support bot.',
             fix: 'Connect',
-            href: route('onboarding'),
+            href: route('support-bot', 'number'),
         },
         !checks.panel && {
             label: 'Panel',

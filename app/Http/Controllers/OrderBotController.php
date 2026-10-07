@@ -34,7 +34,7 @@ class OrderBotController extends Controller
 {
     private const BOT = 'order';
 
-    private const TABS = ['setup', 'commands', 'logs', 'settings'];
+    private const TABS = ['setup', 'number', 'commands', 'logs', 'settings'];
 
     public function show(Request $request, string $tab = 'setup'): Response
     {
@@ -50,6 +50,7 @@ class OrderBotController extends Controller
             // The log query in particular has no business running because
             // someone opened Commands.
             ...match ($tab) {
+                'number' => ['numbers' => \App\Services\Numbers\BotNumbers::for($tenantId, self::BOT)],
                 'commands' => ['commands' => Arr::get($settings, 'commands', []), 'spam' => Arr::get($settings, 'spam', [])],
                 'logs' => ['logs' => $this->logs($request, $tenantId)],
                 'settings' => [
