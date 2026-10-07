@@ -13,7 +13,8 @@ use App\Services\Bots\BotHandler;
 use App\Services\Bots\BotMessenger;
 use App\Services\Bots\BotSettings;
 use App\Services\Bots\BotSimulation;
-use App\Services\Guarantee\GuaranteeMatcher;
+use App\Services\Guarantee\RefillDecision;
+use App\Services\Guarantee\RefillPolicy;
 use App\Services\Panel\SmmProviderClient;
 use Illuminate\Support\Arr;
 
@@ -339,12 +340,31 @@ class SupportBotHandler implements BotHandler
             return;
         }
 
-        // Whether a refill is owed depends on the service the order was for,
-        // matched against the reseller's own guarantee keywords.
-        $verdict = GuaranteeMatcher::forTenant($this->tenantId)
-            ->evaluate($this->serviceNameFor($orderId) ?? '');
+        // Whether a refill is owed depends on the service the order was for:
+        // the reseller's rules first, then what the service promises, then
+        // their default for services that say nothing.
+        $decision = RefillPolicy::forTenant($this->tenantId)->decide($this->orderFor($orderId));
 
-        if (! $verdict->allowed) {
+        if ($decision->outcome === RefillDecision::HUMAN) {
+            $this->messenger->sendText(
+                $from,
+                "🤝 I've asked our team to check the refill for *#{$orderId}*. Someone will reply here shortly.",
+            );
+            $this->notifyStaff("🤝 Refill for *#{$orderId}* from {$from} needs a decision — this service doesn't say if it has a refill.");
+
+            return;
+        }
+
+        if ($decision->outcome === RefillDecision::EXPIRED) {
+            $this->messenger->sendText(
+                $from,
+                "⏳ The refill guarantee for *#{$orderId}* was {$decision->days} days, and this order is {$decision->ageDays} days old, so it has ended.",
+            );
+
+            return;
+        }
+
+        if (! $decision->allowed()) {
             $this->messenger->sendText(
                 $from,
                 "🚫 Order *#{$orderId}* has no refill guarantee.",
@@ -366,15 +386,16 @@ class SupportBotHandler implements BotHandler
             return;
         }
 
-        $guarantee = $verdict->lifetime ? 'Lifetime ♾️' : "{$verdict->days} days";
+        // A refill allowed by default has no promise to quote.
+        $guarantee = $decision->lifetime ? 'Lifetime ♾️' : ($decision->days !== null ? "{$decision->days} days" : null);
 
         $this->messenger->sendText(
             $from,
-            "♻️ Refill for *#{$orderId}* submitted!\nGuarantee: {$guarantee} ✅",
+            "♻️ Refill for *#{$orderId}* submitted!".($guarantee !== null ? "\nGuarantee: {$guarantee} ✅" : ''),
             'REFILL_SUCCESS',
         );
 
-        $this->notifyStaff("♻️ Refill requested for *#{$orderId}* by {$from} (guarantee: {$guarantee})");
+        $this->notifyStaff("♻️ Refill requested for *#{$orderId}* by {$from}".($guarantee !== null ? " (guarantee: {$guarantee})" : ''));
     }
 
     private function requestCancellation(string $from, ?TenantPanel $panel, string $orderId): void
@@ -501,14 +522,14 @@ class SupportBotHandler implements BotHandler
      * The service an order was for, so refill eligibility can be judged. The
      * id may be ours or the panel's, depending on which the customer quotes.
      */
-    private function serviceNameFor(string $orderId): ?string
+    private function orderFor(string $orderId): ?BotOrder
     {
         return BotOrder::withoutTenantScope()
             ->where('tenant_id', $this->tenantId)
             ->where(fn ($query) => $query
                 ->where('provider_order_id', $orderId)
                 ->orWhere('id', is_numeric($orderId) ? (int) $orderId : 0))
-            ->value('service_name');
+            ->first();
     }
 
     private function notifyStaff(string $message): void

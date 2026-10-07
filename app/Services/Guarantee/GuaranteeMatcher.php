@@ -31,6 +31,8 @@ class GuaranteeMatcher
             GuaranteeRule::withoutTenantScope()
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'active')
+                // A fixed order, so two rules that tie are always settled the same way.
+                ->orderBy('id')
                 ->get()
         );
     }

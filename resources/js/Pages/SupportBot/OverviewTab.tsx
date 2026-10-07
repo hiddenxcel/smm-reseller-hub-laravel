@@ -34,7 +34,7 @@ export function OverviewTab({ data, status }: { data: Overview; status: BotStatu
         },
         !checks.rules && {
             label: 'Guarantee rules',
-            why: 'Without a rule, every refill request is refused.',
+            why: 'Automatic reading is off and there is no rule, so every refill is refused.',
             fix: 'Add one',
             href: route('support-bot', 'rules'),
         },

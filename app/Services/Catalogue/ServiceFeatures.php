@@ -26,6 +26,16 @@ final class ServiceFeatures
         ];
     }
 
+    /**
+     * The refill promise in a piece of text — a service name, or the
+     * reseller's own wording such as "30 days" — as one of "No refill",
+     * "Lifetime" or "N days", or null when it says nothing clear.
+     */
+    public static function readRefill(string $text): ?string
+    {
+        return self::guessRefill($text) ?? self::guessRefill('Refill '.$text);
+    }
+
     private static function guessRefill(string $name): ?string
     {
         if (preg_match('/\bno[\s\-_]?refill\b/iu', $name) === 1) {

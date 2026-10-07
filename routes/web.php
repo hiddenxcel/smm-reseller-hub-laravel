@@ -197,6 +197,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/support-bot/tickets/{ticket}/reply', [SupportBotTicketsController::class, 'reply'])->name('support-bot.tickets.reply');
     Route::patch('/support-bot/tickets/{ticket}', [SupportBotTicketsController::class, 'update'])->name('support-bot.tickets.update');
     Route::post('/support-bot/rules', [SupportBotController::class, 'storeRule'])->name('support-bot.rules.store');
+    Route::post('/support-bot/refill-policy', [SupportBotController::class, 'updateRefillPolicy'])->name('support-bot.refill-policy');
     Route::patch('/support-bot/rules/{rule}', [SupportBotController::class, 'updateRule'])->name('support-bot.rules.update');
     Route::delete('/support-bot/rules/{rule}', [SupportBotController::class, 'destroyRule'])->name('support-bot.rules.destroy');
     Route::post('/support-bot/templates', [SupportBotController::class, 'updateTemplate'])->name('support-bot.templates.update');

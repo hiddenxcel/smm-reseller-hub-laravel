@@ -69,7 +69,11 @@ export default function SupportBotIndex(props: SupportBotPageProps) {
                 )}
                 {tab === 'number' && props.numbers && <NumberTab data={props.numbers} />}
                 {tab === 'rules' && props.rules && (
-                    <RulesTab rules={props.rules} panels={props.panels ?? []} />
+                    <RulesTab
+                        rules={props.rules}
+                        panels={props.panels ?? []}
+                        policy={props.refillPolicy ?? { autoRead: true, default: 'refuse' }}
+                    />
                 )}
                 {tab === 'templates' && props.templates && (
                     <TemplatesTab data={props.templates} languages={props.languages ?? []} />

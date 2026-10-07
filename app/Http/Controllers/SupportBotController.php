@@ -12,10 +12,12 @@ use App\Models\Ticket;
 use App\Services\Bots\BotLang;
 use App\Services\Bots\BotSettings;
 use App\Services\Bots\Support\SupportAction;
+use App\Services\Guarantee\RefillPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -70,7 +72,11 @@ class SupportBotController extends Controller
 
             ...match ($tab) {
                 'number' => ['numbers' => \App\Services\Numbers\BotNumbers::for($tenantId, self::BOT)],
-                'rules' => ['rules' => $this->rules($tenantId), 'panels' => $this->panels($tenantId)],
+                'rules' => [
+                    'rules' => $this->rules($tenantId),
+                    'panels' => $this->panels($tenantId),
+                    'refillPolicy' => $this->refillPolicy($settings),
+                ],
                 'templates' => [
                     'templates' => $this->templates($tenantId, $settings),
                     'languages' => $this->languages(),
@@ -134,12 +140,13 @@ class SupportBotController extends Controller
                     ->where('status', 'active')
                     ->exists(),
                 'whatsapp' => $number !== null && $number->status === 'active',
-                // Refill is the one action gated on the reseller's own rules;
-                // with none, every refill request is refused.
-                'rules' => GuaranteeRule::withoutTenantScope()
-                    ->where('tenant_id', $tenantId)
-                    ->where('status', 'active')
-                    ->exists(),
+                // Refill is decided by the reseller's rules or by what the
+                // service says; with neither, every refill request is refused.
+                'rules' => (bool) Arr::get($settings, 'refill.auto_read', true)
+                    || GuaranteeRule::withoutTenantScope()
+                        ->where('tenant_id', $tenantId)
+                        ->where('status', 'active')
+                        ->exists(),
             ],
             'sandbox' => Subscription::isSandbox($tenantId, ServiceKey::SupportBot),
             'testNumbers' => Arr::get($settings, 'shop.test_numbers', []),
@@ -176,21 +183,59 @@ class SupportBotController extends Controller
      */
     private function rules(int $tenantId): array
     {
-        return GuaranteeRule::withoutTenantScope()
+        $rules = GuaranteeRule::withoutTenantScope()
             ->where('tenant_id', $tenantId)
             ->with('panel:id,name')
             ->orderByRaw("rule_type = 'guarantee'")
             ->orderBy('keyword')
-            ->get()
-            ->map(fn (GuaranteeRule $rule) => [
-                'id' => $rule->id,
-                'panelId' => $rule->panel_id,
-                'panelName' => $rule->panel?->name,
-                'type' => $rule->rule_type,
-                'keyword' => $rule->keyword,
-                'refillDays' => $rule->refill_days,
-                'status' => $rule->status,
-            ])->all();
+            ->get();
+
+        // The matcher takes the earliest of two rules with the same keyword,
+        // so a later copy never applies. Say so, rather than let a reseller
+        // wonder why the 365-day rule they added is ignored.
+        $earliest = [];
+
+        foreach ($rules->where('status', 'active')->sortBy('id') as $rule) {
+            $earliest[$rule->rule_type.'|'.mb_strtolower(trim($rule->keyword))] ??= $rule->id;
+        }
+
+        return $rules->map(fn (GuaranteeRule $rule) => [
+            'id' => $rule->id,
+            'panelId' => $rule->panel_id,
+            'panelName' => $rule->panel?->name,
+            'type' => $rule->rule_type,
+            'keyword' => $rule->keyword,
+            'refillDays' => $rule->refill_days,
+            'status' => $rule->status,
+            'shadowed' => $rule->status === 'active'
+                && ($earliest[$rule->rule_type.'|'.mb_strtolower(trim($rule->keyword))] ?? $rule->id) !== $rule->id,
+        ])->all();
+    }
+
+    /** How refill requests are decided when no rule matches. */
+    private function refillPolicy(array $settings): array
+    {
+        return [
+            'autoRead' => (bool) Arr::get($settings, 'refill.auto_read', true),
+            'default' => (string) Arr::get($settings, 'refill.default', 'refuse'),
+        ];
+    }
+
+    public function updateRefillPolicy(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'autoRead' => ['required', 'boolean'],
+            'default' => ['required', Rule::in(RefillPolicy::DEFAULTS)],
+        ]);
+
+        $tenantId = (int) $request->user()->id;
+        $settings = BotSettings::for($tenantId, self::BOT);
+
+        $settings['refill'] = ['auto_read' => $data['autoRead'], 'default' => $data['default']];
+
+        BotSettings::save($tenantId, self::BOT, $settings);
+
+        return back()->with('success', 'Refill settings saved.');
     }
 
     private function panels(int $tenantId): array
@@ -219,6 +264,22 @@ class SupportBotController extends Controller
                 Rule::exists('tenant_panels', 'id')->where('tenant_id', $tenantId),
             ],
         ]);
+
+        $keyword = trim($data['keyword']);
+
+        // The matcher ignores capitals, so "Instagram" and "instagram" are the
+        // same rule — and the second would never be used.
+        $duplicate = GuaranteeRule::withoutTenantScope()
+            ->where('tenant_id', $tenantId)
+            ->where('panel_id', $data['panelId'] ?? null)
+            ->whereRaw('lower(keyword) = ?', [mb_strtolower($keyword)])
+            ->exists();
+
+        if ($duplicate) {
+            throw ValidationException::withMessages([
+                'keyword' => "You already have a rule for “{$keyword}”. Change or remove that one instead.",
+            ]);
+        }
 
         GuaranteeRule::withoutTenantScope()->create([
             'tenant_id' => $tenantId,

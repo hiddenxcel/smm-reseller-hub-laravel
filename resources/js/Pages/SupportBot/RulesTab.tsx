@@ -2,7 +2,7 @@ import { router, useForm } from '@inertiajs/react';
 import { Plus, Trash2 } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { Card, Field, inputClass } from '../OrderBot/bits';
-import { PanelOption, Rule } from './types';
+import { PanelOption, RefillPolicy, Rule } from './types';
 
 /**
  * Refill guarantee rules.
@@ -18,17 +18,28 @@ import { PanelOption, Rule } from './types';
  * The rules come first and adding one opens in place: a reseller opening this
  * tab is mostly checking what is set, not adding.
  */
-export function RulesTab({ rules, panels }: { rules: Rule[]; panels: PanelOption[] }) {
+export function RulesTab({
+    rules,
+    panels,
+    policy,
+}: {
+    rules: Rule[];
+    panels: PanelOption[];
+    policy: RefillPolicy;
+}) {
     const exclusions = rules.filter((rule) => rule.type === 'no_guarantee');
     const grants = rules.filter((rule) => rule.type === 'guarantee');
 
-    const [adding, setAdding] = useState(rules.length === 0);
+    const [adding, setAdding] = useState(false);
 
     return (
         <div className="space-y-4 sm:space-y-6">
+            <AutomaticCard policy={policy} />
+
             {rules.length === 0 && (
                 <p className="rounded-2xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
-                    No rules yet, so the bot refuses every refill. Add one — a keyword like{' '}
+                    No rules, and none are needed while automatic reading is on. Add one only to
+                    override a service: a keyword like{' '}
                     <span className="font-data text-foreground">followers</span> covers every
                     service with that word in its name.
                 </p>
@@ -60,6 +71,91 @@ export function RulesTab({ rules, panels }: { rules: Rule[]; panels: PanelOption
                 </button>
             )}
         </div>
+    );
+}
+
+const DEFAULT_CHOICES: Array<{ value: RefillPolicy['default']; label: string; note: string }> = [
+    {
+        value: 'refuse',
+        label: 'Refuse',
+        note: 'Safest. No refill unless the service or a rule says there is one.',
+    },
+    {
+        value: 'allow',
+        label: 'Allow',
+        note: 'Send it to the panel and let the panel decide.',
+    },
+    {
+        value: 'human',
+        label: 'Ask my team',
+        note: 'The customer is told, and your staff are alerted to decide.',
+    },
+];
+
+/**
+ * How a refill is decided before any rule is written.
+ *
+ * Most panels say it in the name ("365 Days Refill", "R30", "No Refill"), so
+ * the bot reads that. The default below covers a service that says nothing.
+ */
+function AutomaticCard({ policy }: { policy: RefillPolicy }) {
+    const form = useForm({ autoRead: policy.autoRead, default: policy.default });
+
+    const submit = (event: FormEvent) => {
+        event.preventDefault();
+        form.post(route('support-bot.refill-policy'), { preserveScroll: true });
+    };
+
+    return (
+        <Card
+            title="Automatic"
+            description="Your rules below come first. If none matches, the bot reads what the service itself says."
+        >
+            <form onSubmit={submit} className="space-y-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                        type="checkbox"
+                        checked={form.data.autoRead}
+                        onChange={(event) => form.setData('autoRead', event.target.checked)}
+                        className="mt-1 size-4"
+                    />
+                    <span className="text-sm">
+                        <span className="font-semibold">Read the refill promise from the service</span>
+                        <span className="block text-muted-foreground">
+                            “30 Days Refill”, “R365” and “Lifetime” allow it; “No Refill” refuses.
+                            It also checks the order is still inside those days.
+                        </span>
+                    </span>
+                </label>
+
+                <Field label="When the service says nothing">
+                    <select
+                        className={inputClass}
+                        value={form.data.default}
+                        onChange={(event) =>
+                            form.setData('default', event.target.value as RefillPolicy['default'])
+                        }
+                    >
+                        {DEFAULT_CHOICES.map((choice) => (
+                            <option key={choice.value} value={choice.value}>
+                                {choice.label}
+                            </option>
+                        ))}
+                    </select>
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                        {DEFAULT_CHOICES.find((choice) => choice.value === form.data.default)?.note}
+                    </p>
+                </Field>
+
+                <button
+                    type="submit"
+                    disabled={form.processing}
+                    className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+                >
+                    {form.processing ? 'Saving…' : 'Save'}
+                </button>
+            </form>
+        </Card>
     );
 }
 
@@ -239,6 +335,11 @@ function RuleRow({ rule }: { rule: Rule }) {
                     {cover}
                     {rule.panelName && ` · ${rule.panelName}`}
                 </p>
+                {rule.shadowed && (
+                    <p className="text-xs text-amber-500">
+                        Never used: an earlier rule has the same keyword. Remove one of them.
+                    </p>
+                )}
             </div>
 
             {/* A switch rather than a "Disable" button: the row says whether

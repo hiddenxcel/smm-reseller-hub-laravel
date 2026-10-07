@@ -41,6 +41,15 @@ export type Rule = {
     /** 0 means lifetime; null on a no_guarantee rule. */
     refillDays: number | null;
     status: 'active' | 'inactive';
+    /** An earlier rule has the same keyword, so this one is never used. */
+    shadowed: boolean;
+};
+
+export type RefillPolicy = {
+    /** Read "30 Days Refill" / "No Refill" from the service name. */
+    autoRead: boolean;
+    /** For a service that says nothing: refuse, allow, or ask a person. */
+    default: 'refuse' | 'allow' | 'human';
 };
 
 export type PanelOption = { id: number; name: string };
@@ -85,6 +94,7 @@ export type SupportBotPageProps = {
     numbers?: import('../OrderBot/NumberTab').BotNumbersData;
     rules?: Rule[];
     panels?: PanelOption[];
+    refillPolicy?: RefillPolicy;
     templates?: Templates;
     languages?: Language[];
     settings?: SupportSettings;

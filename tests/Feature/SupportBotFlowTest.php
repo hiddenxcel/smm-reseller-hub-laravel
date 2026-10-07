@@ -270,6 +270,137 @@ class SupportBotFlowTest extends TestCase
         Http::assertNothingSent();
     }
 
+    // ---- refill, decided without a rule -----------------------------------
+
+    private function askRefill(string $id): void
+    {
+        $this->send('hi');
+        $this->send('1');
+        $this->send($id);
+    }
+
+    private function orderNamed(string $name, array $extra = []): BotOrder
+    {
+        return BotOrder::factory()->for($this->tenant)->create(['provider_order_id' => '48220', 'service_name' => $name] + $extra);
+    }
+
+    public function test_a_refill_is_read_from_the_service_name_when_there_is_no_rule(): void
+    {
+        $this->withPanel();
+        $this->orderNamed('IG Followers | 30 Days Refill');
+        Http::fake(['*' => Http::response(['refill' => '9001'])]);
+
+        $this->askRefill('48220');
+
+        $this->assertStringContainsString('Refill for *#48220* submitted', json_encode($this->toCustomer()));
+        $this->assertStringContainsString('30 days', json_encode($this->toCustomer()));
+    }
+
+    public function test_a_no_refill_name_is_refused_without_asking_the_panel(): void
+    {
+        $this->withPanel();
+        $this->orderNamed('IG Followers | No Refill');
+        Http::fake();
+
+        $this->askRefill('48220');
+
+        $this->assertStringContainsString('no refill guarantee', json_encode($this->toCustomer()));
+        Http::assertNothingSent();
+    }
+
+    public function test_an_order_older_than_its_guarantee_is_refused(): void
+    {
+        $this->withPanel();
+        $this->orderNamed('IG Followers | 30 Days Refill', ['created_at' => now()->subDays(45)]);
+        Http::fake();
+
+        $this->askRefill('48220');
+
+        $this->assertStringContainsString('has ended', json_encode($this->toCustomer()));
+        $this->assertStringContainsString('45 days old', json_encode($this->toCustomer()));
+        Http::assertNothingSent();
+    }
+
+    public function test_a_lifetime_name_is_never_too_old(): void
+    {
+        $this->withPanel();
+        $this->orderNamed('IG Likes | Lifetime Refill', ['created_at' => now()->subDays(900)]);
+        Http::fake(['*' => Http::response(['refill' => '1'])]);
+
+        $this->askRefill('48220');
+
+        $this->assertStringContainsString('Lifetime', json_encode($this->toCustomer()));
+    }
+
+    public function test_a_rule_overrides_what_the_name_says(): void
+    {
+        $this->withPanel();
+        $this->orderNamed('IG Followers | 30 Days Refill');
+        GuaranteeRule::factory()->for($this->tenant)->noGuarantee()->create(['keyword' => 'ig followers']);
+        Http::fake();
+
+        $this->askRefill('48220');
+
+        $this->assertStringContainsString('no refill guarantee', json_encode($this->toCustomer()));
+        Http::assertNothingSent();
+    }
+
+    public function test_the_resellers_own_refill_wording_beats_the_name(): void
+    {
+        $this->withPanel();
+        $service = \App\Models\BotService::factory()->for($this->tenant)->create(['refill_info' => 'No refill']);
+        $this->orderNamed('IG Followers | 30 Days Refill', ['service_id' => $service->id]);
+        Http::fake();
+
+        $this->askRefill('48220');
+
+        $this->assertStringContainsString('no refill guarantee', json_encode($this->toCustomer()));
+        Http::assertNothingSent();
+    }
+
+    public function test_a_silent_service_follows_the_default_to_allow(): void
+    {
+        $this->withPanel();
+        BotSettings::save($this->tenant->id, 'support', ['refill' => ['default' => 'allow']]);
+        $this->orderNamed('Some Service');
+        Http::fake(['*' => Http::response(['refill' => '9'])]);
+
+        $this->askRefill('48220');
+
+        $this->assertStringContainsString('Refill for *#48220* submitted', json_encode($this->toCustomer()));
+        $this->assertStringNotContainsString('Guarantee:', json_encode($this->toCustomer()));
+    }
+
+    public function test_a_silent_service_can_be_handed_to_the_team(): void
+    {
+        $this->withPanel();
+        BotSettings::save($this->tenant->id, 'support', [
+            'refill' => ['default' => 'human'],
+            'staff' => ['numbers' => [self::STAFF]],
+        ]);
+        $this->orderNamed('Some Service');
+        Http::fake();
+
+        $this->askRefill('48220');
+
+        $this->assertStringContainsString('asked our team', json_encode($this->toCustomer()));
+        $this->assertStringContainsString('needs a decision', json_encode($this->messenger->sent));
+        Http::assertNothingSent();
+    }
+
+    public function test_turning_automatic_reading_off_leaves_only_the_rules(): void
+    {
+        $this->withPanel();
+        BotSettings::save($this->tenant->id, 'support', ['refill' => ['auto_read' => false]]);
+        $this->orderNamed('IG Followers | 30 Days Refill');
+        Http::fake();
+
+        $this->askRefill('48220');
+
+        $this->assertStringContainsString('no refill guarantee', json_encode($this->toCustomer()));
+        Http::assertNothingSent();
+    }
+
     // ---- actions that only notify staff -----------------------------------
 
     public function test_a_partial_report_needs_no_panel(): void

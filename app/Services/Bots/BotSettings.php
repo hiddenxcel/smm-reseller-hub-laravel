@@ -32,6 +32,13 @@ class BotSettings
             // Phone numbers that bypass anti-spam and receive notifications.
             'numbers' => [],
         ],
+        'refill' => [
+            // Read what a service promises ("30 Days Refill", "No Refill") from
+            // its name instead of needing a rule for each one.
+            'auto_read' => true,
+            // For a service that says nothing: refuse, allow, or human.
+            'default' => 'refuse',
+        ],
         'shop' => [
             'currency' => 'USD',
             'lang' => 'en',

@@ -85,6 +85,18 @@ class SupportBotPageTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('SupportBot/Index')
                 ->where('overview.checks.whatsapp', false)
+                // Reading the promise from the service name is on by default,
+                // so no rule is needed for refills to work.
+                ->where('overview.checks.rules', true));
+    }
+
+    public function test_the_rules_check_fails_when_reading_is_off_and_there_are_no_rules(): void
+    {
+        BotSettings::save($this->tenant->id, 'support', ['refill' => ['auto_read' => false]]);
+
+        $this->actingAs($this->tenant)
+            ->get(route('support-bot'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('overview.checks.rules', false));
     }
 
@@ -142,6 +154,48 @@ class SupportBotPageTest extends TestCase
             'keyword' => 'instagram followers',
             'refill_days' => 30,
         ]);
+    }
+
+    public function test_a_rule_with_the_same_keyword_is_refused_whatever_the_capitals(): void
+    {
+        GuaranteeRule::factory()->for($this->tenant)->create(['keyword' => 'Instagram', 'refill_days' => 30]);
+
+        $this->actingAs($this->tenant)
+            ->post(route('support-bot.rules.store'), [
+                'type' => 'guarantee',
+                'keyword' => 'instagram',
+                'refillDays' => 365,
+            ])
+            ->assertSessionHasErrors('keyword');
+
+        $this->assertSame(1, GuaranteeRule::withoutTenantScope()->where('tenant_id', $this->tenant->id)->count());
+    }
+
+    public function test_a_later_duplicate_is_flagged_as_never_used(): void
+    {
+        GuaranteeRule::factory()->for($this->tenant)->create(['keyword' => 'Instagram', 'refill_days' => 30]);
+        $later = GuaranteeRule::factory()->for($this->tenant)->create(['keyword' => 'instagram', 'refill_days' => 365]);
+
+        $this->actingAs($this->tenant)
+            ->get(route('support-bot', 'rules'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('rules', fn ($rules) => collect($rules)->firstWhere('id', $later->id)['shadowed'] === true
+                    && collect($rules)->where('shadowed', true)->count() === 1));
+    }
+
+    public function test_the_refill_policy_can_be_saved(): void
+    {
+        $this->actingAs($this->tenant)
+            ->post(route('support-bot.refill-policy'), ['autoRead' => false, 'default' => 'human'])
+            ->assertRedirect();
+
+        $settings = BotSettings::for($this->tenant->id, 'support');
+        $this->assertFalse($settings['refill']['auto_read']);
+        $this->assertSame('human', $settings['refill']['default']);
+
+        $this->actingAs($this->tenant)
+            ->post(route('support-bot.refill-policy'), ['autoRead' => true, 'default' => 'whatever'])
+            ->assertSessionHasErrors('default');
     }
 
     /** 0 is lifetime, not "no days" — the floor must let it through. */
