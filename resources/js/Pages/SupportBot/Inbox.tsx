@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { MessageSquareText, Search, X } from 'lucide-react';
 import { useState } from 'react';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 import { Avatar, relativeTime } from '../OrderBot/inbox-bits';
 import { SupportThread as Thread } from './Thread';
 import { SupportConversation, SupportThread } from './types';
@@ -33,6 +34,9 @@ export default function SupportBotInbox({
     canSend: boolean;
 }) {
     const [query, setQuery] = useState(q);
+
+    // New messages and handoffs appear on their own.
+    useLiveRefresh(['conversations', 'thread']);
 
     const waiting = conversations.filter((conversation) => conversation.awaitingHuman).length;
 

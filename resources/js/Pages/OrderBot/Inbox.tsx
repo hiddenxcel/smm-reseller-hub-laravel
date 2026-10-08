@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Eye, MessageSquareText, Search, X } from 'lucide-react';
 import { useState } from 'react';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 import { Thread } from './Thread';
 import { Avatar, relativeTime } from './inbox-bits';
 import { Conversation, InboxThread } from './types';
@@ -30,6 +31,9 @@ export default function OrderBotInbox({
     thread: InboxThread | null;
 }) {
     const [query, setQuery] = useState(q);
+
+    // New messages appear on their own.
+    useLiveRefresh(['conversations', 'thread']);
 
     const search = (value: string) =>
         router.get(

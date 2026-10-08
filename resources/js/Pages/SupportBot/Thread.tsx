@@ -26,10 +26,30 @@ export function SupportThread({
 
     const form = useForm({ phone: thread.phone, message: '' });
 
-    // A chat is read from the bottom.
+    // A chat is read from the bottom. A new message pulls the reader down only
+    // if they were already at the bottom: someone scrolled up to read what was
+    // said earlier must not be thrown to the end by every live update.
+    const scroller = useRef<HTMLDivElement>(null);
+    const atBottom = useRef(true);
+
+    const track = () => {
+        const el = scroller.current;
+
+        if (el) {
+            atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+        }
+    };
+
     useEffect(() => {
+        atBottom.current = true;
         end.current?.scrollIntoView({ block: 'end' });
-    }, [thread.phone, thread.messages.length]);
+    }, [thread.phone]);
+
+    useEffect(() => {
+        if (atBottom.current) {
+            end.current?.scrollIntoView({ block: 'end' });
+        }
+    }, [thread.messages.length]);
 
     const send = () => {
         if (form.data.message.trim() === '') {
@@ -116,7 +136,7 @@ export function SupportThread({
                 </div>
             )}
 
-            <div className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-muted/30 px-3 py-4 sm:px-6">
+            <div ref={scroller} onScroll={track} className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-muted/30 px-3 py-4 sm:px-6">
                 {thread.messages.length === 0 ? (
                     <p className="py-8 text-center text-sm text-muted-foreground">
                         No messages in this conversation.

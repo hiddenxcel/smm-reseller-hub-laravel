@@ -16,11 +16,30 @@ export function Thread({ thread }: { thread: InboxThread }) {
     const label = thread.name ?? thread.phone;
     const end = useRef<HTMLDivElement>(null);
 
-    // A chat is read from the bottom: landing on the first message of a long
-    // thread, with the latest a scroll away, is the wrong way round.
+    // A chat is read from the bottom. A new message pulls the reader down only
+    // if they were already at the bottom: someone scrolled up to read what was
+    // said earlier must not be thrown to the end by every live update.
+    const scroller = useRef<HTMLDivElement>(null);
+    const atBottom = useRef(true);
+
+    const track = () => {
+        const el = scroller.current;
+
+        if (el) {
+            atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+        }
+    };
+
     useEffect(() => {
+        atBottom.current = true;
         end.current?.scrollIntoView({ block: 'end' });
-    }, [thread.phone, thread.messages.length]);
+    }, [thread.phone]);
+
+    useEffect(() => {
+        if (atBottom.current) {
+            end.current?.scrollIntoView({ block: 'end' });
+        }
+    }, [thread.messages.length]);
 
     return (
         <div className="flex min-h-0 flex-1 flex-col">
@@ -60,7 +79,7 @@ export function Thread({ thread }: { thread: InboxThread }) {
                 )}
             </header>
 
-            <div className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-muted/30 px-3 py-4 sm:px-6">
+            <div ref={scroller} onScroll={track} className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-muted/30 px-3 py-4 sm:px-6">
                 {thread.messages.length === 0 ? (
                     <p className="py-8 text-center text-sm text-muted-foreground">
                         No messages in this conversation.

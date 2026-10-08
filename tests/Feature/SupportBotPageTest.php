@@ -132,6 +132,44 @@ class SupportBotPageTest extends TestCase
             });
     }
 
+    /**
+     * The inbox keeps itself current by asking, every few seconds, for just
+     * the conversation list and the open thread. A message that arrives
+     * between two asks must be in the second answer, and nothing else sent.
+     */
+    public function test_the_inbox_poll_returns_a_message_that_arrived_since(): void
+    {
+        $headers = [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => (string) app(\App\Http\Middleware\HandleInertiaRequests::class)->version(request()),
+            'X-Inertia-Partial-Component' => 'SupportBot/Inbox',
+            'X-Inertia-Partial-Data' => 'conversations,thread',
+        ];
+
+        $this->logInbound('255700000001', 'first');
+
+        $first = $this->actingAs($this->tenant)
+            ->withHeaders($headers)
+            ->get(route('support-bot.inbox', ['phone' => '255700000001']))
+            ->assertOk();
+
+        $this->assertSame(['first'], array_column($first->json('props.thread.messages'), 'message'));
+        $this->assertArrayNotHasKey('canSend', $first->json('props'));
+
+        $this->logInbound('255700000001', 'second, sent while the page was open');
+        $this->logInbound('255700000002', 'someone new');
+
+        $again = $this->actingAs($this->tenant)
+            ->withHeaders($headers)
+            ->get(route('support-bot.inbox', ['phone' => '255700000001']))
+            ->assertOk();
+
+        $this->assertSame(
+            ['first', 'second, sent while the page was open'],
+            array_column($again->json('props.thread.messages'), 'message'),
+        );
+        $this->assertCount(2, $again->json('props.conversations'));
+    }
     public function test_an_unknown_tab_is_not_a_page(): void
     {
         $this->actingAs($this->tenant)->get('/support-bot/nonsense')->assertNotFound();
