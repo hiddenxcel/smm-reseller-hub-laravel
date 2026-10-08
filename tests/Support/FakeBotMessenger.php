@@ -15,8 +15,15 @@ class FakeBotMessenger implements BotMessenger
 
     public array $markedRead = [];
 
+    /** Numbers WhatsApp refuses to deliver to: nothing is recorded, and false comes back. */
+    public array $failFor = [];
+
     public function sendText(string $to, string $message, ?string $templateKey = null): bool
     {
+        if (in_array($to, $this->failFor, true)) {
+            return false;
+        }
+
         $this->sent[] = ['type' => 'text', 'to' => $to, 'body' => $message, 'templateKey' => $templateKey];
 
         return true;

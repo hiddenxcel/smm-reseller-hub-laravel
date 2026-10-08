@@ -2,6 +2,7 @@ import { router, useForm } from '@inertiajs/react';
 import { FormEvent } from 'react';
 import { Card, Field, SaveBar, Toggle, inputClass } from '../OrderBot/bits';
 import { PhoneList } from '../OrderBot/PhoneList';
+import { StaffAlertsCard } from '../OrderBot/StaffAlertsCard';
 import { Language, SupportSettings, Verification } from './types';
 
 /**
@@ -23,6 +24,7 @@ export function SettingsTab({
         <div className="space-y-4 sm:space-y-6">
             <VerificationForm verification={settings.verification} />
             <MainForm settings={settings} languages={languages} />
+            <StaffAlertsCard bot="support" data={settings.staffAlerts} />
             <TestNumbersForm testNumbers={settings.testNumbers} />
         </div>
     );

@@ -54,7 +54,7 @@ class OrderBotController extends Controller
                 'commands' => ['commands' => Arr::get($settings, 'commands', []), 'spam' => Arr::get($settings, 'spam', [])],
                 'logs' => ['logs' => $this->logs($request, $tenantId)],
                 'settings' => [
-                    'settings' => $this->settingsPayload($settings),
+                    'settings' => $this->settingsPayload($settings, $request->user()),
                     'languages' => $this->languages(),
                     // The shop's currency is picked, not typed: only these have a
                     // rate, so only these can be charged through a gateway.
@@ -190,9 +190,10 @@ class OrderBotController extends Controller
     }
 
     /** Only the keys the settings tab edits — the rest stay untouched on save. */
-    private function settingsPayload(array $settings): array
+    private function settingsPayload(array $settings, \App\Models\Tenant $tenant): array
     {
         return [
+            'staffAlerts' => app(\App\Services\Bots\StaffAlerts::class)->overview($tenant, self::BOT),
             'staff' => Arr::get($settings, 'staff.numbers', []),
             'testNumbers' => Arr::get($settings, 'shop.test_numbers', []),
             'currency' => Arr::get($settings, 'shop.currency', 'USD'),

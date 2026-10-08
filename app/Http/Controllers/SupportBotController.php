@@ -84,7 +84,7 @@ class SupportBotController extends Controller
                     'languages' => $this->languages(),
                 ],
                 'settings' => [
-                    'settings' => $this->settingsPayload($settings, $tenantId),
+                    'settings' => $this->settingsPayload($settings, $tenantId, $request->user()),
                     'languages' => $this->languages(),
                 ],
                 default => ['overview' => $this->overview($tenantId, $settings)],
@@ -412,11 +412,12 @@ class SupportBotController extends Controller
         );
     }
 
-    private function settingsPayload(array $settings, int $tenantId): array
+    private function settingsPayload(array $settings, int $tenantId, \App\Models\Tenant $tenant): array
     {
         $panel = $this->firstPanel($tenantId);
 
         return [
+            'staffAlerts' => app(\App\Services\Bots\StaffAlerts::class)->overview($tenant, self::BOT),
             // The panel's Admin API, which lets a customer prove an account is
             // theirs. The key itself is never sent back, only that it is set.
             'verification' => [

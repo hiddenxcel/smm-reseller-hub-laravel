@@ -13,6 +13,7 @@ use App\Services\Bots\BotHandler;
 use App\Services\Bots\BotMessenger;
 use App\Services\Bots\BotSettings;
 use App\Services\Bots\BotSimulation;
+use App\Services\Bots\StaffAlerts;
 use App\Models\PanelAccountLink;
 use App\Services\Guarantee\RefillDecision;
 use App\Services\Guarantee\RefillPolicy;
@@ -1053,9 +1054,7 @@ class SupportBotHandler implements BotHandler
 
     private function notifyStaff(string $message): void
     {
-        foreach (Arr::get(BotSettings::for($this->tenantId, self::BOT), 'staff.numbers', []) as $number) {
-            $this->messenger->sendText((string) $number, $message);
-        }
+        app(StaffAlerts::class)->notify($this->tenant, self::BOT, $this->messenger, $message);
     }
 
     private function moveTo(string $from, SupportState $state, array $context = []): void

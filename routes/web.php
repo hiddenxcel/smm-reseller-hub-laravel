@@ -203,6 +203,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/support-bot/templates', [SupportBotController::class, 'updateTemplate'])->name('support-bot.templates.update');
     Route::post('/support-bot/settings', [SupportBotController::class, 'updateSettings'])->name('support-bot.settings');
     Route::post('/support-bot/admin-api', [SupportBotController::class, 'saveAdminApi'])->name('support-bot.admin-api');
+
+    // Checking that the team gets told: a test alert, and whether to email too.
+    Route::post('/staff-alerts/{bot}/test', [\App\Http\Controllers\StaffAlertsController::class, 'test'])
+        ->whereIn('bot', ['order', 'support'])->name('staff-alerts.test');
+    Route::post('/staff-alerts/{bot}/email', [\App\Http\Controllers\StaffAlertsController::class, 'email'])
+        ->whereIn('bot', ['order', 'support'])->name('staff-alerts.email');
     Route::post('/support-bot/test-numbers', [SupportBotController::class, 'updateTestNumbers'])->name('support-bot.test-numbers');
     Route::get('/support-bot/{tab?}', [SupportBotController::class, 'show'])
         ->whereIn('tab', ['overview', 'number', 'rules', 'templates', 'settings'])

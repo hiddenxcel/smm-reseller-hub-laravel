@@ -31,6 +31,9 @@ class BotSettings
         'staff' => [
             // Phone numbers that bypass anti-spam and receive notifications.
             'numbers' => [],
+            // Email as well? 'failed' (only when WhatsApp could not reach
+            // everyone), 'all', or 'off'.
+            'email' => 'failed',
         ],
         'verify' => [
             // With the panel's Admin API connected, a customer must prove an

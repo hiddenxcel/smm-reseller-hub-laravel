@@ -52,6 +52,15 @@ class PanelVerificationTest extends TestCase
         ]);
 
         BotSettings::save($this->tenant->id, 'support', ['staff' => ['numbers' => [self::STAFF]]]);
+
+        // WhatsApp delivers an alert only to someone who has written to the bot in the last day.
+        \App\Models\BotMessage::withoutTenantScope()->create([
+            'tenant_id' => $this->tenant->id,
+            'customer_phone' => self::STAFF,
+            'direction' => 'in',
+            'message' => 'hi',
+            'bot_type' => 'support',
+        ]);
     }
 
     private function send(string $text): void

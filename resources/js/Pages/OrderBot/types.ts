@@ -143,7 +143,24 @@ export type Logs = {
     total: number;
 };
 
+export type StaffAlertsData = {
+    /** Who is on the team, and whether WhatsApp can reach them right now. */
+    numbers: Array<{ phone: string; state: 'open' | 'closed' | 'never' }>;
+    recent: Array<{
+        id: number;
+        to: string;
+        message: string;
+        status: 'sent' | 'failed';
+        reason: string | null;
+        isTest: boolean;
+        at: string | null;
+    }>;
+    emailMode: 'failed' | 'all' | 'off';
+    email: string | null;
+};
+
 export type Settings = {
+    staffAlerts: StaffAlertsData;
     staff: string[];
     testNumbers: string[];
     currency: string;

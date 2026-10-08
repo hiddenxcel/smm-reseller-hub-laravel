@@ -86,6 +86,7 @@ export type SupportSettings = {
     testNumbers: string[];
     lang: string;
     verification: Verification;
+    staffAlerts: import('../OrderBot/types').StaffAlertsData;
 };
 
 export type Verification = {

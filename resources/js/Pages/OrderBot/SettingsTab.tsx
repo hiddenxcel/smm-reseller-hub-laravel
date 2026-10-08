@@ -1,6 +1,7 @@
 import { useForm } from '@inertiajs/react';
 import { Card, Field, SaveBar, Toggle, inputClass } from './bits';
 import { PhoneList } from './PhoneList';
+import { StaffAlertsCard } from './StaffAlertsCard';
 import { CurrencyOption, Language, Settings } from './types';
 
 /**
@@ -22,7 +23,8 @@ export function SettingsTab({
     languages: Language[];
     currencies: CurrencyOption[];
 }) {
-    const form = useForm(settings);
+    const { staffAlerts, ...editable } = settings;
+    const form = useForm(editable);
 
     return (
         <form
@@ -138,6 +140,8 @@ export function SettingsTab({
                     empty="No test numbers yet."
                 />
             </Card>
+
+            <StaffAlertsCard bot="order" data={staffAlerts} />
 
             <SaveBar processing={form.processing} dirty={form.isDirty} />
         </form>

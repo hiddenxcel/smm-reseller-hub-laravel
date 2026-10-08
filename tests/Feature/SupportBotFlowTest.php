@@ -78,6 +78,20 @@ class SupportBotFlowTest extends TestCase
         BotSettings::save($this->tenant->id, 'support', [
             'staff' => ['numbers' => [self::STAFF]],
         ]);
+
+        $this->staffHasWritten();
+    }
+
+    /** WhatsApp delivers an alert only to someone who has written to the bot in the last day. */
+    private function staffHasWritten(): void
+    {
+        \App\Models\BotMessage::withoutTenantScope()->create([
+            'tenant_id' => $this->tenant->id,
+            'customer_phone' => self::STAFF,
+            'direction' => 'in',
+            'message' => 'hi',
+            'bot_type' => 'support',
+        ]);
     }
 
     private function withPanel(): TenantPanel
@@ -378,6 +392,7 @@ class SupportBotFlowTest extends TestCase
             'refill' => ['default' => 'human'],
             'staff' => ['numbers' => [self::STAFF]],
         ]);
+        $this->staffHasWritten();
         $this->orderNamed('Some Service');
         Http::fake();
 

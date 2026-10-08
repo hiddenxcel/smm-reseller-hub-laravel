@@ -16,6 +16,7 @@ use App\Services\Bots\BotLang;
 use App\Services\Bots\BotMessenger;
 use App\Services\Bots\BotSimulation;
 use App\Services\Bots\BotSettings;
+use App\Services\Bots\StaffAlerts;
 use App\Services\Customers\CustomerReferrals;
 use App\Services\Payments\ExchangeRates;
 use App\Services\Payments\Gateway;
@@ -1413,8 +1414,6 @@ class OrderBotHandler implements BotHandler
      */
     private function notifyStaff(string $customerPhone, string $service, int $quantity, int $orderId): void
     {
-        $staff = Arr::get(BotSettings::for($this->tenantId, self::BOT), 'staff.numbers', []);
-
         $summary = sprintf(
             "🛒 New order *#%d*\n%s × %s\nFrom: %s",
             $orderId,
@@ -1423,9 +1422,7 @@ class OrderBotHandler implements BotHandler
             $customerPhone,
         );
 
-        foreach ($staff as $number) {
-            $this->messenger->sendText((string) $number, $summary);
-        }
+        app(StaffAlerts::class)->notify($this->tenant, self::BOT, $this->messenger, $summary);
     }
 
     // ---- helpers ---------------------------------------------------------
