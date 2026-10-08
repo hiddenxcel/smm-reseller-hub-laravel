@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\ServiceKey;
 use App\Models\GuaranteeRule;
+use App\Models\PanelAccountLink;
 use App\Models\ResponseTemplate;
 use App\Models\Subscription;
 use App\Models\TenantPanel;
@@ -13,6 +14,7 @@ use App\Services\Bots\BotLang;
 use App\Services\Bots\BotSettings;
 use App\Services\Bots\Support\SupportAction;
 use App\Services\Guarantee\RefillPolicy;
+use App\Services\Panel\PanelAdminClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -82,7 +84,7 @@ class SupportBotController extends Controller
                     'languages' => $this->languages(),
                 ],
                 'settings' => [
-                    'settings' => $this->settingsPayload($settings),
+                    'settings' => $this->settingsPayload($settings, $tenantId),
                     'languages' => $this->languages(),
                 ],
                 default => ['overview' => $this->overview($tenantId, $settings)],
@@ -410,15 +412,89 @@ class SupportBotController extends Controller
         );
     }
 
-    private function settingsPayload(array $settings): array
+    private function settingsPayload(array $settings, int $tenantId): array
     {
+        $panel = $this->firstPanel($tenantId);
+
         return [
+            // The panel's Admin API, which lets a customer prove an account is
+            // theirs. The key itself is never sent back, only that it is set.
+            'verification' => [
+                'panelName' => $panel?->name,
+                'adminApiUrl' => $panel?->admin_api_url,
+                'hasKey' => filled($panel?->getRawOriginal('admin_api_key_enc')),
+                'required' => (bool) Arr::get($settings, 'verify.required', true),
+                'linkedCount' => PanelAccountLink::withoutTenantScope()
+                    ->where('tenant_id', $tenantId)
+                    ->whereNotNull('verified_at')
+                    ->count(),
+            ],
             'commands' => Arr::get($settings, 'commands', []),
             'spam' => Arr::get($settings, 'spam', []),
             'staff' => Arr::get($settings, 'staff.numbers', []),
             'testNumbers' => Arr::get($settings, 'shop.test_numbers', []),
             'lang' => Arr::get($settings, 'shop.lang', BotLang::DEFAULT),
         ];
+    }
+
+    private function firstPanel(int $tenantId): ?TenantPanel
+    {
+        return TenantPanel::withoutTenantScope()->where('tenant_id', $tenantId)->orderBy('id')->first();
+    }
+
+    /**
+     * Connect the panel's Admin API, and say whether the key works.
+     *
+     * Saved first and tested after, so a typo does not throw away what was
+     * typed; the answer says which. A blank key keeps the one already stored.
+     */
+    public function saveAdminApi(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'adminApiUrl' => ['nullable', 'url', 'max:255'],
+            'adminApiKey' => ['nullable', 'string', 'max:255'],
+            'clear' => ['nullable', 'boolean'],
+            'required' => ['required', 'boolean'],
+        ]);
+
+        $tenantId = (int) $request->user()->id;
+        $panel = $this->firstPanel($tenantId);
+
+        if ($panel === null) {
+            throw ValidationException::withMessages(['adminApiUrl' => 'Connect your panel first, then its Admin API.']);
+        }
+
+        $settings = BotSettings::for($tenantId, self::BOT);
+        Arr::set($settings, 'verify.required', (bool) $data['required']);
+        BotSettings::save($tenantId, self::BOT, $settings);
+
+        if ($data['clear'] ?? false) {
+            $panel->forceFill(['admin_api_url' => null, 'admin_api_key_enc' => null])->save();
+
+            return back()->with('success', 'Admin API disconnected. Customers are no longer asked to verify.');
+        }
+
+        if (filled($data['adminApiUrl'] ?? null)) {
+            $panel->admin_api_url = trim($data['adminApiUrl']);
+        }
+
+        if (filled($data['adminApiKey'] ?? null)) {
+            $panel->admin_api_key_enc = trim($data['adminApiKey']);
+        }
+
+        $panel->save();
+
+        $client = PanelAdminClient::forPanel($panel);
+
+        if ($client === null) {
+            return back()->with('success', 'Saved. Add the Admin API address and key to turn verification on.');
+        }
+
+        $ping = $client->ping();
+
+        return $ping->failed
+            ? back()->with('error', "Saved, but the panel did not accept the key: {$ping->message}")
+            : back()->with('success', 'Connected. Customers can now verify their account in the chat.');
     }
 
     public function updateSettings(Request $request): RedirectResponse

@@ -1,8 +1,8 @@
-import { useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import { FormEvent } from 'react';
 import { Card, Field, SaveBar, Toggle, inputClass } from '../OrderBot/bits';
 import { PhoneList } from '../OrderBot/PhoneList';
-import { Language, SupportSettings } from './types';
+import { Language, SupportSettings, Verification } from './types';
 
 /**
  * Two forms, deliberately not one.
@@ -21,9 +21,122 @@ export function SettingsTab({
 }) {
     return (
         <div className="space-y-4 sm:space-y-6">
+            <VerificationForm verification={settings.verification} />
             <MainForm settings={settings} languages={languages} />
             <TestNumbersForm testNumbers={settings.testNumbers} />
         </div>
+    );
+}
+
+/**
+ * Lets a customer prove an account on the panel is theirs.
+ *
+ * The panel's Admin API is what can find a customer, put a code in their
+ * account and read their orders; the reseller key cannot. Its key is a staff
+ * credential, so it is typed here, kept encrypted, and never shown again.
+ */
+function VerificationForm({ verification }: { verification: Verification }) {
+    const form = useForm({
+        adminApiUrl: verification.adminApiUrl ?? '',
+        adminApiKey: '',
+        required: verification.required,
+        clear: false,
+    });
+
+    const connected = verification.adminApiUrl !== null && verification.hasKey;
+
+    const submit = (event: FormEvent) => {
+        event.preventDefault();
+        form.post(route('support-bot.admin-api'), {
+            preserveScroll: true,
+            onSuccess: () => form.setData('adminApiKey', ''),
+        });
+    };
+
+    const disconnect = () => {
+        if (!window.confirm('Disconnect the Admin API? Customers will no longer be asked to verify.')) {
+            return;
+        }
+
+        router.post(
+            route('support-bot.admin-api'),
+            { required: form.data.required, clear: true },
+            { preserveScroll: true },
+        );
+    };
+
+    return (
+        <form onSubmit={submit}>
+            <Card
+                title="Account verification"
+                description={
+                    connected
+                        ? `Connected to ${verification.panelName ?? 'your panel'}. ${verification.linkedCount} customer${verification.linkedCount === 1 ? '' : 's'} verified.`
+                        : 'Connect your panel\u2019s Admin API so customers can prove an account is theirs, and the bot can act on their orders.'
+                }
+            >
+                <div className="space-y-4">
+                    <Field
+                        label="Panel address"
+                        hint="For example https://yourpanel.com"
+                        error={form.errors.adminApiUrl}
+                    >
+                        <input
+                            className={inputClass}
+                            value={form.data.adminApiUrl}
+                            onChange={(event) => form.setData('adminApiUrl', event.target.value)}
+                            placeholder="https://yourpanel.com"
+                            inputMode="url"
+                        />
+                    </Field>
+
+                    <Field
+                        label="Admin API key"
+                        hint={
+                            verification.hasKey
+                                ? 'A key is saved. Leave blank to keep it.'
+                                : 'From a staff account that has Admin API access.'
+                        }
+                        error={form.errors.adminApiKey}
+                    >
+                        <input
+                            type="password"
+                            autoComplete="off"
+                            className={inputClass}
+                            value={form.data.adminApiKey}
+                            onChange={(event) => form.setData('adminApiKey', event.target.value)}
+                        />
+                    </Field>
+
+                    <Toggle
+                        label="Ask customers to verify first"
+                        description="Before refill, status or cancel, the customer proves the account is theirs with a code sent to their tickets."
+                        checked={form.data.required}
+                        onChange={(value) => form.setData('required', value)}
+                    />
+
+                    <div className="flex flex-col gap-2 sm:flex-row-reverse">
+                        <button
+                            type="submit"
+                            disabled={form.processing}
+                            className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+                        >
+                            {form.processing ? 'Saving\u2026' : connected ? 'Save and test' : 'Connect'}
+                        </button>
+
+                        {connected && (
+                            <button
+                                type="button"
+                                onClick={disconnect}
+                                className="rounded-xl px-5 py-2.5 text-sm text-muted-foreground hover:text-destructive"
+                            >
+                                Disconnect
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </Card>
+        </form>
     );
 }
 

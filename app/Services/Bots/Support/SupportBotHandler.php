@@ -13,8 +13,12 @@ use App\Services\Bots\BotHandler;
 use App\Services\Bots\BotMessenger;
 use App\Services\Bots\BotSettings;
 use App\Services\Bots\BotSimulation;
+use App\Models\PanelAccountLink;
 use App\Services\Guarantee\RefillDecision;
 use App\Services\Guarantee\RefillPolicy;
+use App\Services\Panel\AccountLinker;
+use App\Services\Panel\PanelAdminClient;
+use App\Services\Panel\PanelResponse;
 use App\Services\Panel\SmmProviderClient;
 use Illuminate\Support\Arr;
 
@@ -82,6 +86,18 @@ class SupportBotHandler implements BotHandler
             return;
         }
 
+        if ($lower === 'verify' && $this->verificationAvailable()) {
+            $this->askForAccount($from, null);
+
+            return;
+        }
+
+        if ($lower === 'unlink' && $this->verificationAvailable()) {
+            $this->unlink($from);
+
+            return;
+        }
+
         $conversation = BotConversation::current($this->tenantId, $from, self::BOT);
         $state = $conversation === null ? null : SupportState::tryFrom($conversation->state);
 
@@ -95,6 +111,8 @@ class SupportBotHandler implements BotHandler
             SupportState::Menu => $this->onMenuChoice($from, $text),
             SupportState::AwaitOrderId => $this->onOrderId($from, $text, $conversation->context ?? []),
             SupportState::AiFaq => $this->onAiQuestion($from, $text, $conversation->context ?? []),
+            SupportState::AwaitAccount => $this->onAccount($from, $text, $conversation->context ?? []),
+            SupportState::AwaitCode => $this->onCode($from, $text, $conversation->context ?? []),
         };
     }
 
@@ -139,12 +157,175 @@ class SupportBotHandler implements BotHandler
             return;
         }
 
+        // Acting on an order means acting on somebody's account: when the
+        // panel can tell whose it is, the customer proves the account is theirs
+        // first, then goes on to the order.
+        if ($this->mustVerify($from)) {
+            $this->askForAccount($from, $action);
+
+            return;
+        }
+
+        $this->askForOrderId($from, $action);
+    }
+
+    private function askForOrderId(string $from, SupportAction $action): void
+    {
         $this->moveTo($from, SupportState::AwaitOrderId, ['action' => $action->value]);
 
         $this->messenger->sendText(
             $from,
             "🔢 Please send the *Order ID* for *{$action->label()}*.\n(Reply *back* for the menu.)",
         );
+    }
+
+    // ---- proving an account is the customer's ------------------------------
+
+    /** The panel's Admin API is connected and the reseller wants proof. */
+    private function verificationAvailable(): bool
+    {
+        return ! BotSimulation::active() && PanelAdminClient::forPanel($this->panel()) !== null;
+    }
+
+    /** Should this customer be sent to verify before acting on an order? */
+    private function mustVerify(string $from): bool
+    {
+        if (! $this->verificationAvailable()) {
+            return false;
+        }
+
+        if (! (bool) Arr::get(BotSettings::for($this->tenantId, self::BOT), 'verify.required', true)) {
+            return false;
+        }
+
+        return $this->linkedAccount($from) === null;
+    }
+
+    private function linkedAccount(string $from): ?PanelAccountLink
+    {
+        $panel = $this->panel();
+
+        return $panel === null ? null : app(AccountLinker::class)->linked($panel, $from);
+    }
+
+    private function askForAccount(string $from, ?SupportAction $then): void
+    {
+        $panel = $this->panel();
+        $site = $panel?->name ?? $this->tenant->business_name;
+
+        $this->moveTo($from, SupportState::AwaitAccount, ['action' => $then?->value]);
+
+        $this->messenger->sendText(
+            $from,
+            "🔐 *Verify your account*\n\n"
+                ."Send the *username or email* of your account on {$site}. "
+                ."We'll put a 6-digit code in that account's *Tickets*.\n\n"
+                .'(Reply *back* for the menu.)',
+        );
+    }
+
+    private function onAccount(string $from, string $text, array $context): void
+    {
+        $identifier = trim($text);
+        $panel = $this->panel();
+        $client = PanelAdminClient::forPanel($panel);
+
+        if ($panel === null || $client === null) {
+            $this->finish($from);
+            $this->messenger->sendText($from, "⚠️ Support isn't fully set up yet. Please try again later.");
+
+            return;
+        }
+
+        if ($identifier === '' || mb_strlen($identifier) > 100 || preg_match('/\s/', $identifier) === 1) {
+            $this->messenger->sendText($from, 'Please send just your username or email, with no spaces. (Reply *back* for the menu.)');
+
+            return;
+        }
+
+        $outcome = app(AccountLinker::class)->start($panel, $client, $from, $identifier);
+
+        if ($outcome === AccountLinker::THROTTLED) {
+            $this->messenger->sendText($from, "⏳ That's a lot of code requests. Please try again in an hour.");
+
+            return;
+        }
+
+        if ($outcome === AccountLinker::FAILED) {
+            $this->messenger->sendText($from, "⚠️ We couldn't reach your account just now. Please try again in a moment.");
+
+            return;
+        }
+
+        // The same words whether or not the account exists, on purpose.
+        $this->moveTo($from, SupportState::AwaitCode, ['action' => $context['action'] ?? null]);
+
+        $this->messenger->sendText(
+            $from,
+            "📨 If that account exists, a ticket with a 6-digit code is waiting in *Tickets* on {$panel->name}.\n\n"
+                .'Open it and send the code here. It works for '.AccountLinker::CODE_MINUTES." minutes.\n\n"
+                .'(Reply *back* to cancel.)',
+        );
+    }
+
+    private function onCode(string $from, string $text, array $context): void
+    {
+        $panel = $this->panel();
+        $code = preg_replace('/\D/', '', $text) ?? '';
+
+        if ($panel === null) {
+            $this->finish($from);
+
+            return;
+        }
+
+        if (strlen($code) !== 6) {
+            $this->messenger->sendText($from, 'The code is 6 digits. Please send it again, or reply *back* to cancel.');
+
+            return;
+        }
+
+        $linker = app(AccountLinker::class);
+        $outcome = $linker->verify($panel, $from, $code);
+
+        if ($outcome === AccountLinker::WRONG) {
+            $left = $linker->triesLeft($panel, $from);
+            $this->messenger->sendText($from, "❌ That code isn't right. {$left} ".($left === 1 ? 'try' : 'tries').' left.');
+
+            return;
+        }
+
+        if ($outcome !== AccountLinker::OK) {
+            $this->moveTo($from, SupportState::AwaitAccount, ['action' => $context['action'] ?? null]);
+            $this->messenger->sendText($from, '⌛ That code has expired. Send your username or email again to get a new one.');
+
+            return;
+        }
+
+        $name = $linker->linked($panel, $from)?->panel_username;
+        $this->messenger->sendText($from, "✅ Verified as *{$name}*. You can now ask about your orders. Send *unlink* any time to disconnect.");
+
+        $action = SupportAction::tryFrom((string) ($context['action'] ?? ''));
+
+        if ($action !== null && $action->needsOrderId()) {
+            $this->askForOrderId($from, $action);
+
+            return;
+        }
+
+        $this->showMenu($from);
+    }
+
+    private function unlink(string $from): void
+    {
+        $panel = $this->panel();
+
+        if ($panel !== null) {
+            app(AccountLinker::class)->unlink($panel, $from);
+        }
+
+        $this->finish($from);
+        $this->messenger->sendText($from, '🔓 Your account is disconnected from this chat. Send *verify* to connect one again.');
     }
 
     private function handleImmediate(string $from, SupportAction $action): void
@@ -281,6 +462,27 @@ class SupportBotHandler implements BotHandler
             return;
         }
 
+        // With the panel's Admin API connected, an order is only ever shown or
+        // acted on for the account the customer has proven is theirs, and the
+        // panel's own rules and words decide the outcome.
+        if ($this->verificationAvailable()) {
+            $link = $this->linkedAccount($from);
+
+            if ($link === null && $this->mustVerify($from)) {
+                $this->askForAccount($from, $action);
+
+                return;
+            }
+
+            if ($link !== null) {
+                $this->actForAccount($from, $action, $orderId, $link, PanelAdminClient::forPanel($panel));
+                $this->moveTo($from, SupportState::Menu);
+                $this->messenger->sendText($from, 'Reply *0* to see the menu again, or *cancel* to exit.');
+
+                return;
+            }
+        }
+
         match ($action) {
             SupportAction::Status => $this->reportStatus($from, $panel, $orderId),
             SupportAction::Refill => $this->requestRefill($from, $panel, $orderId),
@@ -293,6 +495,111 @@ class SupportBotHandler implements BotHandler
         // Back to the menu, ready for the next request.
         $this->moveTo($from, SupportState::Menu);
         $this->messenger->sendText($from, 'Reply *0* to see the menu again, or *cancel* to exit.');
+    }
+
+    // ---- the actions, for a verified account --------------------------------
+
+    private function actForAccount(string $from, SupportAction $action, string $orderId, PanelAccountLink $link, PanelAdminClient $client): void
+    {
+        $found = $client->order($orderId);
+
+        // "Not found" and "not yours" read the same: the customer learns
+        // nothing about orders that are not theirs.
+        $owner = is_array($found->get('user')) ? ($found->get('user')['id'] ?? null) : null;
+
+        if ($found->failed && $found->code !== 404) {
+            $this->messenger->sendText($from, "⚠️ We couldn't reach the panel just now. Please try again in a moment.");
+
+            return;
+        }
+
+        if ($found->failed || (int) $owner !== (int) $link->panel_user_id) {
+            $this->messenger->sendText($from, "❌ Order *#{$orderId}* isn't on your account.", 'NOT_FOUND');
+
+            return;
+        }
+
+        match ($action) {
+            SupportAction::Status => $this->reportAccountStatus($from, $orderId, $found),
+            SupportAction::Refill => $this->requestAccountRefill($from, $orderId, $found, $client),
+            SupportAction::Cancel => $this->requestAccountCancel($from, $orderId, $client),
+            SupportAction::SpeedUp => $this->requestSpeedUp($from, $orderId),
+            SupportAction::Partial => $this->reportPartial($from, $orderId),
+            default => $this->showMenu($from),
+        };
+    }
+
+    private function reportAccountStatus(string $from, string $orderId, PanelResponse $order): void
+    {
+        $status = ucfirst(str_replace('_', ' ', (string) $order->get('status', 'unknown')));
+
+        $message = "📦 Order *#{$orderId}*\nStatus: *{$status}*";
+
+        if ($order->get('service')) {
+            $message .= "\nService: {$order->get('service')}";
+        }
+
+        if ($order->get('start_count') !== null) {
+            $message .= "\nStart: {$order->get('start_count')}";
+        }
+
+        if ($order->get('remains') !== null) {
+            $message .= "\nRemaining: {$order->get('remains')}";
+        }
+
+        $this->messenger->sendText($from, $message, 'STATUS_SUCCESS');
+    }
+
+    private function requestAccountRefill(string $from, string $orderId, PanelResponse $order, PanelAdminClient $client): void
+    {
+        $result = $client->refill($orderId);
+
+        if ($result->failed) {
+            $this->messenger->sendText(
+                $from,
+                "⚠️ Refill for *#{$orderId}* couldn't be submitted: {$result->message}",
+                'REFILL_ERROR',
+            );
+
+            return;
+        }
+
+        $days = (int) $order->get('refill_days', 0);
+
+        $this->messenger->sendText(
+            $from,
+            "♻️ Refill for *#{$orderId}* submitted!".($days > 0 ? "\nGuarantee: {$days} days ✅" : ''),
+            'REFILL_SUCCESS',
+        );
+
+        $this->notifyStaff("♻️ Refill requested for *#{$orderId}* by {$from} (verified account)");
+    }
+
+    private function requestAccountCancel(string $from, string $orderId, PanelAdminClient $client): void
+    {
+        $result = $client->cancel($orderId);
+
+        // The staff account behind the key may not be allowed to cancel. Then
+        // it is a request for the team, as it was before the panel was connected.
+        if ($result->failed && $result->code === 403) {
+            $this->messenger->sendText(
+                $from,
+                "🗑️ Cancellation for *#{$orderId}* has been requested. Our team will confirm shortly.",
+                'CANCEL_SUCCESS',
+            );
+            $this->notifyStaff("🗑️ Cancel requested for *#{$orderId}* by {$from} (verified account)");
+
+            return;
+        }
+
+        if ($result->failed) {
+            $this->messenger->sendText($from, "⚠️ Order *#{$orderId}* couldn't be cancelled: {$result->message}");
+
+            return;
+        }
+
+        $this->messenger->sendText($from, "🗑️ Order *#{$orderId}* has been cancelled. Any refund is back in your panel balance.");
+        $this->notifyStaff("🗑️ Order *#{$orderId}* cancelled by {$from} (verified account)");
     }
 
     // ---- the actions -----------------------------------------------------

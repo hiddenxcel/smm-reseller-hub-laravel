@@ -85,6 +85,16 @@ export type SupportSettings = {
     staff: string[];
     testNumbers: string[];
     lang: string;
+    verification: Verification;
+};
+
+export type Verification = {
+    panelName: string | null;
+    adminApiUrl: string | null;
+    /** The key is never sent back; only that one is stored. */
+    hasKey: boolean;
+    required: boolean;
+    linkedCount: number;
 };
 
 /** Only the current tab's data is sent, so every tab payload is optional. */

@@ -13,6 +13,8 @@ final readonly class PanelResponse
         public bool $failed,
         public array $data,
         public ?string $message,
+        /** The HTTP status, when the failure came from one (403 means not permitted). */
+        public ?int $code = null,
     ) {}
 
     public static function ok(array $data): self
@@ -20,9 +22,9 @@ final readonly class PanelResponse
         return new self(failed: false, data: $data, message: null);
     }
 
-    public static function error(string $message): self
+    public static function error(string $message, ?int $code = null): self
     {
-        return new self(failed: true, data: [], message: $message);
+        return new self(failed: true, data: [], message: $message, code: $code);
     }
 
     public function get(string $key, mixed $default = null): mixed

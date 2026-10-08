@@ -202,6 +202,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/support-bot/rules/{rule}', [SupportBotController::class, 'destroyRule'])->name('support-bot.rules.destroy');
     Route::post('/support-bot/templates', [SupportBotController::class, 'updateTemplate'])->name('support-bot.templates.update');
     Route::post('/support-bot/settings', [SupportBotController::class, 'updateSettings'])->name('support-bot.settings');
+    Route::post('/support-bot/admin-api', [SupportBotController::class, 'saveAdminApi'])->name('support-bot.admin-api');
     Route::post('/support-bot/test-numbers', [SupportBotController::class, 'updateTestNumbers'])->name('support-bot.test-numbers');
     Route::get('/support-bot/{tab?}', [SupportBotController::class, 'show'])
         ->whereIn('tab', ['overview', 'number', 'rules', 'templates', 'settings'])

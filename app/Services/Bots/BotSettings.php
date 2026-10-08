@@ -32,6 +32,11 @@ class BotSettings
             // Phone numbers that bypass anti-spam and receive notifications.
             'numbers' => [],
         ],
+        'verify' => [
+            // With the panel's Admin API connected, a customer must prove an
+            // account is theirs before the bot shows or acts on its orders.
+            'required' => true,
+        ],
         'refill' => [
             // Read what a service promises ("30 Days Refill", "No Refill") from
             // its name instead of needing a rule for each one.

@@ -10,4 +10,10 @@ enum SupportState: string
     case Menu = 'MENU';
     case AwaitOrderId = 'AWAIT_ORDER';
     case AiFaq = 'AI_FAQ';
+
+    /** Waiting for the username or email of the panel account to verify. */
+    case AwaitAccount = 'AWAIT_ACCOUNT';
+
+    /** Waiting for the code that was put in that account's tickets. */
+    case AwaitCode = 'AWAIT_CODE';
 }

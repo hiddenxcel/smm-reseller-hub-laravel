@@ -30,6 +30,8 @@ class TenantPanel extends Model
         'panel_type',
         'api_url',
         'api_key_enc',
+        'admin_api_url',
+        'admin_api_key_enc',
         'api_version',
         'auth_method',
         'last_checked_at',
@@ -42,12 +44,14 @@ class TenantPanel extends Model
 
     protected $hidden = [
         'api_key_enc',
+        'admin_api_key_enc',
     ];
 
     protected function casts(): array
     {
         return [
             'api_key_enc' => 'encrypted',
+            'admin_api_key_enc' => 'encrypted',
             'last_checked_at' => 'datetime',
             'last_balance' => 'decimal:2',
             'low_balance_threshold' => 'decimal:2',
