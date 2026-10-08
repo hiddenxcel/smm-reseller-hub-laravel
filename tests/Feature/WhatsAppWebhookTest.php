@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Enums\ServiceKey;
+use App\Models\BotMessage;
+use App\Models\BsuidAlias;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\TenantWhatsApp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
@@ -185,6 +188,100 @@ class WhatsAppWebhookTest extends TestCase
         ]);
     }
 
+    // ---- people who hide their phone number -----------------------------------
+
+    private function hiddenNumberPayload(string $phoneNumberId, string $text = 'hi', string $bsuid = 'US.13491208655302741918'): array
+    {
+        return [
+            'entry' => [[
+                'changes' => [[
+                    'value' => [
+                        'messaging_product' => 'whatsapp',
+                        'metadata' => ['phone_number_id' => $phoneNumberId],
+                        'contacts' => [[
+                            'profile' => ['name' => 'Valeria', 'username' => 'valeria.tz'],
+                            'user_id' => $bsuid,
+                        ]],
+                        'messages' => [[
+                            'id' => 'wamid.HIDDEN',
+                            'from_user_id' => $bsuid,
+                            'type' => 'text',
+                            'text' => ['body' => $text],
+                        ]],
+                    ],
+                ]],
+            ]],
+        ];
+    }
+
+    public function test_a_sender_with_no_phone_number_reaches_the_bot_under_a_short_alias(): void
+    {
+        $number = $this->activeNumber();
+
+        $this->postSigned($this->hiddenNumberPayload($number->phone_number_id, 'hello'))
+            ->assertOk()
+            ->assertSee('handled_order');
+
+        $row = BotMessage::withoutTenantScope()->where('direction', 'in')->first();
+
+        // Short enough for every phone column, and plainly not a phone number.
+        $this->assertMatchesRegularExpression('/^u[0-9a-f]{20}$/', $row->customer_phone);
+        $this->assertSame('hello', $row->message);
+        $this->assertDatabaseHas('bot_customers', ['tenant_id' => $number->tenant_id, 'phone' => $row->customer_phone, 'name' => 'Valeria']);
+    }
+
+    public function test_the_reply_goes_to_the_id_not_to_a_phone(): void
+    {
+        $number = $this->activeNumber();
+
+        $this->postSigned($this->hiddenNumberPayload($number->phone_number_id, 'hello'))->assertOk();
+
+        $sent = Http::recorded(fn (Request $request) => str_contains($request->url(), '/messages') && isset($request['recipient']));
+
+        $this->assertNotEmpty($sent);
+        [$request] = $sent->first();
+        $this->assertSame('US.13491208655302741918', $request['recipient']);
+        $this->assertArrayNotHasKey('to', $request->data());
+    }
+
+    public function test_the_same_id_is_always_the_same_customer(): void
+    {
+        $number = $this->activeNumber();
+
+        $this->postSigned($this->hiddenNumberPayload($number->phone_number_id, 'one'))->assertOk();
+        $this->postSigned($this->hiddenNumberPayload($number->phone_number_id, 'two'))->assertOk();
+
+        $phones = BotMessage::withoutTenantScope()->where('direction', 'in')->pluck('customer_phone')->unique();
+
+        $this->assertCount(1, $phones);
+        $this->assertSame(1, BsuidAlias::withoutTenantScope()->count());
+        $this->assertSame('valeria.tz', BsuidAlias::withoutTenantScope()->first()->username);
+    }
+
+    public function test_an_alias_means_nothing_to_another_reseller(): void
+    {
+        $number = $this->activeNumber();
+        $this->postSigned($this->hiddenNumberPayload($number->phone_number_id, 'hello'))->assertOk();
+
+        $alias = BsuidAlias::withoutTenantScope()->first()->alias;
+        $other = Tenant::factory()->create();
+
+        $this->assertNull(BsuidAlias::bsuidFor($other->id, $alias));
+        $this->assertSame('US.13491208655302741918', BsuidAlias::bsuidFor($number->tenant_id, $alias));
+        $this->assertNull(BsuidAlias::bsuidFor($number->tenant_id, '255700000001'));
+    }
+
+    public function test_a_phone_number_is_still_used_when_meta_sends_one(): void
+    {
+        $number = $this->activeNumber();
+        $payload = $this->payload($number->phone_number_id, 'hello');
+        $payload['entry'][0]['changes'][0]['value']['messages'][0]['from_user_id'] = 'US.999';
+
+        $this->postSigned($payload)->assertOk();
+
+        $this->assertDatabaseHas('bot_messages', ['customer_phone' => '255700000001', 'direction' => 'in']);
+        $this->assertSame(0, BsuidAlias::withoutTenantScope()->count());
+    }
     public function test_a_status_callback_carries_no_message_and_is_acknowledged(): void
     {
         // Meta sends delivery and read receipts to the same URL.
@@ -209,7 +306,6 @@ class WhatsAppWebhookTest extends TestCase
         // its content.
         $payload = $this->payload('123', 'a private message');
         unset($payload['entry'][0]['changes'][0]['value']['messages'][0]['from']);
-        $payload['entry'][0]['changes'][0]['value']['messages'][0]['from_user_id'] = 'BSUID.abc';
 
         Log::spy();
 
@@ -218,7 +314,7 @@ class WhatsAppWebhookTest extends TestCase
         Log::shouldHaveReceived('warning')->withArgs(function (string $message, array $context = []) {
             return str_contains($message, 'could not be read')
                 && $context['has_from'] === false
-                && in_array('from_user_id', $context['message_keys'], true)
+                && in_array('type', $context['message_keys'], true)
                 && ! str_contains(json_encode($context), 'a private message');
         })->once();
     }

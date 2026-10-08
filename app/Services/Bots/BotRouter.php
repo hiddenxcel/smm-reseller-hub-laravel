@@ -5,6 +5,7 @@ namespace App\Services\Bots;
 use App\Enums\ServiceKey;
 use App\Models\BotCustomer;
 use App\Models\BotMessage;
+use App\Models\BsuidAlias;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\TenantWhatsApp;
@@ -52,6 +53,12 @@ class BotRouter
         }
 
         $bot = $whatsapp->bot_type;
+
+        // A sender who hides their phone number arrives as an ID only. Everything
+        // downstream is keyed on a short "phone" string, so the ID is given one.
+        if ($message->from === '' && $message->bsuid !== null) {
+            $message = $message->withFrom(BsuidAlias::aliasFor((int) $tenant->id, $message->bsuid, $message->username));
+        }
 
         // Logged before the gate and the spam check, so a message that was
         // refused is still on the record — a reseller asking "did they ever

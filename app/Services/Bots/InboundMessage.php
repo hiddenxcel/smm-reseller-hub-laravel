@@ -15,7 +15,29 @@ final readonly class InboundMessage
         public ?string $providerMessageId = null,
         /** The name on the sender's WhatsApp profile, as Meta reports it. */
         public ?string $profileName = null,
+        /**
+         * Set when Meta sent no phone number: a WhatsApp user who hides theirs
+         * is known to a business only by this business-scoped ID. `from` is
+         * empty until the router gives it a short alias.
+         */
+        public ?string $bsuid = null,
+        /** The WhatsApp username, when the sender has one. */
+        public ?string $username = null,
     ) {}
+
+    /** The same message, now with the key the rest of the app knows the sender by. */
+    public function withFrom(string $from): self
+    {
+        return new self(
+            $this->phoneNumberId,
+            $from,
+            $this->text,
+            $this->providerMessageId,
+            $this->profileName,
+            $this->bsuid,
+            $this->username,
+        );
+    }
 
     /**
      * Pull a message out of a Meta webhook payload, or null when there is
@@ -38,7 +60,10 @@ final readonly class InboundMessage
 
         $from = (string) ($message['from'] ?? '');
 
-        if ($from === '') {
+        // No phone number: the sender hides it, and Meta gives only an ID.
+        $bsuid = $from === '' ? (string) ($message['from_user_id'] ?? data_get($value, 'contacts.0.user_id') ?? '') : '';
+
+        if ($from === '' && $bsuid === '') {
             return null;
         }
 
@@ -48,6 +73,8 @@ final readonly class InboundMessage
             text: self::extractText($message),
             providerMessageId: isset($message['id']) ? (string) $message['id'] : null,
             profileName: self::cleanName(data_get($value, 'contacts.0.profile.name')),
+            bsuid: $bsuid !== '' ? $bsuid : null,
+            username: self::cleanName(data_get($value, 'contacts.0.profile.username')),
         );
     }
 

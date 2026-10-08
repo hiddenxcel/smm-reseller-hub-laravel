@@ -3,6 +3,7 @@
 namespace App\Services\Bots;
 
 use App\Models\BotMessage;
+use App\Models\BsuidAlias;
 use App\Models\ResponseTemplate;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
@@ -164,6 +165,13 @@ class WhatsAppCloudMessenger implements BotMessenger
             Log::warning('Skipping WhatsApp send: no token', ['tenant_id' => $this->tenantId]);
 
             return false;
+        }
+
+        // A person who hides their phone number is reached by their ID, in
+        // `recipient`, and `to` is left out.
+        if (isset($payload['to']) && ($bsuid = BsuidAlias::bsuidFor($this->tenantId, (string) $payload['to'])) !== null) {
+            unset($payload['to']);
+            $payload['recipient'] = $bsuid;
         }
 
         $url = 'https://graph.facebook.com/'.self::GRAPH_VERSION."/{$this->phoneNumberId}/messages";
