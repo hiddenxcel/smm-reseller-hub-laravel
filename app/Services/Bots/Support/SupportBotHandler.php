@@ -113,6 +113,7 @@ class SupportBotHandler implements BotHandler
             SupportState::AiFaq => $this->onAiQuestion($from, $text, $conversation->context ?? []),
             SupportState::AwaitAccount => $this->onAccount($from, $text, $conversation->context ?? []),
             SupportState::AwaitCode => $this->onCode($from, $text, $conversation->context ?? []),
+            SupportState::AwaitConfirm => $this->onConfirm($from, $text, $conversation->context ?? []),
         };
     }
 
@@ -429,14 +430,51 @@ class SupportBotHandler implements BotHandler
         return array_slice($history, -self::AI_HISTORY_TURNS * 2);
     }
 
+    /** More than this in one message is a list, not a request. */
+    private const MAX_ORDERS = 10;
+
+    /**
+     * The order IDs in what the customer sent.
+     *
+     * A customer with several orders sends them together — one a line, or in a
+     * sentence — so two or more runs of digits are read as separate orders.
+     * Squeezing them into one number is what used to happen, and the panel
+     * answered "Incorrect order ID" to a customer who had done nothing wrong.
+     * A single value is taken as it is, so an ID with letters still works.
+     *
+     * @return list<string>
+     */
+    private function orderIds(string $text): array
+    {
+        preg_match_all('/\d{3,18}/', $text, $found);
+        $groups = array_values(array_unique($found[0]));
+
+        if (count($groups) >= 2) {
+            return $groups;
+        }
+
+        $single = preg_replace('/[^A-Za-z0-9\-]/', '', $text) ?? '';
+
+        return $single === '' ? [] : [$single];
+    }
+
     private function onOrderId(string $from, string $text, array $context): void
     {
-        $orderId = preg_replace('/[^A-Za-z0-9\-]/', '', $text) ?? '';
+        $ids = $this->orderIds($text);
 
-        if ($orderId === '') {
+        if ($ids === []) {
             $this->messenger->sendText(
                 $from,
                 "That doesn't look like an order ID. Please send it again, or *back* for the menu.",
+            );
+
+            return;
+        }
+
+        if (count($ids) > self::MAX_ORDERS) {
+            $this->messenger->sendText(
+                $from,
+                'Please send up to '.self::MAX_ORDERS.' order IDs at a time. You sent '.count($ids).'.',
             );
 
             return;
@@ -475,7 +513,14 @@ class SupportBotHandler implements BotHandler
             }
 
             if ($link !== null) {
-                $this->actForAccount($from, $action, $orderId, $link, PanelAdminClient::forPanel($panel));
+                $client = PanelAdminClient::forPanel($panel);
+
+                if (count($ids) === 1) {
+                    $this->actForAccount($from, $action, $ids[0], $link, $client);
+                } elseif ($this->batchForAccount($from, $action, $ids, $link, $client, false) === false) {
+                    return;
+                }
+
                 $this->moveTo($from, SupportState::Menu);
                 $this->messenger->sendText($from, 'Reply *0* to see the menu again, or *cancel* to exit.');
 
@@ -483,20 +528,169 @@ class SupportBotHandler implements BotHandler
             }
         }
 
-        match ($action) {
-            SupportAction::Status => $this->reportStatus($from, $panel, $orderId),
-            SupportAction::Refill => $this->requestRefill($from, $panel, $orderId),
-            SupportAction::Cancel => $this->requestCancellation($from, $panel, $orderId),
-            SupportAction::SpeedUp => $this->requestSpeedUp($from, $orderId),
-            SupportAction::Partial => $this->reportPartial($from, $orderId),
-            default => $this->showMenu($from),
-        };
+        foreach ($ids as $orderId) {
+            match ($action) {
+                SupportAction::Status => $this->reportStatus($from, $panel, $orderId),
+                SupportAction::Refill => $this->requestRefill($from, $panel, $orderId),
+                SupportAction::Cancel => $this->requestCancellation($from, $panel, $orderId),
+                SupportAction::SpeedUp => $this->requestSpeedUp($from, $orderId),
+                SupportAction::Partial => $this->reportPartial($from, $orderId),
+                default => $this->showMenu($from),
+            };
+        }
 
         // Back to the menu, ready for the next request.
         $this->moveTo($from, SupportState::Menu);
         $this->messenger->sendText($from, 'Reply *0* to see the menu again, or *cancel* to exit.');
     }
 
+    /** "yes" to go ahead with cancelling several orders; anything else stops. */
+    private function onConfirm(string $from, string $text, array $context): void
+    {
+        $action = SupportAction::tryFrom((string) ($context['action'] ?? ''));
+        $ids = array_values(array_filter((array) ($context['ids'] ?? []), 'is_string'));
+        $answer = mb_strtolower(trim($text));
+
+        if (! in_array($answer, ['yes', 'y', 'ndiyo', 'ndio', 'confirm', 'ok'], true)) {
+            $this->moveTo($from, SupportState::Menu);
+            $this->messenger->sendText($from, "👍 Nothing was cancelled. Reply *0* for the menu.");
+
+            return;
+        }
+
+        $link = $this->linkedAccount($from);
+        $client = PanelAdminClient::forPanel($this->panel());
+
+        if ($action === null || $ids === [] || $link === null || $client === null) {
+            $this->showMenu($from);
+
+            return;
+        }
+
+        $this->batchForAccount($from, $action, $ids, $link, $client, true);
+        $this->moveTo($from, SupportState::Menu);
+        $this->messenger->sendText($from, 'Reply *0* to see the menu again, or *cancel* to exit.');
+    }
+
+    /**
+     * Several orders at once, answered in one message.
+     *
+     * Each order is checked on its own, as a single one is: it must be this
+     * customer's, and the panel's own rules decide what happens. The answer is
+     * a line per order rather than a message each, and the team hears once.
+     * Cancelling is not easily undone, so more than one asks first.
+     *
+     * @param  list<string>  $ids
+     * @return bool|null false when it stopped to ask for confirmation
+     */
+    private function batchForAccount(string $from, SupportAction $action, array $ids, PanelAccountLink $link, PanelAdminClient $client, bool $confirmed): ?bool
+    {
+        if ($action === SupportAction::Cancel && ! $confirmed) {
+            $this->moveTo($from, SupportState::AwaitConfirm, ['action' => $action->value, 'ids' => $ids]);
+            $this->messenger->sendText(
+                $from,
+                '🗑️ Cancel *'.count($ids)."* orders?\n".implode(', ', array_map(fn ($id) => "#{$id}", $ids))
+                    ."\n\nThis can't be undone. Reply *yes* to confirm, or *back* to stop.",
+            );
+
+            return false;
+        }
+
+        $lines = [];
+        $done = [];
+        $asked = [];
+
+        foreach ($ids as $id) {
+            $found = $client->order($id);
+            $owner = is_array($found->get('user')) ? ($found->get('user')['id'] ?? null) : null;
+
+            if ($found->failed && $found->code !== 404) {
+                $lines[] = "⚠️ #{$id} — couldn't reach the panel";
+
+                continue;
+            }
+
+            if ($found->failed || (int) $owner !== (int) $link->panel_user_id) {
+                $lines[] = "❌ #{$id} — isn't on your account";
+
+                continue;
+            }
+
+            switch ($action) {
+                case SupportAction::Status:
+                    $status = ucfirst(str_replace('_', ' ', (string) $found->get('status', 'unknown')));
+                    $remains = $found->get('remains');
+                    $lines[] = "📦 #{$id} — {$status}".($remains !== null ? " (remaining {$remains})" : '');
+                    break;
+
+                case SupportAction::Refill:
+                    $result = $client->refill($id);
+
+                    if ($result->failed) {
+                        $lines[] = "❌ #{$id} — {$result->message}";
+                    } else {
+                        $lines[] = "♻️ #{$id} — refill submitted";
+                        $done[] = $id;
+                    }
+                    break;
+
+                case SupportAction::Cancel:
+                    $result = $client->cancel($id);
+
+                    if ($result->failed && $result->code === 403) {
+                        // The key may not cancel: it becomes a request for the team.
+                        $lines[] = "📝 #{$id} — requested, our team will confirm";
+                        $asked[] = $id;
+                    } elseif ($result->failed) {
+                        $lines[] = "❌ #{$id} — {$result->message}";
+                    } else {
+                        $lines[] = "🗑️ #{$id} — cancelled";
+                        $done[] = $id;
+                    }
+                    break;
+
+                case SupportAction::SpeedUp:
+                    $lines[] = "🚀 #{$id} — requested";
+                    $asked[] = $id;
+                    break;
+
+                case SupportAction::Partial:
+                    $lines[] = "🧾 #{$id} — reported, our team will review";
+                    $asked[] = $id;
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        $title = match ($action) {
+            SupportAction::Status => '📦 *Order status*',
+            SupportAction::Refill => '♻️ *Refills*',
+            SupportAction::Cancel => '🗑️ *Cancellations*',
+            SupportAction::SpeedUp => '🚀 *Speed-ups*',
+            default => '🧾 *Reports*',
+        };
+
+        $this->messenger->sendText($from, $title."\n\n".implode("\n", $lines));
+
+        $tag = fn (array $list) => implode(', ', array_map(fn ($id) => "#{$id}", $list));
+        $note = [];
+
+        if ($done !== []) {
+            $note[] = ($action === SupportAction::Cancel ? 'cancelled ' : 'done ').$tag($done);
+        }
+
+        if ($asked !== []) {
+            $note[] = 'needs you: '.$tag($asked);
+        }
+
+        if ($note !== [] && $action !== SupportAction::Status) {
+            $this->notifyStaff("{$title} for {$from} (verified account) — ".implode('; ', $note));
+        }
+
+        return true;
+    }
     // ---- the actions, for a verified account --------------------------------
 
     private function actForAccount(string $from, SupportAction $action, string $orderId, PanelAccountLink $link, PanelAdminClient $client): void

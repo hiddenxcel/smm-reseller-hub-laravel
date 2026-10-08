@@ -16,4 +16,7 @@ enum SupportState: string
 
     /** Waiting for the code that was put in that account's tickets. */
     case AwaitCode = 'AWAIT_CODE';
+
+    /** Waiting for "yes" before several orders are cancelled at once. */
+    case AwaitConfirm = 'AWAIT_CONFIRM';
 }

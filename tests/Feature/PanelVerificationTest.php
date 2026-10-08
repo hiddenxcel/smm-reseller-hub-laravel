@@ -72,7 +72,7 @@ class PanelVerificationTest extends TestCase
         return json_encode(array_values(array_filter(
             $this->messenger->sent,
             fn (array $message) => $message['to'] === self::CUSTOMER,
-        )));
+        )), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     private function lastSaid(): string
@@ -398,6 +398,177 @@ class PanelVerificationTest extends TestCase
         $this->assertStringContainsString("couldn't be cancelled: Only pending orders can be cancelled.", $this->said());
     }
 
+    // ---- several orders in one message ----------------------------------------
+
+    /** Orders 555 and 556 are the customer's (user 7); 777 is somebody else's; 888 is unknown. */
+    private function manyOrders(array $extra = []): array
+    {
+        return $extra + [
+            'panel.example.com/api/admin/orders/556/refill' => Http::response(['refill' => '10']),
+            'panel.example.com/api/admin/orders/556' => Http::response($this->order(['id' => 556, 'status' => 'processing', 'remains' => 40])),
+            'panel.example.com/api/admin/orders/777' => Http::response($this->order(['id' => 777, 'user' => ['id' => 99, 'username' => 'other']])),
+            'panel.example.com/api/admin/orders/888' => Http::response(['error' => 'No query results'], 404),
+        ];
+    }
+
+    private function ready(string $menuChoice, array $extra = []): void
+    {
+        $this->verified($this->manyOrders($extra));
+        $this->messenger->sent = [];
+        $this->send('0');
+        $this->send($menuChoice);
+    }
+
+    private function panelCalls(string $needle, string $method = 'POST'): int
+    {
+        return Http::recorded(fn (Request $request) => $request->method() === $method && str_contains($request->url(), $needle))->count();
+    }
+
+    public function test_several_ids_pasted_on_separate_lines_are_read_as_separate_orders(): void
+    {
+        $this->ready('6');
+        $this->send("El número de órdenes son\n\n555\n\n556\n777");
+
+        $said = $this->said();
+        $this->assertStringContainsString('#555 — Completed', $said);
+        $this->assertStringContainsString('#556 — Processing (remaining 40)', $said);
+        $this->assertStringContainsString("#777 — isn't on your account", $said);
+    }
+
+    public function test_the_answer_is_one_message_not_one_per_order(): void
+    {
+        $this->ready('6');
+        $before = count($this->messenger->sent);
+
+        $this->send('555 556 777');
+
+        // The summary, and the usual "Reply 0" line: two messages, not four.
+        $this->assertSame(2, count($this->messenger->sent) - $before);
+    }
+
+    public function test_ids_are_not_squeezed_into_one_number(): void
+    {
+        $this->ready('6');
+        $this->send("555\n556");
+
+        $this->assertTrue(Http::recorded(fn (Request $request) => str_contains($request->url(), '555556'))->isEmpty());
+        $this->assertStringNotContainsString('Incorrect order', $this->said());
+    }
+
+    public function test_repeated_ids_are_asked_about_once(): void
+    {
+        $this->ready('6');
+        $this->send('555 556 555 556');
+
+        $this->assertSame(1, substr_count($this->said(), '#555 — '));
+    }
+
+    public function test_more_than_ten_orders_are_refused_without_asking_the_panel(): void
+    {
+        $this->ready('6');
+        $before = Http::recorded()->count();
+
+        $this->send(implode(' ', range(100001, 100011)));
+
+        $this->assertStringContainsString('up to 10 order IDs', $this->said());
+        $this->assertSame($before, Http::recorded()->count());
+    }
+
+    public function test_several_refills_each_get_the_panels_own_answer(): void
+    {
+        $this->ready('1', ['panel.example.com/api/admin/orders/556/refill' => Http::response(['error' => 'Refill already requested'], 422)]);
+        $this->send('555 556 777');
+
+        $said = $this->said();
+        $this->assertStringContainsString('#555 — refill submitted', $said);
+        $this->assertStringContainsString('#556 — Refill already requested', $said);
+        $this->assertStringContainsString("#777 — isn't on your account", $said);
+        $this->assertFalse($this->sentTo('/orders/777/refill'));
+    }
+
+    public function test_cancelling_several_orders_asks_first_and_does_nothing_until_yes(): void
+    {
+        $this->ready('3');
+        $this->send('555 556');
+
+        $this->assertSame(SupportState::AwaitConfirm->value, $this->state());
+        $this->assertStringContainsString('Cancel *2* orders?', $this->said());
+        $this->assertSame(0, $this->panelCalls('/cancel'));
+    }
+
+    public function test_yes_cancels_each_of_them_and_the_team_hears_once(): void
+    {
+        $this->ready('3', [
+            'panel.example.com/api/admin/orders/555/cancel' => Http::response(['order' => $this->order(['status' => 'canceled'])]),
+            'panel.example.com/api/admin/orders/556/cancel' => Http::response(['error' => 'This order can no longer be cancelled.'], 422),
+        ]);
+        $this->send('555 556 777');
+        $this->send('yes');
+
+        $said = $this->said();
+        $this->assertStringContainsString('#555 — cancelled', $said);
+        $this->assertStringContainsString('#556 — This order can no longer be cancelled.', $said);
+        $this->assertStringContainsString("#777 — isn't on your account", $said);
+        $this->assertSame(2, $this->panelCalls('/cancel'));
+
+        $alerts = array_values(array_filter($this->messenger->sent, fn ($m) => $m['to'] === self::STAFF));
+        $this->assertCount(1, $alerts);
+        $this->assertStringContainsString('cancelled #555', json_encode($alerts));
+    }
+
+    public function test_anything_but_yes_cancels_nothing(): void
+    {
+        $this->ready('3');
+        $this->send('555 556');
+        $this->send('no thanks');
+
+        $this->assertStringContainsString('Nothing was cancelled', $this->said());
+        $this->assertSame(0, $this->panelCalls('/cancel'));
+        $this->assertSame(SupportState::Menu->value, $this->state());
+    }
+
+    public function test_a_key_that_may_not_cancel_turns_each_into_a_request_for_the_team(): void
+    {
+        $this->ready('3', [
+            'panel.example.com/api/admin/orders/555/cancel' => Http::response(['error' => 'not permitted'], 403),
+            'panel.example.com/api/admin/orders/556/cancel' => Http::response(['error' => 'not permitted'], 403),
+        ]);
+        $this->send('555 556');
+        $this->send('yes');
+
+        $this->assertSame(2, substr_count($this->said(), 'requested, our team will confirm'));
+        $this->assertStringContainsString('needs you', json_encode($this->messenger->sent));
+    }
+
+    public function test_without_the_admin_api_each_order_is_still_dealt_with_separately(): void
+    {
+        $this->panel->forceFill(['admin_api_url' => null, 'admin_api_key_enc' => null])->save();
+        Http::fake(['panel.example.com/api/v2' => Http::response(['status' => 'Completed', 'start_count' => '1', 'remains' => '0'])]);
+
+        $this->send('hi');
+        $this->send('6');
+        $this->send("555\n556");
+
+        $orders = Http::recorded(fn (Request $request) => str_contains($request->url(), '/api/v2'))
+            ->map(fn ($pair) => $pair[0]['order'])->values()->all();
+
+        $this->assertSame(['555', '556'], $orders);
+    }
+
+    public function test_a_single_id_with_letters_is_still_one_order(): void
+    {
+        $this->panel->forceFill(['admin_api_url' => null, 'admin_api_key_enc' => null])->save();
+        Http::fake(['panel.example.com/api/v2' => Http::response(['status' => 'Completed'])]);
+
+        $this->send('hi');
+        $this->send('6');
+        $this->send('AB-48220');
+
+        $orders = Http::recorded(fn (Request $request) => str_contains($request->url(), '/api/v2'))
+            ->map(fn ($pair) => $pair[0]['order'])->values()->all();
+
+        $this->assertSame(['AB-48220'], $orders);
+    }
     // ---- staying linked, and leaving ----------------------------------------
 
     public function test_a_linked_customer_goes_straight_to_the_order_id_next_time(): void
