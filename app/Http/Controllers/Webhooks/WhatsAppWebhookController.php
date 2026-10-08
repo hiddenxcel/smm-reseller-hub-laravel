@@ -51,6 +51,8 @@ class WhatsAppWebhookController extends Controller
         // Delivery and read receipts arrive on this same webhook with no
         // message in them; there is nothing to route.
         if ($message === null) {
+            $this->noteUnreadableMessage($request->json()->all());
+
             return $this->ack(BotRoute::NoMessage->value);
         }
 
@@ -69,6 +71,32 @@ class WhatsAppWebhookController extends Controller
         }
 
         return $this->ack($route);
+    }
+
+    /**
+     * A payload that carries a message we still could not use — most likely a
+     * sender Meta identified without a phone number — would otherwise vanish
+     * as a "receipt". Say so in the log, with the shape of what arrived and
+     * none of its content, so the cause can be seen rather than guessed.
+     */
+    private function noteUnreadableMessage(array $payload): void
+    {
+        $value = data_get($payload, 'entry.0.changes.0.value');
+        $message = is_array($value) ? data_get($value, 'messages.0') : null;
+
+        if (! is_array($message)) {
+            return;
+        }
+
+        Log::warning('WhatsApp webhook had a message that could not be read', [
+            'value_keys' => array_keys($value),
+            'message_keys' => array_keys($message),
+            'type' => $message['type'] ?? null,
+            'has_from' => ($message['from'] ?? '') !== '',
+            'has_phone_number_id' => data_get($value, 'metadata.phone_number_id') !== null,
+            'contact_keys' => array_keys((array) data_get($value, 'contacts.0', [])),
+            'contact_profile_keys' => array_keys((array) data_get($value, 'contacts.0.profile', [])),
+        ]);
     }
 
     /**

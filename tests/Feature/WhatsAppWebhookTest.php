@@ -8,6 +8,7 @@ use App\Models\Tenant;
 use App\Models\TenantWhatsApp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 /**
@@ -201,6 +202,38 @@ class WhatsAppWebhookTest extends TestCase
         $this->postSigned($payload)->assertOk()->assertSee('no_message');
     }
 
+    public function test_a_message_without_a_sender_is_acknowledged_and_its_shape_is_logged(): void
+    {
+        // A sender Meta identifies without a phone number must not vanish as
+        // if it were a delivery receipt: the log says what arrived, without
+        // its content.
+        $payload = $this->payload('123', 'a private message');
+        unset($payload['entry'][0]['changes'][0]['value']['messages'][0]['from']);
+        $payload['entry'][0]['changes'][0]['value']['messages'][0]['from_user_id'] = 'BSUID.abc';
+
+        Log::spy();
+
+        $this->postSigned($payload)->assertOk()->assertSee('no_message');
+
+        Log::shouldHaveReceived('warning')->withArgs(function (string $message, array $context = []) {
+            return str_contains($message, 'could not be read')
+                && $context['has_from'] === false
+                && in_array('from_user_id', $context['message_keys'], true)
+                && ! str_contains(json_encode($context), 'a private message');
+        })->once();
+    }
+
+    public function test_a_receipt_logs_nothing_about_unreadable_messages(): void
+    {
+        Log::spy();
+
+        $this->postSigned(['entry' => [['changes' => [['value' => [
+            'metadata' => ['phone_number_id' => '123'],
+            'statuses' => [['id' => 'wamid.X', 'status' => 'read']],
+        ]]]]]])->assertOk();
+
+        Log::shouldNotHaveReceived('warning');
+    }
     public function test_an_unknown_number_is_acknowledged_not_errored(): void
     {
         // Still a 200: a non-200 makes Meta retry, and retrying will not make
