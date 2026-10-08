@@ -371,6 +371,40 @@ class PanelVerificationTest extends TestCase
         $this->assertTrue($this->sentTo('/orders/555/cancel'));
     }
 
+    public function test_a_cancel_the_provider_has_not_confirmed_is_not_called_cancelled(): void
+    {
+        // The panel asked the provider, who has not stopped the order: the
+        // customer is told it is requested, not that the money is back.
+        $this->verified(['panel.example.com/api/admin/orders/555/cancel' => Http::response(['cancelled' => false, 'order' => $this->order()])]);
+        $this->messenger->sent = [];
+
+        $this->send('0');
+        $this->send('3');
+        $this->send('555');
+
+        $this->assertStringContainsString('has been requested', $this->said());
+        $this->assertStringContainsString('refunded as soon as the provider confirms', $this->said());
+        $this->assertStringNotContainsString('has been cancelled', $this->said());
+        $this->assertStringContainsString('refund waits for the provider', json_encode($this->messenger->sent));
+    }
+
+    public function test_several_cancels_say_which_are_done_and_which_are_waiting(): void
+    {
+        $this->ready('3', [
+            'panel.example.com/api/admin/orders/555/cancel' => Http::response(['cancelled' => true, 'order' => $this->order()]),
+            'panel.example.com/api/admin/orders/556/cancel' => Http::response(['cancelled' => false, 'order' => $this->order()]),
+        ]);
+        $this->send('555 556');
+        $this->send('yes');
+
+        $said = $this->said();
+        $this->assertStringContainsString('#555 — cancelled', $said);
+        $this->assertStringContainsString('#556 — requested, refunded when the provider confirms', $said);
+
+        $alerts = array_values(array_filter($this->messenger->sent, fn ($m) => $m['to'] === self::STAFF));
+        $this->assertCount(1, $alerts);
+        $this->assertStringContainsString('refund waits: #556', json_encode($alerts));
+    }
     public function test_a_cancel_the_key_may_not_do_becomes_a_request_for_the_team(): void
     {
         $this->verified();

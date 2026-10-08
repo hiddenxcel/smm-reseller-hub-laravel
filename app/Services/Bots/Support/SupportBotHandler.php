@@ -599,6 +599,7 @@ class SupportBotHandler implements BotHandler
         $lines = [];
         $done = [];
         $asked = [];
+        $waiting = [];
 
         foreach ($ids as $id) {
             $found = $client->order($id);
@@ -643,6 +644,9 @@ class SupportBotHandler implements BotHandler
                         $asked[] = $id;
                     } elseif ($result->failed) {
                         $lines[] = "❌ #{$id} — {$result->message}";
+                    } elseif ($result->get('cancelled', true) === false) {
+                        $lines[] = "🕒 #{$id} — requested, refunded when the provider confirms";
+                        $waiting[] = $id;
                     } else {
                         $lines[] = "🗑️ #{$id} — cancelled";
                         $done[] = $id;
@@ -679,6 +683,10 @@ class SupportBotHandler implements BotHandler
 
         if ($done !== []) {
             $note[] = ($action === SupportAction::Cancel ? 'cancelled ' : 'done ').$tag($done);
+        }
+
+        if ($waiting !== []) {
+            $note[] = 'asked the provider, refund waits: '.$tag($waiting);
         }
 
         if ($asked !== []) {
@@ -788,6 +796,16 @@ class SupportBotHandler implements BotHandler
 
         if ($result->failed) {
             $this->messenger->sendText($from, "⚠️ Order *#{$orderId}* couldn't be cancelled: {$result->message}");
+
+            return;
+        }
+
+        // The panel asks the provider and refunds only once the provider confirms
+        // the order is really cancelled. A panel that does not say is taken as
+        // having cancelled, as it always did.
+        if ($result->get('cancelled', true) === false) {
+            $this->messenger->sendText($from, "🕒 Cancellation of *#{$orderId}* has been requested. You'll be refunded as soon as the provider confirms it.");
+            $this->notifyStaff("🕒 Cancel requested at the provider for *#{$orderId}* by {$from} (verified account) — refund waits for the provider");
 
             return;
         }
