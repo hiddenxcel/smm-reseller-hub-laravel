@@ -54,6 +54,15 @@ Schedule::command('catalogue:sync')
     ->runInBackground();
 
 /*
+| Every minute: each running broadcast sends one small batch, so a message to
+| hundreds of customers goes out gently instead of as a burst WhatsApp flags.
+*/
+Schedule::command('broadcasts:send')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+/*
 | Every minute: someone who has just paid is looking at their phone. The
 | command spaces its questions out by the payment's age, so a quiet minute
 | costs almost nothing.

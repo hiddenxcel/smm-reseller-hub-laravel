@@ -250,4 +250,9 @@ return [
     // ---- Group / website -----------------------------------------------------
     'group_info' => "👥 Join our group here:\n{url}\n\nSend *hi* for the menu.",
     'website_info' => "🌐 Visit our website:\n{url}\n\nSend *hi* for the menu.",
+
+    // ---- Broadcasts ----------------------------------------------------------
+    'broadcast_footer' => 'Reply STOP to stop announcements.',
+    'broadcast_stopped' => 'You will no longer get announcements. Send SUBSCRIBE to get them again.',
+    'broadcast_resumed' => 'You will get announcements again. Send STOP any time to stop them.',
 ];

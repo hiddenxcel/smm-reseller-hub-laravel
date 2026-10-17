@@ -75,6 +75,8 @@ class HandleInertiaRequests extends Middleware
             // badge. Email tells them once; this is what tells them on the
             // visit after that.
             'supportUnread' => fn () => $this->supportUnread(),
+            // Panel changes waiting for the reseller, for the sidebar badge.
+            'pendingChanges' => fn () => $this->pendingChanges(),
             // Whether the chat assistant has anything behind it. The same switch
             // the public pages use, so it appears and disappears everywhere at once.
             'assistantEnabled' => fn () => AssistantKey::widgetEnabled(),
@@ -174,6 +176,15 @@ class HandleInertiaRequests extends Middleware
                 \App\Services\Payments\PricingCurrency::choices(),
             ),
         ];
+    }
+
+    private function pendingChanges(): int
+    {
+        if (Auth::guard('tenant')->guest()) {
+            return 0;
+        }
+
+        return \App\Models\CatalogueChange::query()->where('status', 'pending')->count();
     }
 
     private function supportUnread(): int

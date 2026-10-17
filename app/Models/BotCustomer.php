@@ -28,6 +28,7 @@ class BotCustomer extends Model
         'notes',
         'tags',
         'blocked_at',
+        'broadcast_opt_out_at',
         'last_seen_at',
         'balance',
         'total_spent',
@@ -47,6 +48,7 @@ class BotCustomer extends Model
             'first_deposit_done' => 'boolean',
             'tags' => 'array',
             'blocked_at' => 'datetime',
+            'broadcast_opt_out_at' => 'datetime',
             'last_seen_at' => 'datetime',
         ];
     }

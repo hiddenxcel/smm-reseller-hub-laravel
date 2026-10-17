@@ -183,7 +183,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/order-bot/gateways/{gateway}/default', [OrderBotGatewaysController::class, 'setDefault'])->name('order-bot.gateways.default');
     Route::post('/order-bot/gateways/pesapal/register-ipn', [OrderBotGatewaysController::class, 'registerIpn'])->name('order-bot.gateways.register-ipn');
     Route::delete('/order-bot/gateways/{gateway}', [OrderBotGatewaysController::class, 'destroy'])->name('order-bot.gateways.destroy');
-    Route::get('/order-bot/boosts', \App\Http\Controllers\OrderBotBoostsController::class)->name('order-bot.boosts');
+    Route::get('/order-bot/broadcast', [\App\Http\Controllers\BroadcastController::class, 'index'])->name('order-bot.broadcast');
+    Route::get('/order-bot/broadcast/preview', [\App\Http\Controllers\BroadcastController::class, 'preview'])->name('order-bot.broadcast.preview');
+    Route::post('/order-bot/broadcast', [\App\Http\Controllers\BroadcastController::class, 'store'])->name('order-bot.broadcast.store');
+    Route::post('/order-bot/broadcast/{broadcast}/cancel', [\App\Http\Controllers\BroadcastController::class, 'cancel'])->name('order-bot.broadcast.cancel');
+    Route::post('/order-bot/broadcast/{broadcast}/resume', [\App\Http\Controllers\BroadcastController::class, 'resume'])->name('order-bot.broadcast.resume');
+    Route::get('/order-bot/boosts',\App\Http\Controllers\OrderBotBoostsController::class)->name('order-bot.boosts');
     Route::get('/order-bot/{tab?}', [OrderBotController::class, 'show'])
         ->whereIn('tab', ['setup', 'number', 'commands', 'logs', 'settings'])
         ->name('order-bot');

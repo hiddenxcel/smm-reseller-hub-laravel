@@ -86,6 +86,7 @@ export type PageProps<
     announcements: Announcement[];
     /** Support tickets whose last word was ours — the sidebar badge. */
     supportUnread: number;
+    pendingChanges: number;
     /** Whether the chat assistant has a key behind it; hidden when it has not. */
     assistantEnabled: boolean;
     /** The sidebar currency switcher; null outside a reseller's own pages. */

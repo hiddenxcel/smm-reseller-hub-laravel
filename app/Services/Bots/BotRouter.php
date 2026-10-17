@@ -9,6 +9,7 @@ use App\Models\BsuidAlias;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\TenantTelegramBot;
+use App\Services\Broadcasts\OptOut;
 use App\Models\TenantWhatsApp;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
@@ -103,6 +104,19 @@ class BotRouter
         // explanation — a reply would tell a nuisance they got through.
         if ($this->isBlocked($tenant->id, $message->from)) {
             return BotRoute::SpamBlocked;
+        }
+
+        // STOP and SUBSCRIBE are about announcements, not orders, so they are
+        // answered here and never reach a flow — and still work when the
+        // shop's subscription has lapsed.
+        if ($bot === 'order' && ($optOut = OptOut::command($message->text)) !== null) {
+            $reply = OptOut::apply((int) $tenant->id, $message->from, $optOut, $message->profileName);
+
+            if ($canReply) {
+                $messenger()->sendText($message->from, $reply);
+            }
+
+            return BotRoute::HandledOrder;
         }
 
         $target = $this->mayRun($tenant->id, $bot, $message->from) ? $bot : null;

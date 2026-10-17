@@ -35,6 +35,8 @@ import {
     UsersRound,
     Wallet,
     X,
+    BellRing,
+    Megaphone,
     LockOpen,
 } from 'lucide-react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
@@ -51,7 +53,7 @@ type NavItem = {
      */
     routeParams?: string;
     /** Which shared prop, if any, supplies this row's unread count. */
-    badge?: 'supportUnread';
+    badge?: 'supportUnread' | 'pendingChanges';
 };
 
 /** A row that opens a sub-panel instead of navigating. */
@@ -138,11 +140,13 @@ const ORDER_BOT: NavItem[] = [
     { label: 'Bot setup', icon: Settings, routeName: 'order-bot' },
     { label: 'Users', icon: Users, routeName: 'customers.index' },
     { label: 'Services', icon: Package, routeName: 'services.index' },
+    { label: 'Price changes', icon: BellRing, routeName: 'services.changes', badge: 'pendingChanges' },
     { label: 'Orders', icon: ShoppingBag, routeName: 'orders.index' },
     { label: 'Inbox', icon: Inbox, routeName: 'order-bot.inbox' },
     { label: 'Providers', icon: Plug, routeName: 'order-bot.providers' },
     { label: 'Gateways', icon: Wallet, routeName: 'order-bot.gateways' },
     { label: 'Payments', icon: CreditCard, routeName: 'order-bot.payments' },
+    { label: 'Broadcast', icon: Megaphone, routeName: 'order-bot.broadcast' },
     { label: 'Unlock', icon: LockOpen, routeName: 'order-bot.boosts' },
 ];
 

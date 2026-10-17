@@ -246,4 +246,9 @@ return [
     // ---- Group / website -----------------------------------------------------
     'group_info' => "👥 Grubumuza buradan katılın:\n{url}\n\nMenü için *hi* yazın.",
     'website_info' => "🌐 Web sitemizi ziyaret edin:\n{url}\n\nMenü için *hi* yazın.",
+
+    // ---- Broadcasts ----------------------------------------------------------
+    'broadcast_footer' => 'Duyuruları durdurmak için STOP yazın.',
+    'broadcast_stopped' => 'Artık duyuru almayacaksınız. Tekrar almak için SUBSCRIBE yazın.',
+    'broadcast_resumed' => 'Yeniden duyuru alacaksınız. Durdurmak için istediğiniz zaman STOP yazın.',
 ];

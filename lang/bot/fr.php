@@ -243,4 +243,9 @@ return [
     // ---- Group / website -----------------------------------------------------
     'group_info' => "👥 Rejoignez notre groupe ici :\n{url}\n\nEnvoyez *hi* pour le menu.",
     'website_info' => "🌐 Visitez notre site web :\n{url}\n\nEnvoyez *hi* pour le menu.",
+
+    // ---- Broadcasts ----------------------------------------------------------
+    'broadcast_footer' => 'Répondez STOP pour ne plus recevoir d\'annonces.',
+    'broadcast_stopped' => 'Vous ne recevrez plus d\'annonces. Envoyez SUBSCRIBE pour en recevoir à nouveau.',
+    'broadcast_resumed' => 'Vous recevrez de nouveau des annonces. Envoyez STOP à tout moment pour les arrêter.',
 ];

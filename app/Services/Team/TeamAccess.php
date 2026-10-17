@@ -119,8 +119,8 @@ class TeamAccess
     /** Every nav row the sidebar can show, so it can hide what a member cannot open. */
     public const NAV_ROUTES = [
         'dashboard', 'analytics', 'billing', 'settings', 'api-access', 'team', 'help.support',
-        'order-bot', 'order-bot.inbox', 'order-bot.providers', 'order-bot.payments', 'order-bot.gateways',
-        'customers.index', 'services.index', 'orders.index',
+        'order-bot', 'order-bot.inbox', 'order-bot.providers', 'order-bot.payments', 'order-bot.gateways', 'order-bot.broadcast',
+        'customers.index', 'services.index', 'services.changes', 'orders.index',
         'support-bot', 'support-bot.inbox', 'support-bot.tickets',
         'profile.edit',
     ];
