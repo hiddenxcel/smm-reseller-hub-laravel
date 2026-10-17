@@ -111,7 +111,7 @@ class BroadcastTest extends TestCase
         $this->assertSame(1, $summary['later']);
     }
 
-    public function test_a_broadcast_reaches_only_those_it_may_and_adds_the_stop_line(): void
+    public function test_a_broadcast_reaches_only_those_it_may_and_sends_exactly_what_was_written(): void
     {
         $this->fakeChannels();
         $this->telegramBot();
@@ -132,7 +132,7 @@ class BroadcastTest extends TestCase
 
         Http::assertSent(fn ($request) => str_contains($request->url(), 'graph.facebook.com')
             && str_contains(json_encode($request->data()), 'TikTok Likes')
-            && str_contains(json_encode($request->data()), 'STOP'));
+            && ! str_contains(json_encode($request->data()), 'STOP'));
         Http::assertSent(fn ($request) => str_contains($request->url(), 'api.telegram.org'));
     }
 

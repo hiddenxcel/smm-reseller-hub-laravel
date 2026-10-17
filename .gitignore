@@ -23,3 +23,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Local handoff bundle (memory notes, restore script). Not for git.
+_handoff/

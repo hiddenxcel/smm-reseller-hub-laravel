@@ -10,11 +10,8 @@ use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\TenantTelegramBot;
 use App\Models\TenantWhatsApp;
-use App\Services\Bots\BotLang;
 use App\Services\Bots\BotMessenger;
 use App\Services\Bots\BotMessengerFactory;
-use App\Services\Bots\BotSettings;
-use Illuminate\Support\Arr;
 
 /**
  * Works through a broadcast a little at a time.
@@ -97,7 +94,7 @@ class BroadcastSender
 
                 $ok = $messenger->sendText(
                     $recipient->customer_phone,
-                    $this->compose($broadcast, $customer, (int) $tenant->id),
+                    trim($broadcast->message),
                 );
 
                 if ($ok) {
@@ -150,13 +147,6 @@ class BroadcastSender
             'failed' => (int) ($counts[BroadcastRecipient::FAILED] ?? 0),
             'skipped' => (int) ($counts[BroadcastRecipient::SKIPPED] ?? 0),
         ])->save();
-    }
-
-    private function compose(Broadcast $broadcast, BotCustomer $customer, int $tenantId): string
-    {
-        $lang = $customer->lang ?: Arr::get(BotSettings::for($tenantId, 'order'), 'shop.lang', BotLang::DEFAULT);
-
-        return trim($broadcast->message)."\n\n".BotLang::get((string) $lang, 'broadcast_footer');
     }
 
     private function messengerFor(Tenant $tenant, string $channel): ?BotMessenger

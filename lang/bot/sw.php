@@ -245,7 +245,6 @@ return [
     'website_info' => "🌐 Tembelea tovuti yetu:\n{url}\n\nTuma *hi* kupata menyu.",
 
     // ---- Broadcasts ----------------------------------------------------------
-    'broadcast_footer' => 'Jibu STOP kuacha kupokea matangazo.',
     'broadcast_stopped' => 'Hutapokea matangazo tena. Tuma SUBSCRIBE kuyapokea tena.',
     'broadcast_resumed' => 'Utapokea matangazo tena. Tuma STOP wakati wowote kuyaacha.',
 ];

@@ -149,9 +149,6 @@ export default function Broadcast({ segments, channels, blocker, maxLength, rece
                         <p className="text-right text-xs text-muted-foreground tabular-nums">
                             {message.length}/{maxLength}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                            A line telling people they can reply STOP is added to every message for you.
-                        </p>
                     </div>
 
                     <div className="space-y-1.5">

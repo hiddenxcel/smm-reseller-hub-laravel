@@ -16,6 +16,11 @@ Artisan::command('inspire', function () {
 | Needs `php artisan schedule:work` in development, or a single cron entry
 | calling `schedule:run` every minute in production — see deploy/.
 |
+| Nothing here uses runInBackground(). The production timer runs schedule:run
+| as a oneshot systemd service, and systemd kills whatever is still running
+| when it exits: a background command was killed before it finished and its
+| withoutOverlapping lock was never released, so each command ran once a day.
+|
 */
 
 /*
@@ -30,8 +35,7 @@ Artisan::command('inspire', function () {
 */
 Schedule::command('panels:check')
     ->everyFiveMinutes()
-    ->withoutOverlapping()
-    ->runInBackground();
+    ->withoutOverlapping();
 
 /*
 | Every two minutes: a customer whose order was cancelled is waiting for
@@ -41,8 +45,7 @@ Schedule::command('panels:check')
 */
 Schedule::command('orders:sync')
     ->everyTwoMinutes()
-    ->withoutOverlapping()
-    ->runInBackground();
+    ->withoutOverlapping();
 
 /*
 | Hourly: a panel that raises a price should not leave the bot selling below
@@ -50,8 +53,7 @@ Schedule::command('orders:sync')
 */
 Schedule::command('catalogue:sync')
     ->hourly()
-    ->withoutOverlapping()
-    ->runInBackground();
+    ->withoutOverlapping();
 
 /*
 | Every minute: each running broadcast sends one small batch, so a message to
@@ -59,8 +61,7 @@ Schedule::command('catalogue:sync')
 */
 Schedule::command('broadcasts:send')
     ->everyMinute()
-    ->withoutOverlapping()
-    ->runInBackground();
+    ->withoutOverlapping();
 
 /*
 | Every minute: someone who has just paid is looking at their phone. The
@@ -69,8 +70,7 @@ Schedule::command('broadcasts:send')
 */
 Schedule::command('payments:reconcile')
     ->everyMinute()
-    ->withoutOverlapping()
-    ->runInBackground();
+    ->withoutOverlapping();
 
 /*
 | The public demo, put back the way visitors expect to find it.
@@ -86,6 +86,5 @@ if (config('demo.email')) {
     Schedule::command('demo:reset --force')
         ->everyMinute()
         ->when(fn () => now()->minute % max(1, (int) config('demo.reset_minutes')) === 0)
-        ->withoutOverlapping()
-        ->runInBackground();
+        ->withoutOverlapping();
 }
