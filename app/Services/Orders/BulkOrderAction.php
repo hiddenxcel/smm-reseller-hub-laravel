@@ -69,6 +69,7 @@ class BulkOrderAction
                 OrderActions::REFILL => OrderActions::refill($order),
                 OrderActions::CANCEL => OrderActions::cancel($order),
                 OrderActions::MARK => OrderActions::markStatus($order, (string) $markAs),
+                OrderActions::REFUND => OrderActions::refund($order),
             };
 
             $result->failed ? $failed++ : $done++;
@@ -89,6 +90,7 @@ class BulkOrderAction
             OrderActions::REFILL => 'sent for refill',
             OrderActions::CANCEL => 'cancelled',
             OrderActions::MARK => 'updated',
+            OrderActions::REFUND => 'refunded',
         };
 
         if ($done === 0 && $skipped > 0 && $failed === 0) {

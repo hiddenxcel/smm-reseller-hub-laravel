@@ -34,6 +34,23 @@ class TryBotTest extends TestCase
                 ->where('simulator.sendBusiness', true));
     }
 
+    public function test_only_the_embed_mode_may_be_framed_and_only_by_the_sister_panel(): void
+    {
+        $plain = $this->get(route('try'));
+        $this->assertSame('SAMEORIGIN', $plain->headers->get('X-Frame-Options'));
+        $this->assertNull($plain->headers->get('Content-Security-Policy'));
+
+        $embedded = $this->get(route('try', ['embed' => 1]));
+        $embedded->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('embed', true));
+        $this->assertNull($embedded->headers->get('X-Frame-Options'));
+        $this->assertSame(
+            "frame-ancestors 'self' https://smmresellershub.com https://www.smmresellershub.com",
+            $embedded->headers->get('Content-Security-Policy'),
+        );
+
+        $this->assertSame('SAMEORIGIN', $this->get('/login')->headers->get('X-Frame-Options'));
+    }
+
     public function test_a_stranger_gets_the_real_menu_with_their_shop_name(): void
     {
         $response = $this->say('hi', extra: ['reset' => true, 'business' => 'Kuza Panel'])->assertOk();

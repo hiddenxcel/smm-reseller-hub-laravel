@@ -22,6 +22,7 @@ use App\Http\Controllers\OrderBotProvidersController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\PaymentsController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\CatalogueChangesController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SimulatorController;
@@ -144,6 +145,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/onboarding/whatsapp/{number}', [ConnectWhatsAppController::class, 'destroy'])
         ->whereNumber('number')
         ->name('onboarding.whatsapp.disconnect');
+    Route::post('/telegram-bot', [\App\Http\Controllers\TelegramBotController::class, 'store'])->name('telegram-bot.store');
+    Route::delete('/telegram-bot/{bot}', [\App\Http\Controllers\TelegramBotController::class, 'destroy'])->whereNumber('bot')->name('telegram-bot.destroy');
     Route::post('/onboarding/whatsapp/rent', [RentNumberController::class, 'store'])->name('onboarding.whatsapp.rent');
     Route::delete('/onboarding/whatsapp/rent/{rental}', [RentNumberController::class, 'destroy'])->name('onboarding.whatsapp.release');
     Route::post('/onboarding/payments', [SetupPaymentsController::class, 'store'])->name('onboarding.payments.store');
@@ -175,10 +178,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/order-bot/gateways', [OrderBotGatewaysController::class, 'index'])->name('order-bot.gateways');
     Route::post('/order-bot/gateways', [OrderBotGatewaysController::class, 'store'])->name('order-bot.gateways.store');
     Route::post('/order-bot/gateways/family/{family}', [OrderBotGatewaysController::class, 'saveFamily'])->name('order-bot.gateways.family');
+    Route::post('/order-bot/gateways/{gateway}/name', [OrderBotGatewaysController::class, 'rename'])->name('order-bot.gateways.name');
     Route::post('/order-bot/gateways/{gateway}/toggle', [OrderBotGatewaysController::class, 'toggle'])->name('order-bot.gateways.toggle');
     Route::post('/order-bot/gateways/{gateway}/default', [OrderBotGatewaysController::class, 'setDefault'])->name('order-bot.gateways.default');
     Route::post('/order-bot/gateways/pesapal/register-ipn', [OrderBotGatewaysController::class, 'registerIpn'])->name('order-bot.gateways.register-ipn');
     Route::delete('/order-bot/gateways/{gateway}', [OrderBotGatewaysController::class, 'destroy'])->name('order-bot.gateways.destroy');
+    Route::get('/order-bot/boosts', \App\Http\Controllers\OrderBotBoostsController::class)->name('order-bot.boosts');
     Route::get('/order-bot/{tab?}', [OrderBotController::class, 'show'])
         ->whereIn('tab', ['setup', 'number', 'commands', 'logs', 'settings'])
         ->name('order-bot');
@@ -245,6 +250,11 @@ Route::middleware('auth')->group(function () {
     // declared before `{service}` so a route like /services/rules is never
     // read as a service id.
     Route::get('/services', [ServicesController::class, 'index'])->name('services.index');
+    Route::get('/services/changes', [CatalogueChangesController::class, 'index'])->name('services.changes');
+    Route::post('/services/changes/auto', [CatalogueChangesController::class, 'toggleAuto'])->name('services.changes.auto');
+    Route::post('/services/changes/resolve-all', [CatalogueChangesController::class, 'resolveAll'])->name('services.changes.resolve-all');
+    Route::post('/services/changes/{change}/approve', [CatalogueChangesController::class, 'approve'])->name('services.changes.approve');
+    Route::post('/services/changes/{change}/dismiss', [CatalogueChangesController::class, 'dismiss'])->name('services.changes.dismiss');
     Route::get('/services/export', [ServicesController::class, 'export'])->name('services.export');
     Route::get('/services/matching-ids', [ServicesController::class, 'matchingIds'])->name('services.matching-ids');
     Route::get('/services/panels/{panel}/catalogue', [ServicesController::class, 'panelCatalogue'])->name('services.panel-catalogue');
@@ -275,6 +285,12 @@ Route::middleware('auth')->group(function () {
     // panel, not part of connecting one.
     Route::patch('/settings/panels/{panel}', [SettingsController::class, 'updatePanel'])
         ->name('settings.panels.update');
+
+    // The currency the dashboard is priced in — the sidebar switcher.
+    Route::get('/settings/pricing-currency/preview', [SettingsController::class, 'previewPricingCurrency'])
+        ->name('settings.pricing-currency.preview');
+    Route::patch('/settings/pricing-currency', [SettingsController::class, 'updatePricingCurrency'])
+        ->name('settings.pricing-currency.update');
 
     // API access. This screen is where a reseller hands out keys to their own
     // customers; the API those keys open is in routes/api.php and is not part

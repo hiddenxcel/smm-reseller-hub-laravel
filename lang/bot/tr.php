@@ -200,7 +200,9 @@ return [
     // ---- Track order ---------------------------------------------------------
     'track_none' => '📦 Henüz siparişiniz yok. *hi* yazıp *Yeni Sipariş* seçerek sipariş verin.',
     'order_refunded_cancelled' => '✅ *İADE*' . "\n" . '*#{number}* numaralı siparişiniz ({service}) sağlayıcı tarafından iptal edildi.' . "\n" . '' . "\n" . '💰 {amount} cüzdanınıza iade edildi.' . "\n" . 'Bakiye: {balance}',
+    'order_refunded_failed' => '✅ *İADE*' . "\n" . '*#{number}* numaralı siparişiniz ({service}) teslim edilemedi.' . "\n" . '' . "\n" . '💰 {amount} cüzdanınıza iade edildi.' . "\n" . 'Bakiye: {balance}',
     'order_refunded_partial' => '✅ *KISMİ İADE*' . "\n" . '*#{number}* numaralı siparişiniz ({service}) yalnızca kısmen teslim edildi.' . "\n" . '' . "\n" . '💰 Teslim edilmeyen kısım için {amount} cüzdanınıza iade edildi.' . "\n" . 'Bakiye: {balance}',
+    'order_completed' => '🎉 *SİPARİŞ TAMAMLANDI!*' . "\n" . '' . "\n" . '🆔 Sipariş No: #{number}' . "\n" . '🎯 Hizmet: {service}' . "\n" . '🔢 Miktar: {quantity}' . '{link_line}' . "\n" . '' . "\n" . '✅ Siparişiniz eksiksiz teslim edildi. Bize güvendiğiniz için teşekkürler! 🙏' . "\n" . '' . "\n" . 'Yeni bir sipariş başlatmak için "#" gönderin.' . "\n" . '' . "\n" . '©️ {business}',
     'payment_credited' => '✅ *ÖDEME ALINDI*' . "\n" . '💰 {amount} cüzdanınıza eklendi.' . "\n" . 'Bakiye: {balance}',
     'payment_credited_order' => '✅ *ÖDEME ALINDI*' . "\n" . '💰 {amount} cüzdanınıza eklendi.' . "\n" . '' . "\n" . '🛒 *#{number}* numaralı siparişiniz ({service}) verildi.' . "\n" . 'Bakiye: {balance}',
     'payment_credited_order_waiting' => '✅ *ÖDEME ALINDI*' . "\n" . '💰 {amount} cüzdanınıza eklendi.' . "\n" . '' . "\n" . '⚠️ Siparişiniz henüz verilemedi — bakiyeniz ({balance}) hâlâ yetersiz. Bakiye ekleyin veya yeniden başlamak için *hi* gönderin.',

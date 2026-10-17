@@ -93,8 +93,14 @@ class SmmProviderClient
      * A panel that answers with something else — or an order it does not know —
      * simply leaves that id out, so the caller only acts on what it was told.
      *
+     * Not every panel speaks this batch form despite it being the documented
+     * standard — some (seen on Cheapgainske) reply `{"error":"Order ID is
+     * required"}` to `orders=`, only accepting the singular `order=` used by
+     * checkStatus(). Rather than give up on the whole chunk, a failed batch
+     * falls back to one call per order, so those panels still get synced.
+     *
      * @param  list<string>  $orderIds
-     * @return array<string, array{status: ?string, remains: ?int}>|null null when the panel could not be asked
+     * @return array<string, array{status: ?string, remains: ?int}>|null null when the panel could not be asked at all
      */
     public function checkStatuses(array $orderIds): ?array
     {
@@ -105,7 +111,7 @@ class SmmProviderClient
         $result = $this->call(['action' => 'status', 'orders' => implode(',', $orderIds)]);
 
         if ($result->failed) {
-            return null;
+            return $this->checkStatusesOneByOne($orderIds);
         }
 
         $statuses = [];
@@ -120,6 +126,45 @@ class SmmProviderClient
             $statuses[$id] = [
                 'status' => (string) $entry['status'],
                 'remains' => isset($entry['remains']) && is_numeric($entry['remains']) ? (int) $entry['remains'] : null,
+            ];
+        }
+
+        return $statuses;
+    }
+
+    /**
+     * The fallback for a panel that rejects the batch `orders=` form: one
+     * `checkStatus()` call per order. Slower, but only paid by panels that
+     * need it — one order failing to answer does not stop the rest.
+     *
+     * Still returns null if even the first call cannot reach the panel at
+     * all (connection failure), so a genuinely offline panel is not retried
+     * order-by-order for nothing; an auth or per-order error just skips that
+     * order and keeps going, since it is not a sign the panel is unreachable.
+     *
+     * @param  list<string>  $orderIds
+     * @return array<string, array{status: ?string, remains: ?int}>|null
+     */
+    private function checkStatusesOneByOne(array $orderIds): ?array
+    {
+        $statuses = [];
+
+        foreach ($orderIds as $id) {
+            $result = $this->checkStatus($id);
+
+            if ($result->failed) {
+                continue;
+            }
+
+            if (! isset($result->data['status'])) {
+                continue;
+            }
+
+            $remains = $result->data['remains'] ?? null;
+
+            $statuses[$id] = [
+                'status' => (string) $result->data['status'],
+                'remains' => is_numeric($remains) ? (int) $remains : null,
             ];
         }
 

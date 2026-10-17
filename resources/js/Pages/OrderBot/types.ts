@@ -102,6 +102,8 @@ export type GatewayOption = {
     /** Where the provider must be told to send notifications, when it takes one URL set in its own dashboard. */
     webhookUrl: string | null;
     connected: boolean;
+    /** The name the reseller chose for customers to see; null means the default. */
+    displayName: string | null;
     status: string | null;
     /** The one customers are sent to. At most one per reseller. */
     isDefault: boolean;
@@ -118,7 +120,14 @@ export type FamilyState = {
     /** Whether a secret key is stored — never the key itself. */
     keySaved: boolean;
     webhookSecretSaved: boolean;
-    markets: Array<{ code: string; label: string; on: boolean; isDefault: boolean }>;
+    markets: Array<{
+        code: string;
+        label: string;
+        on: boolean;
+        connected: boolean;
+        displayName: string | null;
+        isDefault: boolean;
+    }>;
 };
 
 export type PanelLimit = {

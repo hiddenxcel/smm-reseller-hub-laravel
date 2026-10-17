@@ -3,6 +3,7 @@
 use App\Http\Controllers\Webhooks\BillingWebhookController;
 use App\Http\Controllers\Webhooks\PaymentReturnController;
 use App\Http\Controllers\Webhooks\PaymentWebhookController;
+use App\Http\Controllers\Webhooks\TelegramWebhookController;
 use App\Http\Controllers\Webhooks\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,11 @@ Route::prefix('webhooks')->group(function () {
 
     Route::post('whatsapp', [WhatsAppWebhookController::class, 'handle'])
         ->name('webhooks.whatsapp');
+
+    // Telegram: one URL per reseller bot, named by an unguessable id and
+    // checked by the secret header Telegram echoes back.
+    Route::post('telegram/{publicId}', [TelegramWebhookController::class, 'handle'])
+        ->name('webhooks.telegram');
 
     // One URL per gateway, shared by every reseller. Which reseller a payment
     // belongs to comes from our reference in the payload, not the URL.

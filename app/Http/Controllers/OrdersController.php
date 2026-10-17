@@ -94,6 +94,7 @@ class OrdersController extends Controller
             OrderActions::REFILL => OrderActions::refill($order),
             OrderActions::CANCEL => OrderActions::cancel($order),
             OrderActions::MARK => OrderActions::markStatus($order, $validated['status']),
+            OrderActions::REFUND => OrderActions::refund($order),
         };
 
         return Redirect::back()->with($result->failed ? 'error' : 'success', $result->message);

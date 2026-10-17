@@ -94,7 +94,7 @@ class BillingController extends Controller
      * reseller's own test numbers — and a reseller deciding whether to pay
      * needs to know which of the three they are in.
      */
-    private function services(int $tenantId): array
+    public function services(int $tenantId, ?string $list = null): array
     {
         $subscriptions = Subscription::withoutTenantScope()
             ->where('tenant_id', $tenantId)
@@ -105,7 +105,7 @@ class BillingController extends Controller
 
         $states = Subscription::stateMap($tenantId);
 
-        return collect(Pricing::sellableServices())
+        return collect(Pricing::sellableServices($list))
             ->map(function (array $service) use ($subscriptions, $states) {
                 $subscription = $subscriptions->get($service['key']);
                 $endsAt = $subscription?->ends_at;
@@ -120,6 +120,7 @@ class BillingController extends Controller
                     // Prices for every term, so switching the term on the page
                     // needs no round trip.
                     'termPrices' => $this->termPrices($service['key']),
+                    'oneTime' => Pricing::isOneTime($service['key']),
                 ];
             })
             ->all();
@@ -221,7 +222,7 @@ class BillingController extends Controller
     {
         $data = $request->validate([
             'services' => ['required', 'array', 'min:1'],
-            'services.*' => [Rule::in(config('billing.sellable', []))],
+            'services.*' => [Rule::in([...config('billing.sellable', []), ...config('billing.features', [])])],
             'months' => ['required', 'integer', Rule::in(array_column(Pricing::terms(), 'months'))],
             'gateway' => ['required', 'string'],
             'numberId' => ['nullable', 'integer'],

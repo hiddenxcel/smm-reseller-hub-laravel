@@ -177,6 +177,11 @@ class PaymentWebhookController extends Controller
             'invoice_id',
             'data.reference',
             'data.order_id',
+            // Makamesco: our reference as accountReference, and the checkout id
+            // we saved from the push — the one to rely on, since M-Pesa may
+            // shorten the first.
+            'data.accountReference',
+            'data.checkoutRequestId',
             'result.order_id',
             'payment.reference',
             // Stripe: client_reference_id on the session, metadata as backup.
@@ -256,6 +261,13 @@ class PaymentWebhookController extends Controller
         // read off the notification — and nothing on it is trusted anyway.
         if (FimipayClient::isFimipay($payment->gateway)) {
             return $client->checkStatus($payment->transaction_ref) === 'completed';
+        }
+
+        // Makamesco is asked about the checkout id saved when the prompt was
+        // sent; nothing on the notification is trusted.
+        if ($payment->gateway === 'makamesco') {
+            return filled($payment->gateway_reference)
+                && $client->checkStatus((string) $payment->gateway_reference) === 'completed';
         }
 
         // Pesapal identifies the transaction by its own tracking id, which is

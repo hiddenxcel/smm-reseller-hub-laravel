@@ -8,13 +8,16 @@ import { Label } from '@/components/ui/label';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { Link } from '@inertiajs/react';
 import { ArrowRight, Bot, CheckCircle2, Headset, Rocket } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 type Props = {
     simulator: SimulatorConfig;
     demoNumber: string | null;
     assistantEnabled: boolean;
+    embed?: boolean;
 };
+
+const HOST_ORIGINS = ['https://smmresellershub.com', 'https://www.smmresellershub.com'];
 
 const TRY = [
     {
@@ -46,7 +49,7 @@ const TRY = [
  * thing the visitor can change is the shop's name, because seeing your own
  * name in the greeting is what makes it feel like yours.
  */
-export default function Try({ simulator, demoNumber, assistantEnabled }: Props) {
+export default function Try({ simulator, demoNumber, assistantEnabled, embed = false }: Props) {
     const [name, setName] = useState('');
     const [applied, setApplied] = useState('');
     const [tried, setTried] = useState(false);
@@ -63,20 +66,27 @@ export default function Try({ simulator, demoNumber, assistantEnabled }: Props) 
         business: applied || simulator.business,
     };
 
-    return (
-        <PublicLayout
-            eyebrow="No signup needed"
-            title="Try the real bot, right here"
-            description="This is the exact bot your customers would message. Place an order, ask for a refill, break it. Nothing is charged, saved or sent anywhere."
-            demoNumber={demoNumber}
-            assistantEnabled={assistantEnabled}
-        >
-            <Seo
-                title="Try the WhatsApp bot"
-                description="Chat with a live demo of the Auto Resellers Hub WhatsApp bots — place an order, check a refill, talk to support — without creating an account."
-            />
+    // Inside the sister panel's iframe the page tells its host how tall it is,
+    // so the frame can fit the chat instead of scrolling inside itself. Only
+    // the host's own origins are ever addressed.
+    useEffect(() => {
+        if (! embed || window.parent === window) {
+            return;
+        }
 
-            <Section className="pt-0">
+        const send = () => {
+            const height = document.documentElement.scrollHeight;
+            HOST_ORIGINS.forEach((origin) => window.parent.postMessage({ type: 'try-height', height }, origin));
+        };
+        const observer = new ResizeObserver(send);
+        observer.observe(document.body);
+        send();
+
+        return () => observer.disconnect();
+    }, [embed]);
+
+    const content = (
+        <Section className={embed ? 'py-4' : 'pt-0'}>
                 <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-[1fr_22rem] lg:items-start xl:gap-16">
                     <div className="order-2 lg:order-1">
                         <Reveal>
@@ -150,11 +160,21 @@ export default function Try({ simulator, demoNumber, assistantEnabled }: Props) 
                             </ul>
 
                             <Button size="lg" className="mt-4 w-full shadow-lg shadow-primary/25 sm:w-auto" asChild>
-                                <Link href={route('register')}>
-                                    <Rocket className="size-4" />
-                                    Create my free account
-                                    <ArrowRight className="size-4" />
-                                </Link>
+                                {embed ? (
+                                    // Framed by the sister panel, which this site refuses to be
+                                    // framed on any other page, so sign-up opens in its own tab.
+                                    <a href={route('register')} target="_blank" rel="noopener">
+                                        <Rocket className="size-4" />
+                                        Create my free account
+                                        <ArrowRight className="size-4" />
+                                    </a>
+                                ) : (
+                                    <Link href={route('register')}>
+                                        <Rocket className="size-4" />
+                                        Create my free account
+                                        <ArrowRight className="size-4" />
+                                    </Link>
+                                )}
                             </Button>
                         </div>
                     </div>
@@ -165,7 +185,32 @@ export default function Try({ simulator, demoNumber, assistantEnabled }: Props) 
                         <WhatsAppSimulator key={config.business} config={config} onUsed={() => setTried(true)} />
                     </div>
                 </div>
-            </Section>
+        </Section>
+    );
+
+    if (embed) {
+        return (
+            <div className="bg-background">
+                <Seo title="Try the WhatsApp bot" description="Live demo of the Auto Resellers Hub WhatsApp bots." />
+                <div className="px-3">{content}</div>
+            </div>
+        );
+    }
+
+    return (
+        <PublicLayout
+            eyebrow="No signup needed"
+            title="Try the real bot, right here"
+            description="This is the exact bot your customers would message. Place an order, ask for a refill, break it. Nothing is charged, saved or sent anywhere."
+            demoNumber={demoNumber}
+            assistantEnabled={assistantEnabled}
+        >
+            <Seo
+                title="Try the WhatsApp bot"
+                description="Chat with a live demo of the Auto Resellers Hub WhatsApp bots — place an order, check a refill, talk to support — without creating an account."
+            />
+
+            {content}
         </PublicLayout>
     );
 }

@@ -42,6 +42,25 @@ return [
     ],
 
     /*
+    | Unlock: features bought one by one on the Unlock page of the order
+    | bot. They ride the same plans/subscriptions/checkout as the bots; the
+    | only difference is where they are offered. Add a key here (and a plans
+    | row) to put a new feature on that page.
+    */
+    'features' => [
+        'custom_brand',
+    ],
+
+    /*
+    | Features paid for once and kept: no term, no discount, and the
+    | subscription never expires. The plan's price_monthly column holds the
+    | one-time price.
+    */
+    'one_time' => [
+        'custom_brand',
+    ],
+
+    /*
     | The platform's own gateways — HiddenXcel's credentials, not a
     | reseller's. Only what is listed here can take a subscription payment,
     | and only if its keys are set in config/services.php under 'billing'.
@@ -181,6 +200,9 @@ return [
             ],
         ],
     ],
+
+    // Signs bot messages until a reseller buys the Custom Brand boost.
+    'default_brand' => 'Auto Hub',
 
     'currency' => 'USD',
 

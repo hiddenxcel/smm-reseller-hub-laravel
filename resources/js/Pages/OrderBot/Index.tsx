@@ -12,7 +12,7 @@ import { OrderBotPageProps } from './types';
 
 const TABS = {
     setup: { label: 'Setup', icon: Bot },
-    number: { label: 'Number', icon: Phone },
+    number: { label: 'Channels', icon: Phone },
     commands: { label: 'Commands', icon: SlidersHorizontal },
     logs: { label: 'Logs', icon: ScrollText },
     settings: { label: 'Settings', icon: Settings2 },

@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Site;
 
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
+use App\Models\SubscriptionPayment;
 use App\Services\Assistant\AssistantKey;
+use App\Services\Billing\ReconcileSubscriptionPayments;
 use App\Services\Payments\Gateway;
+use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -62,8 +66,21 @@ class PublicPageController extends Controller
      * proves they left the gateway's page), so it points them back to the chat,
      * where the bot reports the real outcome.
      */
-    public function paymentThanks(): Response
+    public function paymentThanks(Request $request, ReconcileSubscriptionPayments $subscriptions): Response
     {
+        // A customer sent back from paying a subscription: ask the gateway now
+        // rather than wait for a notification that may never come. Nothing on
+        // the URL is believed — it only says which order to ask about.
+        $reference = (string) ($request->query('tx_ref') ?? $request->query('order_id') ?? '');
+
+        if ($reference !== '' && strlen($reference) <= 100 && Cache::add("thanks-check:{$reference}", true, 15)) {
+            $payment = SubscriptionPayment::findByRefAnyTenant($reference);
+
+            if ($payment !== null) {
+                $subscriptions->check($payment);
+            }
+        }
+
         return Inertia::render('Public/PaymentThanks', [
             ...$this->chrome(),
         ]);

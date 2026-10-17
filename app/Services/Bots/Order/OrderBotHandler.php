@@ -1233,7 +1233,8 @@ class OrderBotHandler implements BotHandler
      *
      * Labels come from config/gateways.php rather than from translations: a
      * gateway's name is a brand and stays as it is in every language, and a
-     * reseller adding one must not have to wait for five translations.
+     * reseller adding one must not have to wait for five translations. A name
+     * the reseller has chosen for it wins over that.
      *
      * @param  Collection<int, TenantPaymentGateway>  $usable
      */
@@ -1245,7 +1246,7 @@ class OrderBotHandler implements BotHandler
             ->take(self::MAX_LIST_ROWS)
             ->map(fn ($row) => [
                 'id' => "pay:{$row->gateway}",
-                'title' => mb_substr(Gateway::label($row->gateway), 0, 24),
+                'title' => mb_substr($row->shownName(), 0, 24),
                 'description' => $this->t('pay_method_'.(Gateway::needsPhone($row->gateway) ? 'mobile' : 'online')),
             ])
             ->all();

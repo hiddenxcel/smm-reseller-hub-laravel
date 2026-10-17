@@ -559,6 +559,7 @@ class ServicesPageTest extends TestCase
 
     public function test_a_cost_change_reprices_when_a_rule_covers_it(): void
     {
+        $this->tenant->forceFill(['auto_catalogue_sync' => true])->save();
         Http::fake(['*' => Http::response([
             ['service' => '900', 'name' => 'Instagram Followers', 'rate' => '3.0000', 'min' => 100, 'max' => 50000],
         ])]);
@@ -590,6 +591,7 @@ class ServicesPageTest extends TestCase
      */
     public function test_a_cost_change_leaves_a_hand_set_price_alone(): void
     {
+        $this->tenant->forceFill(['auto_catalogue_sync' => true])->save();
         Http::fake(['*' => Http::response([
             ['service' => '900', 'name' => 'Instagram Followers', 'rate' => '3.0000', 'min' => 100, 'max' => 50000],
         ])]);

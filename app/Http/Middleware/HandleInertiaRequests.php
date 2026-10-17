@@ -78,6 +78,9 @@ class HandleInertiaRequests extends Middleware
             // Whether the chat assistant has anything behind it. The same switch
             // the public pages use, so it appears and disappears everywhere at once.
             'assistantEnabled' => fn () => AssistantKey::widgetEnabled(),
+            // What the sidebar switcher offers, and what this reseller is on.
+            // Null for anyone who is not a reseller (admin console, public pages).
+            'pricingCurrency' => fn () => $this->pricingCurrency(),
             // One-shot messages from the action just performed, shown as
             // toasts. Closures so the session is only read on a response that
             // actually carries one.
@@ -153,6 +156,26 @@ class HandleInertiaRequests extends Middleware
      * but replying or our resolving it does, which is the point at which the
      * reseller has demonstrably seen it.
      */
+    /**
+     * @return array{current: string, choices: array<int, array{code: string, name: string}>}|null
+     */
+    private function pricingCurrency(): ?array
+    {
+        $tenant = Auth::guard('tenant')->user();
+
+        if ($tenant === null) {
+            return null;
+        }
+
+        return [
+            'current' => \App\Services\Payments\PricingCurrency::for($tenant),
+            'choices' => array_map(
+                fn (array $row) => ['code' => $row['code'], 'name' => $row['name']],
+                \App\Services\Payments\PricingCurrency::choices(),
+            ),
+        ];
+    }
+
     private function supportUnread(): int
     {
         if (Auth::guard('tenant')->guest()) {

@@ -84,6 +84,7 @@ class OrderBotGatewaysController extends Controller
                     ? route('webhooks.payment', $code)
                     : null,
                 'connected' => $row !== null,
+                'displayName' => $row?->display_name,
                 'status' => $row?->status,
                 'isDefault' => (bool) $row?->is_default,
                 'fields' => array_map(fn (array $field) => [
@@ -119,6 +120,8 @@ class OrderBotGatewaysController extends Controller
                 'code' => $code,
                 'label' => GatewayFamilies::marketLabel($code),
                 'on' => $connected->get($code)?->status === 'active',
+                'connected' => $connected->has($code),
+                'displayName' => $connected->get($code)?->display_name,
                 'isDefault' => (bool) $connected->get($code)?->is_default,
             ], GatewayFamilies::codes($family)),
         ];
@@ -210,6 +213,32 @@ class OrderBotGatewaysController extends Controller
         );
 
         return back()->with('success', Gateway::label($gateway).' saved.');
+    }
+
+    /**
+     * The name customers see for a gateway in the bot's payment menu.
+     *
+     * Blank puts the provider's own name back. Held to 24 characters because
+     * WhatsApp shows no more of a list row's title.
+     */
+    public function rename(Request $request, string $gateway): RedirectResponse
+    {
+        abort_unless(Gateway::exists($gateway), 404);
+
+        $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:24'],
+        ]);
+
+        $row = TenantPaymentGateway::withoutTenantScope()
+            ->where('tenant_id', $request->user()->id)
+            ->where('gateway', $gateway)
+            ->firstOrFail();
+
+        $name = trim(strip_tags((string) ($validated['name'] ?? '')));
+
+        $row->update(['display_name' => $name !== '' ? $name : null]);
+
+        return back()->with('success', $name !== '' ? "Customers will see “{$name}”." : 'Back to the default name.');
     }
 
     /**

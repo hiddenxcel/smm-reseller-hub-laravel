@@ -25,8 +25,11 @@ export type BotRentable = {
     price: number;
 };
 
+export type BotTelegram = { id: number; username: string; status: string };
+
 export type BotNumbersData = {
     bot: 'order' | 'support';
+    telegram: BotTelegram | null;
     webhookUrl: string;
     verifyToken: string;
     numbers: BotNumber[];
@@ -46,10 +49,10 @@ export function NumberTab({ data }: { data: BotNumbersData }) {
 
     return (
         <div className="space-y-4 sm:space-y-6">
-            {! current && (
+            {! current && ! data.telegram && (
                 <NeedsAttention>
-                    The {name.toLowerCase()} has no number yet, so it cannot answer anyone. Buy one
-                    below or connect your own.
+                    The {name.toLowerCase()} has no number or Telegram bot yet, so it cannot answer
+                    anyone. Buy a number, connect your own, or connect a Telegram bot.
                 </NeedsAttention>
             )}
 
@@ -100,6 +103,8 @@ export function NumberTab({ data }: { data: BotNumbersData }) {
                     </div>
                 )}
             </Card>
+
+            <TelegramCard data={data} />
 
             {! current && (
                 <>
@@ -271,5 +276,84 @@ function CopyRow({ label, value }: { label: string; value: string }) {
                 </Button>
             </div>
         </div>
+    );
+}
+
+
+/**
+ * The reseller's own Telegram bot (made with @BotFather). Free, no Meta
+ * verification. The token is pasted here and stored encrypted; it is never
+ * shown again.
+ */
+function TelegramCard({ data }: { data: BotNumbersData }) {
+    const current = data.telegram;
+
+    const { data: form, setData, post, processing, errors, reset } = useForm({
+        token: '',
+        bot_type: data.bot,
+    });
+
+    const submit: FormEventHandler = (event) => {
+        event.preventDefault();
+        post(route('telegram-bot.store'), { preserveScroll: true, onSuccess: () => reset('token') });
+    };
+
+    return (
+        <Card
+            title="Telegram bot"
+            description="Customers can also message your bot on Telegram. No fees and no verification."
+        >
+            {current ? (
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                        <p className="font-data text-sm">@{current.username}</p>
+                        <p className="text-xs text-muted-foreground">
+                            Connected{current.status !== 'active' && ' · not active'}
+                        </p>
+                    </div>
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            if (window.confirm(`Disconnect @${current.username}? The bot stops answering on Telegram.`)) {
+                                router.delete(route('telegram-bot.destroy', current.id), { preserveScroll: true });
+                            }
+                        }}
+                    >
+                        <Trash2 className="size-3.5" />
+                        Remove
+                    </Button>
+                </div>
+            ) : (
+                <form onSubmit={submit} className="max-w-lg space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                        In Telegram open <b>@BotFather</b>, send <code>/newbot</code>, and paste the token it
+                        gives you here.
+                    </p>
+
+                    <div>
+                        <Label htmlFor="telegram_token">Bot token</Label>
+                        <Input
+                            id="telegram_token"
+                            type="password"
+                            autoComplete="off"
+                            value={form.token}
+                            onChange={(event) => setData('token', event.target.value)}
+                            className="mt-1.5"
+                            required
+                        />
+                        <FieldError message={errors.token} />
+                        <FieldError message={errors.bot_type} />
+                    </div>
+
+                    <Button type="submit" disabled={processing}>
+                        {processing && <Loader2 className="size-4 animate-spin" />}
+                        Connect Telegram bot
+                    </Button>
+                </form>
+            )}
+        </Card>
     );
 }

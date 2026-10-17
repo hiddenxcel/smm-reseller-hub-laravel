@@ -2,6 +2,7 @@
 
 namespace App\Services\Orders;
 
+use App\Jobs\NotifyOrderCompleted;
 use App\Models\BotOrder;
 use App\Models\TenantPanel;
 use App\Services\Panel\SmmProviderClient;
@@ -86,11 +87,16 @@ class SyncOrderStatuses
     /**
      * Record what the provider said. Returns whether anything changed.
      *
+     * Also tells the customer the moment this order *becomes* completed —
+     * not every time sync finds it still completed later — by comparing the
+     * fold of the old status against the fold of the new one before saving.
+     *
      * @param  array{status: ?string, remains: ?int}  $reported
      */
     private function apply(BotOrder $order, array $reported): bool
     {
         $changes = [];
+        $wasCompleted = OrderStatus::fold($order->status) === OrderStatus::COMPLETED;
 
         if ($reported['status'] !== null && $reported['status'] !== $order->status) {
             $changes['status'] = mb_substr($reported['status'], 0, 30);
@@ -105,6 +111,12 @@ class SyncOrderStatuses
         }
 
         $order->update($changes);
+
+        $nowCompleted = isset($changes['status']) && OrderStatus::fold($changes['status']) === OrderStatus::COMPLETED;
+
+        if ($nowCompleted && ! $wasCompleted) {
+            NotifyOrderCompleted::dispatch($order->id);
+        }
 
         return true;
     }

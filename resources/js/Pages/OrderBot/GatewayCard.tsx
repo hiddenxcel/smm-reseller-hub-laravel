@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { Field, inputClass } from './bits';
+import { GatewayName } from './GatewayName';
 import { GatewayOption } from './types';
 
 const TYPE_ICON = {
@@ -90,6 +91,17 @@ export function GatewayCard({ gateway }: { gateway: GatewayOption }) {
                     </span>
                 )}
             </header>
+
+            {gateway.connected && !open && (
+                <div className="mt-4 border-t border-border pt-4">
+                    <GatewayName
+                        key={gateway.displayName ?? ''}
+                        code={gateway.code}
+                        current={gateway.displayName}
+                        fallback={gateway.label}
+                    />
+                </div>
+            )}
 
             {open ? (
                 <CredentialsForm

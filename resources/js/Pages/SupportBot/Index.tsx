@@ -12,7 +12,7 @@ import { SupportBotPageProps } from './types';
 
 const TABS = {
     overview: { label: 'Overview', icon: LayoutGrid },
-    number: { label: 'Number', icon: Phone },
+    number: { label: 'Channels', icon: Phone },
     rules: { label: 'Rules', icon: ShieldCheck },
     templates: { label: 'Wording', icon: MessageSquareText },
     settings: { label: 'Settings', icon: Settings2 },

@@ -8,10 +8,12 @@ use App\Models\ServicePriceHistory;
 use App\Models\TenantPanel;
 use App\Services\Catalogue\BulkAdjustment;
 use App\Services\Catalogue\BulkServiceAction;
+use App\Services\Catalogue\CatalogueChanges;
 use App\Services\Catalogue\PanelSync;
 use App\Services\Catalogue\PricingEngine;
 use App\Services\Catalogue\ServiceActions;
 use App\Services\Catalogue\ServiceFilters;
+use App\Services\Catalogue\ServiceLimit;
 use App\Services\Catalogue\ServiceProfile;
 use App\Services\Catalogue\ServiceQuery;
 use App\Services\Customers\ActionOutcome;
@@ -74,6 +76,7 @@ class ServicesController extends Controller
             'platforms' => Inertia::defer(fn () => $query->platformCounts($filters)),
             'categories' => Inertia::defer(fn () => $query->categoryCounts($filters)),
             'panels' => $query->panelOptions(),
+            'pendingChanges' => CatalogueChanges::for($tenant)->pendingCount(),
             'rules' => $this->rulesFor($request),
             'pageSizes' => ServiceQuery::PAGE_SIZES,
             'marginBands' => ServiceQuery::MARGIN_BANDS,
@@ -125,6 +128,10 @@ class ServicesController extends Controller
             // example link, and a caption holds 1,024 characters in all.
             'link_instructions' => ['nullable', 'string', 'max:600'],
         ]);
+
+        if (! ServiceLimit::hasRoom((int) $tenant->id, $validated['platform'], $validated['category'] ?? null)) {
+            return Redirect::back()->with('error', ServiceLimit::message($validated['platform'], $validated['category'] ?? null));
+        }
 
         $panelId = $this->panelIdFor($request, $validated['panel_id'] ?? null);
 
@@ -374,7 +381,7 @@ class ServicesController extends Controller
     /** Step 2 of the import wizard: read a panel's catalogue. */
     public function panelCatalogue(Request $request, TenantPanel $panel): JsonResponse
     {
-        $result = $this->catalogue->forPanel($panel);
+        $result = $this->catalogue->forPanel($panel, ServiceCatalogue::WHOLE_PANEL);
 
         return response()->json([
             'failed' => ! $result->loaded,

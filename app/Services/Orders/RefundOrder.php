@@ -32,6 +32,9 @@ class RefundOrder
 
     public const PARTIAL = 'partial';
 
+    /** The order never reached the provider and the reseller refunded it by hand. */
+    public const FAILED = 'failed';
+
     /** Whether this shop has switched automatic refunds on. On unless turned off. */
     public static function enabledFor(int $tenantId): bool
     {
@@ -109,6 +112,41 @@ class RefundOrder
 
         [$kind, $target] = $owed;
 
+        return $this->credit($order, $kind, $target);
+    }
+
+    /**
+     * The reseller's own decision to give the money back, for an order that
+     * failed: the whole of what the customer paid, less anything already
+     * returned.
+     *
+     * Not held to the shop's automatic-refund switch or to the order having
+     * reached the provider — pressing the button is the consent, and an order
+     * the provider never got is exactly the case the automatic path leaves
+     * alone. Everything else is the same as the automatic path, so a second
+     * press returns nothing.
+     */
+    public function refundByHand(BotOrder $order): ?string
+    {
+        if ($order->payment_status !== 'paid' || $order->customer_id === null) {
+            return null;
+        }
+
+        $paid = (string) $order->amount;
+
+        if (bccomp($paid, '0', 2) <= 0) {
+            return null;
+        }
+
+        return $this->credit($order, self::FAILED, number_format((float) $paid, 2, '.', ''));
+    }
+
+    /**
+     * Bring the total refunded up to $target and tell the customer. Returns the
+     * amount sent back now, or null when there was nothing to send.
+     */
+    private function credit(BotOrder $order, string $kind, string $target): ?string
+    {
         $refunded = null;
 
         DB::transaction(function () use ($order, $target, &$refunded) {
@@ -150,7 +188,6 @@ class RefundOrder
         Log::info('Order refunded', ['order' => $order->id, 'kind' => $kind, 'amount' => $refunded]);
 
         NotifyOrderRefunded::dispatch($order->id, $kind, $refunded)->afterCommit();
-
         return $refunded;
     }
 }

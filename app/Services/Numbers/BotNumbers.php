@@ -4,6 +4,7 @@ namespace App\Services\Numbers;
 
 use App\Models\NumberRental;
 use App\Models\PlatformNumber;
+use App\Models\TenantTelegramBot;
 use App\Models\TenantWhatsApp;
 
 /**
@@ -42,6 +43,16 @@ class BotNumbers
                     'country' => $rentals->get($number->phone_number_id)?->platformNumber?->country,
                 ])
                 ->all(),
+            'telegram' => TenantTelegramBot::withoutTenantScope()
+                ->where('tenant_id', $tenantId)
+                ->where('bot_type', $bot)
+                ->get()
+                ->map(fn (TenantTelegramBot $row) => [
+                    'id' => $row->id,
+                    'username' => $row->bot_username,
+                    'status' => $row->status,
+                ])
+                ->first(),
             'rentable' => PlatformNumber::where('status', 'available')
                 ->orderBy('country')
                 ->orderBy('display_number')

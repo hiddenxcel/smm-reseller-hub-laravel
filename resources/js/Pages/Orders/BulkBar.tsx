@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Ban, Loader2, RefreshCw, RotateCcw, X } from 'lucide-react';
+import { Ban, Loader2, RefreshCw, RotateCcw, Undo2, X } from 'lucide-react';
 import { OrderAction, OrderStatusGroup } from './types';
 
 /**
@@ -95,6 +95,25 @@ export default function BulkBar({
                     >
                         <Ban className="size-3.5" />
                         Cancel
+                    </Button>
+
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={pending}
+                        title="Returns the money for the failed orders in the selection and tells each customer"
+                        onClick={() => {
+                            if (
+                                window.confirm(
+                                    'Refund every failed order in this selection? Each customer gets their money back and a WhatsApp message.',
+                                )
+                            ) {
+                                onAction('refund');
+                            }
+                        }}
+                    >
+                        <Undo2 className="size-3.5" />
+                        Refund
                     </Button>
 
                     <select

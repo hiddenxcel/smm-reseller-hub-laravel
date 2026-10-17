@@ -1,4 +1,5 @@
 import { Ban, Crown, LifeBuoy, ShoppingBag, Sparkles } from 'lucide-react';
+import { shopCurrency } from '@/lib/shopCurrency';
 import { BotType, Segment } from './types';
 
 /**
@@ -170,7 +171,7 @@ export function BotChips({ bots }: { bots: BotType[] }) {
     );
 }
 
-export function money(value: number, currency = 'USD'): string {
+export function money(value: number, currency = shopCurrency()): string {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency,

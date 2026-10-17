@@ -9,6 +9,8 @@ export interface Tenant {
     phone?: string | null;
     status: string;
     lang: string;
+    /** Null means USD — a reseller who has never chosen one. */
+    pricing_currency?: string | null;
 }
 
 /**
@@ -86,6 +88,11 @@ export type PageProps<
     supportUnread: number;
     /** Whether the chat assistant has a key behind it; hidden when it has not. */
     assistantEnabled: boolean;
+    /** The sidebar currency switcher; null outside a reseller's own pages. */
+    pricingCurrency: {
+        current: string;
+        choices: { code: string; name: string }[];
+    } | null;
     flash: Flash;
     /**
      * Laravel's route list, shared for `route()`. In the browser it also

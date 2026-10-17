@@ -19,6 +19,7 @@ class TenantPaymentGateway extends Model
     protected $fillable = [
         'tenant_id',
         'gateway',
+        'display_name',
         'api_key_enc',
         'webhook_secret_enc',
         'extra_enc',
@@ -40,6 +41,14 @@ class TenantPaymentGateway extends Model
             'extra_enc' => 'encrypted',
             'is_default' => 'boolean',
         ];
+    }
+
+    /** What customers are shown: the reseller's own wording, or the provider's name. */
+    public function shownName(): string
+    {
+        return filled($this->display_name)
+            ? $this->display_name
+            : \App\Services\Payments\Gateway::label($this->gateway);
     }
 
     /**

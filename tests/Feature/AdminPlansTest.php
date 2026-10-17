@@ -43,7 +43,7 @@ class AdminPlansTest extends TestCase
         $this->get('/hx-control/plans')->assertInertia(
             fn (AssertableInertia $page) => $page
                 ->component('Admin/Plans/Index')
-                ->has('plans', 3),
+                ->has('plans', Plan::count()),
         );
     }
 

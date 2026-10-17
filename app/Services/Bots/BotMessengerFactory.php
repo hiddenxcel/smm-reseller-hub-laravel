@@ -3,7 +3,10 @@
 namespace App\Services\Bots;
 
 use App\Models\Tenant;
+use App\Models\TenantTelegramBot;
 use App\Models\TenantWhatsApp;
+use App\Services\Bots\Telegram\TelegramApi;
+use App\Services\Bots\Telegram\TelegramMessenger;
 use Illuminate\Support\Arr;
 
 /**
@@ -23,12 +26,24 @@ class BotMessengerFactory
             phoneNumberId: $whatsapp->phone_number_id,
             token: (string) $whatsapp->cloud_api_token_enc,
             tenantId: (int) $tenant->id,
-            footer: '© '.$tenant->business_name,
+            footer: '© '.$tenant->brandName(),
             botType: $bot,
             // The reseller's chosen language, so a template override is looked
             // up in the locale their bot actually speaks.
             lang: BotLang::normalize(
                 Arr::get(BotSettings::for((int) $tenant->id, $bot), 'shop.lang', BotLang::DEFAULT),
+            ),
+        );
+    }
+
+    public function forTelegram(TenantTelegramBot $bot, Tenant $tenant): BotMessenger
+    {
+        return new TelegramMessenger(
+            api: new TelegramApi((string) $bot->token_enc),
+            tenantId: (int) $tenant->id,
+            botType: $bot->bot_type,
+            lang: BotLang::normalize(
+                Arr::get(BotSettings::for((int) $tenant->id, $bot->bot_type), 'shop.lang', BotLang::DEFAULT),
             ),
         );
     }

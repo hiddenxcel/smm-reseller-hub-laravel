@@ -170,7 +170,8 @@
             (function () {
                 try {
                     var stored = localStorage.getItem('theme');
-                    var dark = stored === 'dark';
+                    var asked = new URLSearchParams(location.search).get('theme');
+                    var dark = asked ? asked === 'dark' : stored === 'dark';
                     document.documentElement.classList.toggle('dark', dark);
                     document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
                 } catch (e) {

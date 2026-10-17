@@ -38,6 +38,8 @@ class GatewayFactory
             // FimiPay likewise: one class, a market per gateway.
             'fimipay_ng', 'fimipay_gh', 'fimipay_cm', 'fimipay_za', 'fimipay_usd'
                 => new FimipayClient($apiKey, $secret, $credentials->gateway),
+            // Makamesco Pay: the secret key is all it takes; payments are confirmed by asking.
+            'makamesco' => new MakamescoClient($apiKey),
             // AnyPay: the project id and the project's secret key.
             'anypay' => new AnypayClient($apiKey, $secret),
             // PayU: merchant key and salt, and "test" in the third slot for the sandbox.

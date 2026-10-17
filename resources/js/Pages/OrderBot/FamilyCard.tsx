@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { useForm } from '@inertiajs/react';
 import { Smartphone } from 'lucide-react';
 import { Field, inputClass } from './bits';
+import { GatewayName } from './GatewayName';
 import { FamilyState } from './types';
 
 /**
@@ -130,6 +131,27 @@ export function FamilyCard({ family }: { family: FamilyState }) {
                     </Button>
                 </div>
             </form>
+
+            {/* Each market is its own menu entry, so each can be named. Only a
+                market that has been saved can be, because the name lives on it. */}
+            {family.markets.some((market) => market.connected) && (
+                <div className="mt-5 space-y-3 border-t border-border pt-4">
+                    <p className="text-xs font-medium text-muted-foreground">
+                        Names customers see in the bot
+                    </p>
+                    {family.markets
+                        .filter((market) => market.connected)
+                        .map((market) => (
+                            <GatewayName
+                                key={`${market.code}-${market.displayName ?? ''}`}
+                                code={market.code}
+                                current={market.displayName}
+                                fallback={market.label}
+                                label={market.label}
+                            />
+                        ))}
+                </div>
+            )}
         </section>
     );
 }

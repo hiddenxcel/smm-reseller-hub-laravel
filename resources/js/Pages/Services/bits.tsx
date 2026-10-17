@@ -1,4 +1,5 @@
 import { CircleDot, EyeOff, PauseCircle, Star, TriangleAlert } from 'lucide-react';
+import { shopCurrency } from '@/lib/shopCurrency';
 import { ServiceStatus } from './types';
 
 /**
@@ -123,7 +124,7 @@ export function MarginCell({
  * can legitimately cost 0.0009 — trimming to two would render several
  * different costs as "0.00".
  */
-export function price(value: number | null, currency = 'USD'): string {
+export function price(value: number | null, currency = shopCurrency()): string {
     if (value === null) {
         return '—';
     }
@@ -191,6 +192,7 @@ export const PRICE_REASON: Record<string, string> = {
     rule: 'Markup rule',
     sync: 'Panel sync',
     import: 'Imported',
+    currency_switch: 'Currency change',
 };
 
 /** A quiet, deterministic tint per platform, for the sidebar dots. */

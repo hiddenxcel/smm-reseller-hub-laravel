@@ -8,6 +8,7 @@ use App\Models\BotMessage;
 use App\Models\BsuidAlias;
 use App\Models\Subscription;
 use App\Models\Tenant;
+use App\Models\TenantTelegramBot;
 use App\Models\TenantWhatsApp;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
@@ -52,14 +53,46 @@ class BotRouter
             return BotRoute::TenantInactive;
         }
 
-        $bot = $whatsapp->bot_type;
-
         // A sender who hides their phone number arrives as an ID only. Everything
         // downstream is keyed on a short "phone" string, so the ID is given one.
         if ($message->from === '' && $message->bsuid !== null) {
             $message = $message->withFrom(BsuidAlias::aliasFor((int) $tenant->id, $message->bsuid, $message->username));
         }
 
+        return $this->dispatch(
+            $tenant,
+            $whatsapp->bot_type,
+            $message,
+            fn () => $this->messengers->forWhatsApp($whatsapp, $tenant),
+            canReply: filled($whatsapp->cloud_api_token_enc),
+        );
+    }
+
+    /** The same journey for a message that came in through a reseller's Telegram bot. */
+    public function routeTelegram(TenantTelegramBot $bot, InboundMessage $message): BotRoute
+    {
+        $tenant = Tenant::find($bot->tenant_id);
+
+        if ($tenant === null || $tenant->status === 'suspended') {
+            return BotRoute::TenantInactive;
+        }
+
+        return $this->dispatch(
+            $tenant,
+            $bot->bot_type,
+            $message,
+            fn () => $this->messengers->forTelegram($bot, $tenant),
+            canReply: true,
+        );
+    }
+
+    /**
+     * Steps 3 to 5, which do not depend on the channel.
+     *
+     * @param  \Closure(): BotMessenger  $messenger
+     */
+    private function dispatch(Tenant $tenant, string $bot, InboundMessage $message, \Closure $messenger, bool $canReply): BotRoute
+    {
         // Logged before the gate and the spam check, so a message that was
         // refused is still on the record — a reseller asking "did they ever
         // message me?" needs the ones we did not answer most of all.
@@ -75,7 +108,14 @@ class BotRouter
         $target = $this->mayRun($tenant->id, $bot, $message->from) ? $bot : null;
 
         if ($target === null) {
-            $this->notifyPaused($tenant, $whatsapp, $message->from);
+            // Without a way to reply, stay silent.
+            if ($canReply) {
+                $messenger()->sendText(
+                    $message->from,
+                    '⏸️ This service is currently paused. Please try again later.',
+                    'SUBSCRIPTION_EXPIRED',
+                );
+            }
 
             return BotRoute::GateLocked;
         }
@@ -86,7 +126,7 @@ class BotRouter
 
         $this->rememberName((int) $tenant->id, $message);
 
-        $messenger = $this->messengers->forWhatsApp($whatsapp, $tenant);
+        $messenger = $messenger();
 
         if ($message->providerMessageId !== null) {
             $messenger->markReadWithTyping($message->providerMessageId);
@@ -161,20 +201,6 @@ class BotRouter
         RateLimiter::hit($key, $window);
 
         return false;
-    }
-
-    private function notifyPaused(Tenant $tenant, TenantWhatsApp $whatsapp, string $to): void
-    {
-        // Without a token there is no way to reply, so stay silent.
-        if (blank($whatsapp->cloud_api_token_enc)) {
-            return;
-        }
-
-        $this->messengers->forWhatsApp($whatsapp, $tenant)->sendText(
-            $to,
-            '⏸️ This service is currently paused. Please try again later.',
-            'SUBSCRIPTION_EXPIRED',
-        );
     }
 
     private function logInbound(int $tenantId, InboundMessage $message, string $botType): void

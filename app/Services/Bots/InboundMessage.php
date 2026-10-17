@@ -23,6 +23,8 @@ final readonly class InboundMessage
         public ?string $bsuid = null,
         /** The WhatsApp username, when the sender has one. */
         public ?string $username = null,
+        /** 'whatsapp' or 'telegram'. */
+        public string $channel = 'whatsapp',
     ) {}
 
     /** The same message, now with the key the rest of the app knows the sender by. */
@@ -36,6 +38,53 @@ final readonly class InboundMessage
             $this->profileName,
             $this->bsuid,
             $this->username,
+            $this->channel,
+        );
+    }
+
+    /**
+     * Pull a message out of a Telegram update, or null when it is not one the
+     * bot answers: edits, channel posts, groups, and anything without a
+     * private chat and a sender. A button tap arrives as its callback id, like
+     * a WhatsApp reply; /start counts as saying hello.
+     *
+     * The provider id is "chat_id:message_id" so a send can show "typing…"
+     * without a second lookup.
+     */
+    public static function fromTelegramUpdate(array $update, string $botKey): ?self
+    {
+        $callback = $update['callback_query'] ?? null;
+        $message = is_array($callback) ? ($callback['message'] ?? null) : ($update['message'] ?? null);
+        $sender = is_array($callback) ? ($callback['from'] ?? null) : ($message['from'] ?? null);
+
+        if (! is_array($message) || ! is_array($sender) || ($sender['is_bot'] ?? false)) {
+            return null;
+        }
+
+        if (($message['chat']['type'] ?? null) !== 'private' || ! isset($message['chat']['id'])) {
+            return null;
+        }
+
+        if (is_array($callback)) {
+            $text = Telegram\TelegramMessenger::resolveCallback((string) ($callback['data'] ?? ''));
+        } else {
+            $text = trim((string) ($message['text'] ?? ''));
+
+            if (preg_match('/^\/start(@\w+)?(\s|$)/', $text)) {
+                $text = 'hi';
+            }
+        }
+
+        $name = trim(($sender['first_name'] ?? '').' '.($sender['last_name'] ?? ''));
+
+        return new self(
+            phoneNumberId: $botKey,
+            from: Telegram\TelegramChat::key($message['chat']['id']),
+            text: $text,
+            providerMessageId: $message['chat']['id'].':'.($message['message_id'] ?? 0),
+            profileName: self::cleanName($name),
+            username: self::cleanName($sender['username'] ?? null),
+            channel: 'telegram',
         );
     }
 

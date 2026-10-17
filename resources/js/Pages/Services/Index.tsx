@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowDown,
+    Bell,
     ArrowUp,
     ChevronLeft,
     ChevronRight,
@@ -68,6 +69,7 @@ export default function Services({
     platforms,
     categories,
     panels,
+    pendingChanges,
     rules,
     pageSizes,
     bulkLimits,
@@ -256,6 +258,20 @@ export default function Services({
                             <RefreshCw className="size-3.5" />
                             <span className="hidden sm:inline">Sync</span>
                         </Button>
+
+                        <Link
+                            href={route('services.changes')}
+                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm transition-colors hover:bg-accent"
+                            aria-label="Panel changes"
+                        >
+                            <Bell className="size-3.5" aria-hidden />
+                            <span className="hidden sm:inline">Changes</span>
+                            {pendingChanges > 0 && (
+                                <span className="font-data ms-1 rounded-full bg-amber-500/15 px-1.5 text-[0.7rem] text-amber-600 tabular-nums dark:text-amber-400">
+                                    {pendingChanges}
+                                </span>
+                            )}
+                        </Link>
 
                         <a
                             href={route('services.export', currentQuery())}

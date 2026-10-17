@@ -11,6 +11,10 @@ const money = (cents: number, currency: string) =>
 function standing(service: BillingPageProps['services'][number]): string {
     const { state, daysLeft } = service;
 
+    if (service.oneTime) {
+        return state === 'active' ? 'Unlocked — yours for good' : 'One-time payment';
+    }
+
     if (state === 'active' && daysLeft !== null) {
         return daysLeft > 0 ? `Active · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : 'Expires today';
     }
@@ -49,7 +53,8 @@ export function Cart({
     credit,
     numbers,
     preselect,
-}: Omit<BillingPageProps, 'invoices'>) {
+    title = 'Choose a bot',
+}: Omit<BillingPageProps, 'invoices'> & { title?: string }) {
     const [months, setMonths] = useState(terms[0]?.months ?? 1);
 
     const form = useForm({
@@ -110,7 +115,7 @@ export function Cart({
             }}
             className="overflow-hidden rounded-2xl border border-border bg-card"
         >
-            <Step title="Choose a bot">
+            <Step title={title}>
                 <div className="space-y-2">
                     {services.map((service) => {
                         const price = service.termPrices[String(months)] ?? 0;
@@ -138,6 +143,9 @@ export function Cart({
                                         <span className="font-medium">{service.name}</span>
                                         <span className="font-data shrink-0 text-sm">
                                             {money(price, currency)}
+                                            {service.oneTime && (
+                                                <span className="text-xs text-muted-foreground"> once</span>
+                                            )}
                                         </span>
                                     </span>
                                     <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
@@ -153,6 +161,7 @@ export function Cart({
                 </div>
             </Step>
 
+            {!services.every((service) => service.oneTime) && (
             <Step title="Period">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {terms.map((term) => (
@@ -182,6 +191,7 @@ export function Cart({
                     ))}
                 </div>
             </Step>
+            )}
 
             {numbers.length > 0 && (
                 <Step title="WhatsApp number" hint="Optional — rent one from us.">

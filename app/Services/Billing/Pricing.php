@@ -31,6 +31,12 @@ class Pricing
             ->all();
     }
 
+    /** Paid once and kept — no term, no discount, never expires. */
+    public static function isOneTime(ServiceKey|string $service): bool
+    {
+        return in_array($service instanceof ServiceKey ? $service->value : $service, config('billing.one_time', []), true);
+    }
+
     public static function isValidTerm(int $months): bool
     {
         return Arr::has(config('billing.terms', []), (string) $months);
@@ -39,13 +45,14 @@ class Pricing
     /**
      * The services actually on sale: listed in config AND priced in the
      * plans table. A service with no plan row is not offered at all, rather
-     * than offered at zero.
+     * than offered at zero. $list picks the config list: 'sellable' (the
+     * bots) or 'features' (the Unlock page).
      *
      * @return array<int, array{key: string, name: string, description: ?string, monthly: int}>
      */
-    public static function sellableServices(): array
+    public static function sellableServices(?string $list = null): array
     {
-        return collect(config('billing.sellable', []))
+        return collect(config('billing.'.($list ?? 'sellable'), []))
             ->map(fn (string $key) => [$key, Plan::forService($key)])
             ->filter(fn (array $pair) => $pair[1] !== null)
             ->map(fn (array $pair) => [
@@ -74,6 +81,10 @@ class Pricing
 
         if ($plan === null) {
             throw new InvalidArgumentException('That service is not on sale.');
+        }
+
+        if (self::isOneTime($service)) {
+            return self::toCents($plan->price_monthly);
         }
 
         $gross = self::toCents($plan->price_monthly) * $months;
@@ -107,7 +118,7 @@ class Pricing
                 'type' => 'service',
                 'key' => $service,
                 'label' => $plan->name,
-                'term' => self::termLabel($months),
+                'term' => self::isOneTime($service) ? 'One-time' : self::termLabel($months),
                 'months' => $months,
                 'amount' => self::serviceTotal($service, $months),
             ];

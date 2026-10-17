@@ -30,6 +30,8 @@ class ServicePriceHistory extends Model
 
     public const IMPORT = 'import';
 
+    public const CURRENCY_SWITCH = 'currency_switch';
+
     protected $fillable = [
         'tenant_id',
         'service_id',

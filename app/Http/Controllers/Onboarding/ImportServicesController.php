@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BotService;
 use App\Models\TenantPanel;
 use App\Services\Catalogue\ServiceFeatures;
+use App\Services\Catalogue\ServiceLimit;
 use App\Services\Panel\ServiceCatalogue;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,26 @@ class ImportServicesController extends Controller
 
         $panel = $this->panelFor($request, (int) $validated['panel_id']);
 
+        $skipped = [];
+        $imported_count = 0;
+
         foreach ($validated['services'] as $service) {
+            // One that is already listed in this category takes its own row; a new
+            // or hidden one needs a free row, or it is left out.
+            $existing = BotService::withoutTenantScope()
+                ->where('tenant_id', $panel->tenant_id)
+                ->where('panel_id', $panel->id)
+                ->where('provider_service_id', $service['provider_service_id'])
+                ->first();
+
+            if (! ServiceLimit::hasRoom((int) $panel->tenant_id, $service['platform'], $service['category'] ?? null, $existing?->id)) {
+                $skipped[trim($service['platform'].' '.($service['category'] ?? ''))] = true;
+
+                continue;
+            }
+
+            $imported_count++;
+
             $imported = BotService::updateOrCreate(
                 [
                     'tenant_id' => $panel->tenant_id,
@@ -59,10 +79,16 @@ class ImportServicesController extends Controller
             $this->fillFeaturesFromName($imported);
         }
 
-        $count = count($validated['services']);
+        $count = $imported_count;
+        $message = $count === 1 ? '1 service imported.' : "{$count} services imported.";
+        $response = $this->afterSave($request);
 
-        return $this->afterSave($request)
-            ->with('status', $count === 1 ? '1 service imported.' : "{$count} services imported.");
+        if ($skipped !== []) {
+            $full = implode(', ', array_keys($skipped));
+            $response->with('error', 'Not imported: '.$full.' already has '.ServiceLimit::MAX_PER_CATEGORY.' services, the most WhatsApp can show in one list. Delete or hide one first.');
+        }
+
+        return $count > 0 ? $response->with('status', $message) : $response;
     }
 
     /**

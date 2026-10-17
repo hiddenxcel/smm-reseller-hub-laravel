@@ -1,10 +1,12 @@
 import AppLogo from '@/components/AppLogo';
+import CurrencySwitcher from '@/components/CurrencySwitcher';
 import AssistantWidget from '@/components/assistant/AssistantWidget';
 import DemoBanner from '@/components/DemoBanner';
 import ImpersonationBanner from '@/components/ImpersonationBanner';
 import { Toaster } from '@/components/ui/sonner';
 import { useFlashToasts } from '@/hooks/useFlashToasts';
 import { useTheme } from '@/hooks/useTheme';
+import { setShopCurrency } from '@/lib/shopCurrency';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3,
@@ -33,6 +35,7 @@ import {
     UsersRound,
     Wallet,
     X,
+    LockOpen,
 } from 'lucide-react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
 import { Tenant } from '@/types';
@@ -140,6 +143,7 @@ const ORDER_BOT: NavItem[] = [
     { label: 'Providers', icon: Plug, routeName: 'order-bot.providers' },
     { label: 'Gateways', icon: Wallet, routeName: 'order-bot.gateways' },
     { label: 'Payments', icon: CreditCard, routeName: 'order-bot.payments' },
+    { label: 'Unlock', icon: LockOpen, routeName: 'order-bot.boosts' },
 ];
 
 const SUPPORT_BOT: NavItem[] = [
@@ -165,8 +169,12 @@ export default function AuthenticatedLayout({
      */
     bleed = false,
 }: PropsWithChildren<{ header?: ReactNode; bleed?: boolean }>) {
-    const { auth, assistantEnabled } = usePage().props;
+    const { auth, assistantEnabled, pricingCurrency } = usePage().props;
     const tenant = auth.user;
+
+    // Read by the money formatters, which are plain functions: set before any
+    // page content renders so every amount on screen is in the shop's currency.
+    setShopCurrency(pricingCurrency?.current);
 
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -341,6 +349,7 @@ function Sidebar({
 
                     <div className="mt-1 space-y-0.5">
                         <ThemeToggle />
+                        <CurrencySwitcher />
                         {!member && (
                             <Link
                                 href={route('profile.edit')}

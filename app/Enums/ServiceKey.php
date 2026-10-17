@@ -13,4 +13,6 @@ enum ServiceKey: string
     case AiTickets = 'ai_tickets';
     case AiChat = 'ai_chat';
     case NumberRental = 'number_rental';
+    /** An upgrade: the bot's footer carries the reseller's own name instead of ours. */
+    case CustomBrand = 'custom_brand';
 }

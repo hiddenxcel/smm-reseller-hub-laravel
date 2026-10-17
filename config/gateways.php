@@ -68,6 +68,25 @@ return [
         ],
     ],
 
+    // ---- Makamesco Pay (makamescopay.com): M-Pesa STK Push, Kenya ----
+    //
+    // A direct push to the customer's phone, charged in KES; the money settles
+    // into the reseller's own till or paybill. The reseller adds our URL under
+    // Webhooks in their Makamesco dashboard, but the notification is only a
+    // nudge — the result is fetched from Makamesco's status endpoint under the
+    // reseller's own key, so no webhook secret is stored.
+
+    'makamesco' => [
+        'label' => 'Makamesco Pay (Kenya M-Pesa — KES)',
+        'type' => 'mobile',
+        'ready' => true,
+        'confirm_by_api' => true,
+        'webhook_setup' => true,
+        'fields' => [
+            ['name' => 'api_key', 'label' => 'Secret key (sk_…)', 'store' => 'api_key'],
+        ],
+    ],
+
     // ---- FimiPay: one gateway per market ----
     //
     // Each market is its own gateway because what differs between them — the

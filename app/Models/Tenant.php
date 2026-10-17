@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ServiceKey;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +27,9 @@ class Tenant extends Authenticatable implements AuthenticatableContract
         'password_hash',
         'status',
         'lang',
+        'pricing_currency',
+        'pricing_currency_changed_at',
+        'auto_catalogue_sync',
         'referral_code',
         'referred_by',
         'referral_credit',
@@ -41,6 +45,8 @@ class Tenant extends Authenticatable implements AuthenticatableContract
         return [
             'referral_credit' => 'decimal:2',
             'first_payment_done' => 'boolean',
+            'pricing_currency_changed_at' => 'datetime',
+            'auto_catalogue_sync' => 'boolean',
         ];
     }
 
@@ -52,6 +58,20 @@ class Tenant extends Authenticatable implements AuthenticatableContract
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
+    }
+
+    /**
+     * The name the bots sign with. Ours until the reseller has paid for the
+     * Custom Brand boost, then their own.
+     */
+    public function brandName(): string
+    {
+        // Both must hold: this reseller paid, and the feature is switched on
+        // in the admin console (an inactive plan turns it off for everyone).
+        return Plan::forService(ServiceKey::CustomBrand) !== null
+            && Subscription::isServiceActive((int) $this->id, ServiceKey::CustomBrand)
+            ? (string) $this->business_name
+            : (string) config('billing.default_brand', 'Auto Hub');
     }
 
     public function panels(): HasMany

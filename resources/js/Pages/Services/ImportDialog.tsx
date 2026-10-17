@@ -6,6 +6,9 @@ import { useMemo, useState } from 'react';
 import { price } from './bits';
 import { CatalogueEntry, PricingRule } from './types';
 
+/** Most matches drawn at once; search still looks through the whole panel. */
+const RENDER_LIMIT = 300;
+
 /**
  * Importing services from a panel.
  *
@@ -89,7 +92,9 @@ export default function ImportDialog({
             : entries.filter(
                   (entry) =>
                       entry.name.toLowerCase().includes(term) ||
-                      entry.platform.toLowerCase().includes(term),
+                      entry.platform.toLowerCase().includes(term) ||
+                      (entry.category ?? '').toLowerCase().includes(term) ||
+                      entry.provider_service_id === term,
               );
     }, [entries, search]);
 
@@ -141,7 +146,12 @@ export default function ImportDialog({
         );
     };
 
-    const importable = visible.filter((entry) => !entry.imported);
+    // A panel can have thousands; drawing them all would freeze the dialog, and
+    // nobody scrolls through nine thousand rows. Search narrows the list, and
+    // search covers all of it.
+    const shown = useMemo(() => visible.slice(0, RENDER_LIMIT), [visible]);
+
+    const importable = shown.filter((entry) => !entry.imported);
 
     return (
         <Dialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
@@ -288,6 +298,14 @@ export default function ImportDialog({
                                             </Button>
                                         </div>
 
+                                        {visible.length > shown.length && (
+                                            <p className="mt-2 text-xs text-muted-foreground">
+                                                {visible.length.toLocaleString('en-US')} match
+                                                {search.trim() === '' ? ' on this panel' : ''} — showing the first{' '}
+                                                {shown.length.toLocaleString('en-US')}. Type in the box to narrow it down.
+                                            </p>
+                                        )}
+
                                         {panelTotal > entries.length && (
                                             <p className="mt-2 text-xs text-muted-foreground">
                                                 Showing the first {entries.length.toLocaleString('en-US')} of{' '}
@@ -296,14 +314,14 @@ export default function ImportDialog({
                                         )}
 
                                         <div className="mt-3 max-h-72 overflow-y-auto rounded-lg border border-border">
-                                            {visible.length === 0 ? (
+                                            {shown.length === 0 ? (
                                                 <p className="py-8 text-center text-sm text-muted-foreground">
                                                     {entries.length === 0
                                                         ? 'This panel returned no services.'
                                                         : 'Nothing matches that.'}
                                                 </p>
                                             ) : (
-                                                visible.map((entry) => {
+                                                shown.map((entry) => {
                                                     const isSelected = selected.has(
                                                         entry.provider_service_id,
                                                     );

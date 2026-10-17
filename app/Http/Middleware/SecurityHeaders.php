@@ -26,7 +26,17 @@ class SecurityHeaders
 
         // Never render this site inside someone else's iframe. Without it a
         // convincing copy of the login page can be framed and clickjacked.
-        $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
+        // The one exception is the practice chat's embed mode, which the
+        // sister panel at smmresellershub.com shows inside its own dashboard:
+        // it holds no account, no login and nothing a framed click could change.
+        if ($request->routeIs('try') && $request->boolean('embed')) {
+            $response->headers->set(
+                'Content-Security-Policy',
+                "frame-ancestors 'self' https://smmresellershub.com https://www.smmresellershub.com",
+            );
+        } else {
+            $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
+        }
 
         // Stops a browser second-guessing a Content-Type — the trick that
         // turns an uploaded "image" into an executed script.

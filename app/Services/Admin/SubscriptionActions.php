@@ -5,6 +5,7 @@ namespace App\Services\Admin;
 use App\Enums\ServiceKey;
 use App\Enums\SubscriptionStatus;
 use App\Models\Subscription;
+use App\Services\Billing\Pricing;
 use Illuminate\Support\Carbon;
 
 /**
@@ -48,7 +49,8 @@ class SubscriptionActions
         $this->subscription->update([
             'status' => SubscriptionStatus::Active,
             'starts_at' => $this->subscription->starts_at ?? Carbon::now(),
-            'ends_at' => $from->addMonths($months),
+            // A one-time feature has no end date to push out.
+            'ends_at' => Pricing::isOneTime($this->serviceKey()) ? null : $from->addMonths($months),
         ]);
 
         AdminAudit::onTenant('subscriptions.extend', $this->subscription->tenant_id, [
@@ -100,7 +102,7 @@ class SubscriptionActions
         $this->subscription->update([
             'status' => SubscriptionStatus::Active,
             'starts_at' => $this->subscription->starts_at ?? Carbon::now(),
-            'ends_at' => Carbon::now()->addMonths($months),
+            'ends_at' => Pricing::isOneTime($this->serviceKey()) ? null : Carbon::now()->addMonths($months),
         ]);
 
         AdminAudit::onTenant('subscriptions.reinstate', $this->subscription->tenant_id, [

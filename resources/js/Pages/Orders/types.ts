@@ -1,7 +1,7 @@
 /** The four groups every panel status folds into. Mirrors OrderStatus.php. */
 export type OrderStatusGroup = 'completed' | 'processing' | 'pending' | 'failed';
 
-export type OrderAction = 'retry' | 'refill' | 'cancel' | 'mark';
+export type OrderAction = 'retry' | 'refill' | 'cancel' | 'mark' | 'refund';
 
 export type OrderRow = {
     id: number;

@@ -204,7 +204,9 @@ return [
     // ---- Track order ---------------------------------------------------------
     'track_none' => '📦 You have no orders yet. Send *hi* and choose *New Order* to place one.',
     'order_refunded_cancelled' => '✅ *REFUND*' . "\n" . 'Your order *#{number}* ({service}) was cancelled by the provider.' . "\n" . '' . "\n" . '💰 {amount} has been returned to your wallet.' . "\n" . 'Balance: {balance}',
+    'order_refunded_failed' => '✅ *REFUND*' . "\n" . 'Your order *#{number}* ({service}) could not be delivered.' . "\n" . '' . "\n" . '💰 {amount} has been returned to your wallet.' . "\n" . 'Balance: {balance}',
     'order_refunded_partial' => '✅ *PARTIAL REFUND*' . "\n" . 'Your order *#{number}* ({service}) was only partly delivered.' . "\n" . '' . "\n" . '💰 {amount} for the part not delivered has been returned to your wallet.' . "\n" . 'Balance: {balance}',
+    'order_completed' => '🎉 *ORDER COMPLETED!*' . "\n" . '' . "\n" . '🆔 Order No: #{number}' . "\n" . '🎯 Service: {service}' . "\n" . '🔢 Quantity: {quantity}' . '{link_line}' . "\n" . '' . "\n" . '✅ Your order has been fully delivered. Thank you for trusting us! 🙏' . "\n" . '' . "\n" . 'Send "#" to start a new order.' . "\n" . '' . "\n" . '©️ {business}',
     'payment_credited' => '✅ *PAYMENT RECEIVED*' . "\n" . '💰 {amount} has been added to your wallet.' . "\n" . 'Balance: {balance}',
     'payment_credited_order' => '✅ *PAYMENT RECEIVED*' . "\n" . '💰 {amount} has been added to your wallet.' . "\n" . '' . "\n" . '🛒 Your order *#{number}* ({service}) has been placed.' . "\n" . 'Balance: {balance}',
     'payment_credited_order_waiting' => '✅ *PAYMENT RECEIVED*' . "\n" . '💰 {amount} has been added to your wallet.' . "\n" . '' . "\n" . '⚠️ Your order could not be placed yet — your balance ({balance}) is still short. Add funds, or send *hi* to start again.',

@@ -1,3 +1,4 @@
+import { shopCurrency } from '@/lib/shopCurrency';
 /**
  * Chart tokens, and the rules that go with them.
  *
@@ -38,7 +39,7 @@ export const MARKS = {
     areaFillOpacity: 0.1,
 } as const;
 
-export function formatMoney(value: number, currency = 'USD'): string {
+export function formatMoney(value: number, currency = shopCurrency()): string {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency,

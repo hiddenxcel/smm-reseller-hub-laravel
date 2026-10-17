@@ -77,6 +77,18 @@ class ServiceActions
     {
         $price = $attributes['my_price'] ?? null;
 
+        // Moving a visible service into a category that is already full would
+        // push one out of the bot's list, so it is refused here.
+        $platform = $attributes['platform'] ?? $service->platform;
+        $category = $attributes['category'] ?? null;
+
+        if ($service->status !== BotService::HIDDEN
+            && (mb_strtolower(trim((string) $platform)) !== mb_strtolower(trim((string) $service->platform))
+                || mb_strtolower(trim((string) $category)) !== mb_strtolower(trim((string) $service->category)))
+            && ! ServiceLimit::hasRoom((int) $service->tenant_id, $platform, $category, (int) $service->id)) {
+            return ActionOutcome::failed(ServiceLimit::message($platform, $category));
+        }
+
         $service->fill([
             'name' => $attributes['name'] ?? $service->name,
             'description' => $attributes['description'] ?? null,
@@ -123,6 +135,13 @@ class ServiceActions
     {
         if (! in_array($status, BotService::STATUSES, true)) {
             return ActionOutcome::failed('That is not a status.');
+        }
+
+        // Showing a hidden service takes a row in its category's list.
+        if ($service->status === BotService::HIDDEN
+            && $status !== BotService::HIDDEN
+            && ! ServiceLimit::hasRoom((int) $service->tenant_id, $service->platform, $service->category, (int) $service->id)) {
+            return ActionOutcome::failed(ServiceLimit::message($service->platform, $service->category));
         }
 
         $service->forceFill(['status' => $status, 'auto_paused' => false])->save();
@@ -259,6 +278,13 @@ class ServiceActions
     private function applyStatus(BotService $service, string $status): bool
     {
         if ($service->status === $status) {
+            return false;
+        }
+
+        // Left hidden when its category is full; counted as skipped.
+        if ($service->status === BotService::HIDDEN
+            && $status !== BotService::HIDDEN
+            && ! ServiceLimit::hasRoom((int) $service->tenant_id, $service->platform, $service->category, (int) $service->id)) {
             return false;
         }
 

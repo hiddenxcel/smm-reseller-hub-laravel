@@ -19,6 +19,8 @@ export type SellableService = {
     daysLeft: number | null;
     /** months (as a string key) => total in cents. */
     termPrices: Record<string, number>;
+    /** Paid once and kept: no period to pick, never expires. */
+    oneTime?: boolean;
 };
 
 export type Gateway = {

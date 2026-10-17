@@ -23,7 +23,9 @@ class OrderActions
 
     public const MARK = 'mark';
 
-    public const ALL = [self::RETRY, self::REFILL, self::CANCEL, self::MARK];
+    public const REFUND = 'refund';
+
+    public const ALL = [self::RETRY, self::REFILL, self::CANCEL, self::MARK, self::REFUND];
 
     /**
      * @return list<string>
@@ -35,9 +37,12 @@ class OrderActions
 
         // Retry is for an order the customer already paid for that never
         // reached the panel — that is the case worth money to fix.
+        // Not once the customer has had their money back: sending it on then
+        // would give them the service and the refund.
         if ($order->provider_order_id === null
             && $order->panel_id !== null
-            && $order->payment_status === 'paid') {
+            && $order->payment_status === 'paid'
+            && bccomp((string) $order->refunded_amount, '0', 2) <= 0) {
             $available[] = self::RETRY;
         }
 
@@ -52,6 +57,17 @@ class OrderActions
         if ($order->provider_order_id !== null
             && ! in_array($group, [OrderStatus::COMPLETED, OrderStatus::FAILED], true)) {
             $available[] = self::CANCEL;
+        }
+
+        // A failed order the customer paid for: the reseller may give the money
+        // back. A partial refund is worked out from the provider's own count of
+        // what was not delivered, so it is left to the automatic path.
+        if ($group === OrderStatus::FAILED
+            && $order->payment_status === 'paid'
+            && $order->customer_id !== null
+            && ! str_contains(mb_strtolower((string) $order->status), 'partial')
+            && bccomp((string) $order->amount, (string) $order->refunded_amount, 2) > 0) {
+            $available[] = self::REFUND;
         }
 
         // Setting a status by hand is always allowed; see markStatus for why
@@ -84,6 +100,23 @@ class OrderActions
         SubmitOrderToPanel::dispatch($order->id);
 
         return ActionResult::ok('Sent to the panel again.');
+    }
+
+    /**
+     * Give the customer their money back for an order that failed, and tell
+     * them. The order is marked refunded so nobody sends it on afterwards.
+     */
+    public static function refund(BotOrder $order): ActionResult
+    {
+        $refunded = app(RefundOrder::class)->refundByHand($order);
+
+        if ($refunded === null) {
+            return ActionResult::failed('Nothing to refund on that order.');
+        }
+
+        $order->update(['status' => 'Refunded']);
+
+        return ActionResult::ok("{$refunded} returned to the customer's wallet, and they have been told.");
     }
 
     public static function refill(BotOrder $order): ActionResult

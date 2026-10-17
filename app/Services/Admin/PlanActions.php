@@ -123,7 +123,7 @@ class PlanActions
             // rather than leaving someone to wonder why nobody is buying.
             'sellable' => in_array(
                 $plan->service_key->value,
-                config('billing.sellable', []),
+                [...config('billing.sellable', []), ...config('billing.features', [])],
                 true,
             ),
         ];

@@ -66,6 +66,16 @@ class PlanSeeder extends Seeder
                 'max_panels' => 1,
                 'sort_order' => 5,
             ],
+            [
+                'code' => 'custom_brand',
+                'service_key' => ServiceKey::CustomBrand,
+                'name' => 'Your own brand name',
+                'description' => 'Your business name in the footer of every bot message, instead of ours.',
+                'price_monthly' => 2.00,
+                'price_yearly' => 19.20,
+                'max_panels' => 1,
+                'sort_order' => 6,
+            ],
         ];
 
         foreach ($plans as $plan) {

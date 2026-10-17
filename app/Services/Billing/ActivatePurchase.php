@@ -85,6 +85,23 @@ class ActivatePurchase
 
         $plan = Plan::forService($serviceKey);
 
+        // Paid once, kept for good: no end date, and a second payment changes nothing.
+        if (Pricing::isOneTime($serviceKey)) {
+            $attributes = [
+                'plan_id' => $plan?->id ?? $subscription?->plan_id,
+                'status' => SubscriptionStatus::Active,
+                'starts_at' => $subscription?->starts_at ?? now(),
+                'ends_at' => null,
+                'auto_renew' => false,
+            ];
+
+            $subscription === null
+                ? Subscription::withoutTenantScope()->create(['tenant_id' => $tenant->id, 'service_key' => $serviceKey, ...$attributes])
+                : $subscription->update($attributes);
+
+            return;
+        }
+
         if ($subscription === null) {
             Subscription::withoutTenantScope()->create([
                 'tenant_id' => $tenant->id,

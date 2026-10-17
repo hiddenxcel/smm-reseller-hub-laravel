@@ -107,6 +107,7 @@ export type ServicesPageProps = {
     platforms?: Array<{ platform: string; services: number; active: number }>;
     categories?: Array<{ category: string; services: number }>;
     panels: Array<{ id: number; name: string }>;
+    pendingChanges: number;
     rules: PricingRule[];
     pageSizes: number[];
     marginBands: MarginBand[];

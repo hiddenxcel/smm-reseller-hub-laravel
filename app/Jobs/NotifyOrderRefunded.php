@@ -61,7 +61,11 @@ class NotifyOrderRefunded implements ShouldQueue
 
         $text = BotLang::get(
             $locale,
-            $this->kind === RefundOrder::PARTIAL ? 'order_refunded_partial' : 'order_refunded_cancelled',
+            match ($this->kind) {
+                RefundOrder::PARTIAL => 'order_refunded_partial',
+                RefundOrder::FAILED => 'order_refunded_failed',
+                default => 'order_refunded_cancelled',
+            },
             [
                 'number' => $order->provider_order_id ?: $order->id,
                 'service' => $order->service_name ?: '—',

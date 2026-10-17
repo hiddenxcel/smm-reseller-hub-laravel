@@ -37,6 +37,7 @@ class TryController extends Controller
             ],
             'demoNumber' => config('services.demo_whatsapp_number'),
             'assistantEnabled' => AssistantKey::widgetEnabled(),
+            'embed' => request()->boolean('embed'),
         ]);
     }
 

@@ -12,8 +12,12 @@ use App\Services\Onboarding\OnboardingProgress;
 use App\Services\Onboarding\OnboardingStep;
 use App\Services\Panel\ServiceCatalogue;
 use App\Services\Payments\Gateway;
+use App\Services\Payments\ChangePricingCurrency;
+use App\Services\Payments\PricingCurrency;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -120,6 +124,84 @@ class SettingsController extends Controller
         ]);
 
         return back()->with('success', "Updated when we warn you about {$panel->name}.");
+    }
+
+    /**
+     * What changing currency would do, for the confirmation screen.
+     *
+     * Read-only. The screen shows this before anything is written, because
+     * re-pricing a shop is not something to do from a dropdown.
+     */
+    public function previewPricingCurrency(Request $request, ChangePricingCurrency $change): JsonResponse
+    {
+        $tenant = $request->user();
+        $to = $this->chosenCurrency($request);
+
+        if ($to === PricingCurrency::for($tenant)) {
+            return response()->json(['same' => true]);
+        }
+
+        $panelCurrencies = TenantPanel::where('tenant_id', $tenant->id)
+            ->whereNotNull('balance_currency')
+            ->pluck('balance_currency')
+            ->map(fn ($code) => strtoupper((string) $code))
+            ->unique()
+            ->values()
+            ->all();
+
+        return response()->json([
+            'same' => false,
+            // Which of their panels already report in the new currency: if
+            // one does, the prices are most likely already in it and only the
+            // label is wrong.
+            'panelCurrencies' => $panelCurrencies,
+            'panelMatches' => in_array($to, $panelCurrencies, true),
+            ...$change->preview($tenant, $to),
+        ]);
+    }
+
+    /**
+     * Change the currency this reseller's shop is priced in.
+     *
+     * `mode` is explicit and has no default: relabelling and converting do
+     * opposite things to the numbers, and guessing wrong is a price list that
+     * is out by the exchange rate.
+     */
+    public function updatePricingCurrency(Request $request, ChangePricingCurrency $change): RedirectResponse
+    {
+        $tenant = $request->user();
+        $to = $this->chosenCurrency($request);
+
+        $mode = $request->validate([
+            'mode' => ['required', Rule::in([ChangePricingCurrency::RELABEL, ChangePricingCurrency::CONVERT])],
+        ])['mode'];
+
+        if ($to === PricingCurrency::for($tenant)) {
+            return back();
+        }
+
+        try {
+            $change->apply($tenant, $to, $mode);
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', "Your shop now uses {$to}.");
+    }
+
+    private function chosenCurrency(Request $request): string
+    {
+        if (is_string($request->input('currency'))) {
+            $request->merge(['currency' => strtoupper(trim($request->input('currency')))]);
+        }
+
+        return $request->validate([
+            'currency' => [
+                'required',
+                'string',
+                Rule::in(array_column(PricingCurrency::choices(), 'code')),
+            ],
+        ])['currency'];
     }
 
     private function panelPayload(int $tenantId): array

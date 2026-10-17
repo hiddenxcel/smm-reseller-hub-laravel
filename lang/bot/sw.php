@@ -197,7 +197,9 @@ return [
     // ---- Track order ---------------------------------------------------------
     'track_none' => '📦 Bado huna oda yoyote. Tuma *hi* uchague *Weka Oda Mpya* kuanza.',
     'order_refunded_cancelled' => '✅ *PESA IMEREJESHWA*' . "\n" . 'Oda yako *#{number}* ({service}) imeghairiwa na mtoa huduma.' . "\n" . '' . "\n" . '💰 {amount} imerudishwa kwenye pochi yako.' . "\n" . 'Salio: {balance}',
+    'order_refunded_failed' => '✅ *PESA IMEREJESHWA*' . "\n" . 'Oda yako *#{number}* ({service}) haikuweza kukamilika.' . "\n" . '' . "\n" . '💰 {amount} imerudishwa kwenye pochi yako.' . "\n" . 'Salio: {balance}',
     'order_refunded_partial' => '✅ *REJESHO LA SEHEMU*' . "\n" . 'Oda yako *#{number}* ({service}) imekamilika kwa sehemu tu.' . "\n" . '' . "\n" . '💰 {amount} kwa sehemu isiyokamilika imerudishwa kwenye pochi yako.' . "\n" . 'Salio: {balance}',
+    'order_completed' => '🎉 *ODA IMEKAMILIKA!*' . "\n" . '' . "\n" . '🆔 Oda Namba: #{number}' . "\n" . '🎯 Huduma: {service}' . "\n" . '🔢 Kiasi: {quantity}' . '{link_line}' . "\n" . '' . "\n" . '✅ Huduma yako imewasilishwa kikamilifu. Asante kwa kutuamini! 🙏' . "\n" . '' . "\n" . 'Tuma "#" kuanza oda nyingine.' . "\n" . '' . "\n" . '©️ {business}',
     'payment_credited' => '✅ *MALIPO YAMEPOKELEWA*' . "\n" . '💰 {amount} imeongezwa kwenye pochi yako.' . "\n" . 'Salio: {balance}',
     'payment_credited_order' => '✅ *MALIPO YAMEPOKELEWA*' . "\n" . '💰 {amount} imeongezwa kwenye pochi yako.' . "\n" . '' . "\n" . '🛒 Oda yako *#{number}* ({service}) imewekwa.' . "\n" . 'Salio: {balance}',
     'payment_credited_order_waiting' => '✅ *MALIPO YAMEPOKELEWA*' . "\n" . '💰 {amount} imeongezwa kwenye pochi yako.' . "\n" . '' . "\n" . '⚠️ Oda yako haijawekwa bado — salio lako ({balance}) bado halitoshi. Ongeza pesa, au tuma *hi* kuanza upya.',

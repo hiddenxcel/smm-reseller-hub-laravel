@@ -3,7 +3,9 @@
 namespace App\Services\Panel;
 
 use App\Models\BotService;
+use App\Models\Tenant;
 use App\Models\TenantPanel;
+use App\Services\Payments\PricingCurrency;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -52,13 +54,23 @@ class ServiceCatalogue
      */
     private const MAX_SERVICES = 2000;
 
-    public function forPanel(TenantPanel $panel): CatalogueResult
+    /**
+     * What the Services page's own importer asks for: a reseller there searches
+     * the whole panel, and a panel of 9,000 must not hide the 7,000 after the
+     * first 2,000. That screen draws only a few hundred matches at a time, so
+     * the size of the list costs it a download, not a slow page.
+     */
+    public const WHOLE_PANEL = 50000;
+
+    public function forPanel(TenantPanel $panel, int $limit = self::MAX_SERVICES): CatalogueResult
     {
         $response = SmmProviderClient::forPanel($panel)->getServices();
 
         if ($response->failed) {
             return CatalogueResult::failed($response->message ?? 'Could not read that panel.');
         }
+
+        $tenant = Tenant::find($panel->tenant_id);
 
         $alreadyImported = BotService::withoutTenantScope()
             ->where('tenant_id', $panel->tenant_id)
@@ -69,8 +81,8 @@ class ServiceCatalogue
         $all = $response->get('services', []);
 
         $services = (new Collection($all))
-            ->take(self::MAX_SERVICES)
-            ->map(fn (array $service) => $this->normalise($service, $alreadyImported))
+            ->take($limit)
+            ->map(fn (array $service) => $this->normalise($service, $alreadyImported, $panel, $tenant))
             ->filter()
             ->values();
 
@@ -81,7 +93,7 @@ class ServiceCatalogue
      * Turn one panel entry into something we can show and import. Returns
      * null for entries missing what an order needs.
      */
-    private function normalise(array $service, array $alreadyImported): ?array
+    private function normalise(array $service, array $alreadyImported, TenantPanel $panel, ?Tenant $tenant): ?array
     {
         $id = (string) ($service['service'] ?? '');
         $name = trim((string) ($service['name'] ?? ''));
@@ -92,6 +104,12 @@ class ServiceCatalogue
 
         [$platform, $remainder] = $this->splitPlatform($name);
         $cost = (string) ($service['rate'] ?? '0');
+
+        // The panel's currency, brought to the shop's: the price suggested and
+        // the cost saved must be in the currency the shop sells in.
+        if ($tenant !== null && is_numeric($cost)) {
+            $cost = PricingCurrency::costFromPanel($cost, $panel->balance_currency, $tenant) ?? $cost;
+        }
 
         return [
             'provider_service_id' => $id,
@@ -125,15 +143,34 @@ class ServiceCatalogue
         return ['Other', $name];
     }
 
-    /** Followers/likes/views and friends, taken from what is left of the name. */
+    /**
+     * Followers/likes/views and friends, taken from what is left of the name.
+     *
+     * Matched as a singular stem so "Reaction" (seen on panels selling each
+     * emoji as its own service: "Facebook Post Reaction [ 😂 ]") still hits
+     * "Reactions" — a plural-only list had been quietly leaving every one of
+     * those uncategorised, since "reaction" does not contain "reactions".
+     */
     private function guessCategory(string $remainder): ?string
     {
-        $known = ['followers', 'likes', 'views', 'subscribers', 'comments', 'shares', 'saves', 'plays', 'members', 'reactions', 'watch time'];
+        // "reaction" first: "Facebook Post Reaction | ... | Like 👍" names each
+        // emoji after itself, and the service is a reaction either way — it
+        // must not be sorted into "Likes" just because one emoji is a thumbs-up.
+        $known = [
+            'reaction', 'follower', 'like', 'view', 'subscriber', 'comment', 'share',
+            'save', 'play', 'member', 'mention', 'retweet',
+            'connection', 'upvote', 'listener', 'rating', 'review', 'vote', 'join',
+        ];
         $haystack = mb_strtolower($remainder);
+
+        // Not a countable noun — never pluralised, so it is matched on its own.
+        if (str_contains($haystack, 'watch time')) {
+            return 'Watch Time';
+        }
 
         foreach ($known as $category) {
             if (str_contains($haystack, $category)) {
-                return Str::title($category);
+                return Str::title(Str::plural($category));
             }
         }
 

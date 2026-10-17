@@ -8,6 +8,7 @@ import {
     RefreshCw,
     RotateCcw,
     TriangleAlert,
+    Undo2,
     X,
 } from 'lucide-react';
 import { ReactNode } from 'react';
@@ -188,6 +189,28 @@ export default function OrderDetails({
                                         >
                                             <RotateCcw className="size-3.5" />
                                             Send to panel again
+                                        </Button>
+                                    )}
+                                    {/* Money moves on this one, so it asks first. */}
+                                    {order.actions.includes('refund') && (
+                                        <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            disabled={pending}
+                                            onClick={() => {
+                                                if (
+                                                    window.confirm(
+                                                        order.amount !== null
+                                                            ? `Return ${formatMoney(order.amount)} to the customer's wallet and tell them on WhatsApp?`
+                                                            : "Return the customer's money to their wallet and tell them on WhatsApp?",
+                                                    )
+                                                ) {
+                                                    onAction(order, 'refund');
+                                                }
+                                            }}
+                                        >
+                                            <Undo2 className="size-3.5" />
+                                            Refund customer
                                         </Button>
                                     )}
                                     {order.actions.includes('refill') && (

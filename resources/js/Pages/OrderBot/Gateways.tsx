@@ -7,13 +7,62 @@ import { GatewayCard } from './GatewayCard';
 import { FamilyState, GatewayOption } from './types';
 
 /**
+ * Where a card sits: the ones working for customers first, then the ones the
+ * reseller has paused, then the ones not connected at all. Inside each group
+ * the gateway customers are sent to leads, and the rest go by name.
+ */
+type Placed =
+    | { kind: 'family'; family: FamilyState }
+    | { kind: 'gateway'; gateway: GatewayOption };
+
+function rank(item: Placed): number {
+    if (item.kind === 'family') {
+        const markets = item.family.markets;
+
+        if (markets.some((market) => market.on)) {
+            return 0;
+        }
+
+        return markets.some((market) => market.connected) ? 1 : 2;
+    }
+
+    const { gateway } = item;
+
+    if (!gateway.connected) {
+        return 2;
+    }
+
+    return gateway.status === 'active' ? 0 : 1;
+}
+
+function isLead(item: Placed): boolean {
+    return item.kind === 'family'
+        ? item.family.markets.some((market) => market.isDefault && market.on)
+        : item.gateway.isDefault && item.gateway.status === 'active';
+}
+
+function nameOf(item: Placed): string {
+    return item.kind === 'family' ? item.family.label : item.gateway.label;
+}
+
+function ordered(items: Placed[]): Placed[] {
+    return [...items].sort(
+        (a, b) =>
+            rank(a) - rank(b) ||
+            Number(isLead(b)) - Number(isLead(a)) ||
+            nameOf(a).localeCompare(nameOf(b)),
+    );
+}
+
+/**
  * The gateways a reseller's own customers pay through.
  *
  * Not billing — that is how the reseller pays us. Money here goes customer ->
  * reseller, through the reseller's own merchant account, which is why every
  * credential on this page is theirs and is stored encrypted.
  *
- * Ready gateways come first. The rest are still listed and still save their
+ * Ready gateways come first, and among them the connected ones lead, with the
+ * one customers are sent to on top. The rest are still listed and still save their
  * keys, because a reseller who has an account somewhere should be able to put
  * it in before we finish wiring it — but they are labelled, since a gateway
  * that looks connected and silently never takes a payment is worse than one
@@ -26,8 +75,17 @@ export default function OrderBotGateways({
     gateways: GatewayOption[];
     families: FamilyState[];
 }) {
-    const ready = gateways.filter((gateway) => gateway.ready);
-    const pending = gateways.filter((gateway) => !gateway.ready);
+    const placed = ordered([
+        ...families.map((family): Placed => ({ kind: 'family', family })),
+        ...gateways
+            .filter((gateway) => gateway.ready)
+            .map((gateway): Placed => ({ kind: 'gateway', gateway })),
+    ]);
+    const pending = ordered(
+        gateways
+            .filter((gateway) => !gateway.ready)
+            .map((gateway): Placed => ({ kind: 'gateway', gateway })),
+    ).flatMap((item) => (item.kind === 'gateway' ? [item.gateway] : []));
     // Folded by default: they cannot take a payment, and a long list of them
     // buries the ones that can. Open already when the reseller has keys saved
     // against one, so that is never hidden from them.
@@ -49,12 +107,13 @@ export default function OrderBotGateways({
 
             <div className="space-y-6">
                 <div className="space-y-4">
-                    {families.map((family) => (
-                        <FamilyCard key={family.family} family={family} />
-                    ))}
-                    {ready.map((gateway) => (
-                        <GatewayCard key={gateway.code} gateway={gateway} />
-                    ))}
+                    {placed.map((item) =>
+                        item.kind === 'family' ? (
+                            <FamilyCard key={item.family.family} family={item.family} />
+                        ) : (
+                            <GatewayCard key={item.gateway.code} gateway={item.gateway} />
+                        ),
+                    )}
                 </div>
 
                 {pending.length > 0 && (
